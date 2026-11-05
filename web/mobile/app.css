@@ -1,0 +1,235 @@
+body {
+  padding: 0;
+  display: block;
+  font-size: 18px;
+  line-height: 1.5;
+}
+#app {
+  max-width: 480px;
+  min-height: 100dvh;
+  margin: auto;
+  background: var(--phone-bg);
+  padding: 22px 18px 120px;
+}
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+h1 {
+  font-size: 1.6rem;
+  line-height: 1.2;
+  margin: 18px 0 8px;
+}
+h2 {
+  font-size: 1.1rem;
+  margin-bottom: 10px;
+}
+p {
+  color: var(--text-secondary);
+  margin: 8px 0 16px;
+}
+.card {
+  background: var(--surface-card);
+  border: 1px solid var(--surface-card-border-subtle);
+  border-radius: 22px;
+  padding: 20px;
+  margin: 16px 0;
+  box-shadow: var(--shadow-card);
+}
+.hero {
+  border-color: #cbd5ff;
+  background: linear-gradient(145deg, #fff, #f5f7ff);
+}
+.eyebrow {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #5165ae;
+  letter-spacing: 0.04em;
+}
+button,
+.button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid #d6dded;
+  border-radius: 28px;
+  padding: 12px 16px;
+  min-height: 56px;
+  background: white;
+  color: #18243c;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+button.primary {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+  box-shadow: 0 5px 14px #2563eb28;
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+input,
+select,
+textarea {
+  font: inherit;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #aeb9d2;
+  border-radius: 12px;
+  margin: 8px 0 16px;
+  background: white;
+  color: #18243c;
+}
+label {
+  display: block;
+  font-weight: 600;
+}
+nav {
+  position: fixed;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(456px, calc(100% - 24px));
+  padding: 8px;
+  background: #fffffff5;
+  display: flex;
+  justify-content: space-around;
+  border-radius: 28px;
+  box-shadow: 0 8px 25px #626d9b25;
+  z-index: 2;
+}
+nav button {
+  flex: 1;
+  padding: 10px 2px;
+  border: 0;
+  border-radius: 18px;
+  font-size: 0.72rem;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+nav button.active {
+  color: #2563eb;
+  background: #edf2ff;
+}
+nav svg {
+  width: 22px;
+  height: 22px;
+}
+#notice {
+  position: fixed;
+  bottom: 104px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 440px;
+  width: calc(100% - 32px);
+  padding: 14px;
+  border-radius: 16px;
+  background: #14233a;
+  color: white;
+  z-index: 8;
+  display: none;
+}
+.badge {
+  font-size: 0.78rem;
+  padding: 5px 10px;
+  border-radius: 20px;
+  background: #e6edff;
+  color: #244f9e;
+  display: inline-block;
+}
+.muted {
+  font-size: 0.82rem;
+  color: #57617a;
+}
+.scope {
+  padding: 12px;
+  background: #eef3ff;
+  border: 1px solid #d9e2ff;
+  border-radius: 14px;
+  font-size: 0.85rem;
+}
+.chat {
+  padding: 14px;
+  border-radius: 18px;
+  background: #f0f4fa;
+  margin: 10px 0;
+  white-space: pre-wrap;
+}
+.chat.user {
+  background: #2563eb;
+  color: white;
+  margin-left: 24px;
+}
+.avatar {
+  width: 100px;
+  height: 95px;
+  border-radius: 30px;
+  background: linear-gradient(140deg, #d1f1ff, #6bbafa);
+  margin: 24px auto;
+  box-shadow: 0 12px 30px #8eabe555;
+  display: grid;
+  place-items: center;
+}
+.face {
+  width: 64px;
+  height: 48px;
+  border-radius: 18px;
+  background: #132a48;
+  color: #8bd5ff;
+  font-size: 26px;
+  text-align: center;
+}
+.large {
+  font-size: 22px;
+}
+*:focus-visible {
+  outline: 3px solid #172f92;
+  outline-offset: 4px;
+}
+.error {
+  background: #fff0f0;
+  color: #9b2020;
+  padding: 12px;
+  border-radius: 12px;
+}
+.plain {
+  border: 0;
+  background: transparent;
+  padding: 6px;
+}
+.login {
+  padding-top: 12vh;
+}
+.pending {
+  border-left: 4px solid #e2a135;
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+@media (max-width: 370px) {
+  #app {
+    padding-inline: 12px;
+  }
+  .actions button {
+    width: 100%;
+  }
+  nav button {
+    font-size: 0.65rem;
+  }
+}
