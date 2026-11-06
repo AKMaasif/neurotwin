@@ -16,7 +16,8 @@ from app.seed import seed
 @pytest.fixture(
     params=["sqlite"] + (["postgres"] if os.environ.get("TEST_POSTGRES") == "1" else [])
 )
-def database(monkeypatch, request):
+def database(monkeypatch, request, tmp_path):
+    monkeypatch.setattr(settings, "media_store_path", str(tmp_path / "private-media"))
     monkeypatch.setattr(settings, "demo_password", "test-password-not-for-deployment")
     monkeypatch.setattr(settings, "ai_enabled", False)
     schema = None

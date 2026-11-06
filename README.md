@@ -9,7 +9,7 @@ A brain health support prototype connecting older adults, families and clinician
 - Accessible patient interface with large text, daily support tasks and voice/text navigation.
 - One-step activity coaching, confirmed changes, family acceptance status and opt-in companion memory.
 - Family help requests, clinician review and versioned care plans requiring explicit approval.
-- Private patient–family–clinician text conversations with explicit opening acknowledgements and safe send retries.
+- Private patient–family–clinician text and voice conversations with explicit opening acknowledgements and safe send retries.
 - Time-zone-aware routines, quiet hours, snoozing, consented family follow-up and offline response reconciliation.
 - PDF, Word, Excel, CSV, text and image intake with background processing, local OCR and source references.
 - Keyword search, optional semantic retrieval and separately labelled AI visual descriptions.
@@ -66,7 +66,7 @@ uv run python -m scripts.retrieval_benchmark
 
 Browser checks create fictional records in the local workspace. Screenshots and test output stay in ignored `test-results/`. The source browser check and provider smoke scripts make paid synthetic inference calls; run them deliberately after configuring keys. `PLAYWRIGHT_EXECUTABLE_PATH` can point browser checks at an existing Chromium executable.
 
-Companion memory is off by default. Participants can remember preferences and up to 6 text exchanges for 7 days, separately permit AI context sharing, or forget them. Expired entries are purged on the next memory access. Memory is not exposed to family or clinician accounts. Activity coaching reads the current approved plan; saved task/setting changes require confirmation. Recording stops on navigation or interruption, and transcripts require Send before execution. Finished recordings go to the configured speech provider; the app does not retain raw audio. Spoken replies use the browser/device speech service. Background push delivery remains unfinished; the routines below provide server scheduling, in-app reminders and permission-based device alerts while the app is visible.
+Companion memory is off by default. Participants can remember preferences and up to 6 text exchanges for 7 days, separately permit AI context sharing, or forget them. Expired entries are purged on the next memory access. Memory is not exposed to family or clinician accounts. Activity coaching reads the current approved plan; saved task/setting changes require confirmation. Recording stops on navigation or interruption, and transcripts require Send before execution. Finished companion recordings go to the configured speech provider; the app does not retain audio from those companion recordings. Spoken replies use the browser/device speech service. Background push delivery remains unfinished; the routines below provide server scheduling, in-app reminders and permission-based device alerts while the app is visible.
 
 ```sh
 uv run python -m scripts.companion_benchmark
@@ -111,17 +111,48 @@ The report browser check supports `NEUROTWIN_BASE_URL`, uses synthetic accounts,
 
 Open **Care messages** in the clinical dashboard, or **Messages** from mobile Home or Support. Each conversation is bound to one patient and its two participants; clinician assignment does not expose other people’s private conversations. Both people need an active patient grant with the `messages` scope. Access is checked again for history, sends, retries and opening acknowledgements, including requests that reuse an earlier command ID. Removing either grant or messaging scope blocks that conversation.
 
-Messages are plain text, up to 2,000 characters, and are saved directly in the app. They are excluded from ordinary workspaces, weekly reports and AI context. Contacts show the number not yet acknowledged as opened. Fetching a conversation does not create a receipt: the recipient explicitly acknowledges the displayed incoming messages. “Opened in app” is not proof of comprehension, treatment adherence or external delivery. Message content is excluded from audit metadata.
+Text messages contain up to 2,000 characters and are saved directly in the app. Voice notes use the same conversation permissions and acknowledgements, with the additional bounds below. They are excluded from ordinary workspaces, weekly reports and AI context. Contacts show the number not yet acknowledged as opened. Fetching a conversation does not create a receipt: the recipient explicitly acknowledges the displayed incoming messages. “Opened in app” is not proof of comprehension, treatment adherence or external delivery. Message content is excluded from audit metadata.
 
-The client shows 40 messages per page, with Older and Latest controls. It polls while the inbox is open and visible, avoids replacing text during typing, and retains drafts only in session memory. A lost send response keeps the exact text and command ID for retry; the server prevents duplicate messages. Drafts and pending requests are cleared on sign-out, access expiry or a new login. Reloading or closing the app can lose unsent text, and the browser is asked to warn first. No offline message delivery queue is provided. The companion can open Messages or Weekly summary; it cannot send messages or acknowledge them automatically.
+The client shows 40 messages per page, with Older and Latest controls, literal search and media-type filters. Authenticated SSE reconciles the canonical conversation with polling recovery, avoids replacing text during typing/playback, and retains drafts only in session memory. A lost send response keeps the exact text and command ID for retry; the server prevents duplicate messages. Drafts and pending requests are cleared on sign-out, access expiry or a new login. Reloading or closing the app can lose unsent text, and the browser is asked to warn first. No persistent offline/background delivery queue is provided. The companion can open Messages or Weekly summary; it cannot send messages or acknowledge them automatically.
 
-This is an unmonitored, synthetic in-app text channel. It does not send SMS, email, push, voice notes or calls, and messages do not modify approved care plans. Production identity, retention and encrypted storage work described below remain necessary.
+This is an unmonitored, synthetic in-app channel. It does not send SMS, email, push or calls, and messages do not modify approved care plans. Production identity, retention and encrypted storage work described below remain necessary.
 
 ```sh
 node scripts/message_browser_check.cjs
 ```
 
 The browser check accepts `NEUROTWIN_BASE_URL`, uses separate synthetic role sessions, and tests direct-message privacy, explicit acknowledgements, escaped content, a genuinely committed message with a lost HTTP response, duplicate-free retry, draft navigation and sign-out isolation. Backend tests cover pagination, patient and organization boundaries, scope revocation, atomic acknowledgements and companion navigation on SQLite and PostgreSQL.
+
+## Voice notes
+
+In a conversation, choose **Record voice note**, then **Finish recording**. You can play the local preview, add optional text and explicitly choose **Send voice note**, or discard it. The recorder finishes automatically after 20 seconds. Recording permission and unfinished capture are cancelled on navigation or when the page is hidden; a late permission result stops its tracks without recording or sending. Preview drafts remain only in session memory. Changing contact asks before discarding an unsent note, and sign-out clears local audio and object URLs.
+
+Sent clips are stored as validated mono 16-bit PCM WAV at 16 or 24 kHz, with a 30-second server limit and a 2 MB file limit. Multipart requests are bounded before spooling, and uploaded metadata/trailing chunks are discarded when canonical PCM is rebuilt. Audio and message metadata are saved in one transaction. Stable message IDs and content hashes make retries safe after a lost upload response. An unconfirmed upload keeps the original audio and caption for retry. Reloading or closing the browser can lose that local copy, so check the conversation before recording the same message again.
+
+Playback requires the current grants of both conversation participants and a matching patient/participant pair. There are no public audio URLs. Fetches use `no-store` and do not mark a message opened; opening acknowledgement remains explicit. Playing or recording a note does not change the care plan, invoke an AI/speech provider or add audio to companion memory or reports. Voice-note upload and playback are limited to synthetic development workspaces. Production encryption, retention and device testing remain unfinished.
+
+```sh
+node scripts/voice_note_browser_check.cjs
+```
+
+The browser check accepts `NEUROTWIN_BASE_URL` and uses a generated tone as the microphone source, actual MediaRecorder/PCM conversion and muted native playback. It tests preview-before-upload, private playback, a committed upload with a lost response, idempotent retry, cancellation, late permission and text fallback. Permission denial is injected; real-device microphone quality and speech intelligibility are not validated.
+
+## Multimedia care messages
+
+Both clients share private text/voice/image/video/audio/PDF/document conversations, explicit previews and sending, per-file progress and resumable chunks, reply/search/withdrawal, custom waveform playback, distinct delivery/open/playback acknowledgements and authenticated realtime reconciliation. Media bytes are outside the database in a private filesystem store; existing voice URLs remain compatible and legacy clips have a verified-copy migration.
+
+See [the architecture, API, storage policy, exact file list and test report](docs/messaging.md) before deployment. Verification: 301 full-regression passes plus 10 additional recovery passes, one expected SQLite RLS skip, and 50 browser scenarios. Physical Android/iOS, live antivirus, production identity, OS parser sandbox, encryption at rest and organizational privacy review remain unverified. Synthetic unscanned development is explicitly labelled; production uploads fail closed without a configured working scanner. This is not E2EE or production certification.
+
+```sh
+uv run alembic upgrade head
+uv run python -m app.media_maintenance migrate-legacy
+uv run python -m app.media_maintenance cleanup
+uv run python -m app.worker
+uv run python -m scripts.chat_fixtures
+node scripts/multimedia_browser_check.cjs
+```
+
+Legacy migration copies at most 25 clips per invocation; repeat until `processed: 0`. Run browser/security checks only against an isolated synthetic test database. The security browser script intentionally revokes a test grant and has an additional explicit environment guard documented in the architecture report.
 
 ## Project layout
 

@@ -21,6 +21,8 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .agents import AGENTS
 from .ai import ProviderUnavailable, gateway
+from .care_logging import install as install_care_logging
+from .care_realtime import router as care_realtime_router
 from .companion import router as companion_router
 from .config import ROOT, settings
 from .db import (
@@ -39,6 +41,7 @@ from .db import (
 )
 from .document_intelligence import router as intelligence_router
 from .documents import router as document_router
+from .media_uploads import router as media_router
 from .messages import router as message_router
 from .numerics import estimate
 from .reports import router as report_router
@@ -52,6 +55,7 @@ from .routines import (
 from .security import authenticated, authorize, digest_token, password_matches
 from .seed import seed
 from .upload_limits import DocumentUploadLimit
+from .voice_notes import router as voice_note_router
 
 
 @asynccontextmanager
@@ -70,14 +74,21 @@ async def lifespan(app):
     yield
 
 
+install_care_logging()
 app = FastAPI(title="NeuroTwin API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(DocumentUploadLimit)
 app.add_middleware(
-    TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "testserver"]
+    TrustedHostMiddleware,
+    allowed_hosts=[
+        host.strip() for host in settings.allowed_hosts.split(",") if host.strip()
+    ],
 )
 app.include_router(report_router)
 app.include_router(message_router)
+app.include_router(media_router)
+app.include_router(care_realtime_router)
+app.include_router(voice_note_router)
 app.include_router(routine_router)
 app.include_router(companion_router)
 app.include_router(document_router)
@@ -87,6 +98,10 @@ attempts = defaultdict(deque)
 
 @app.middleware("http")
 async def headers(request, call_next):
+    if settings.app_env == "production" and request.url.scheme != "https":
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse({"detail": "HTTPS is required"}, status_code=400)
     if request.method not in {"GET", "HEAD", "OPTIONS"} and request.headers.get(
         "origin"
     ):
@@ -101,6 +116,10 @@ async def headers(request, call_next):
                 {"detail": "Cross-origin mutation denied"}, status_code=403
             )
     response = await call_next(request)
+    if settings.app_env == "production":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000"
+    if hasattr(request.state, "actor_id"):
+        response.headers["X-Actor-ID"] = request.state.actor_id
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["X-Frame-Options"] = "DENY"
@@ -109,7 +128,7 @@ async def headers(request, call_next):
         "camera=(self), microphone=(self), geolocation=()"
     )
     response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; media-src 'self' blob:; font-src 'self'; frame-ancestors 'none'"
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; media-src 'self' blob:; font-src 'self'; frame-ancestors 'none'"
     )
     return response
 
@@ -469,6 +488,11 @@ def login(
     u = db.get(User, body.username)
     if not u or not password_matches(body.password, u.password_hash):
         raise HTTPException(401, "Invalid credentials")
+    old_cookie = request.cookies.get("nt_session")
+    if old_cookie:
+        previous = db.get(LoginSession, digest_token(old_cookie))
+        if previous:
+            db.delete(previous)
     token = secrets.token_urlsafe(32)
     csrf = secrets.token_urlsafe(24)
     db.add(

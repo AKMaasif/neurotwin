@@ -20,19 +20,35 @@ const esc = (s) =>
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
   );
 async function api(path, method = "GET", body, signal) {
+  const expectedActor = S.user?.id;
   const r = await fetch("/api" + path, {
     method,
     signal,
-    headers: { ...(body ? { "Content-Type": "application/json" } : {}), "X-CSRF-Token": S.csrf },
+    headers: {
+      ...(body ? { "Content-Type": "application/json" } : {}),
+      "X-CSRF-Token": S.csrf,
+      ...(S.user ? { "X-Expected-Actor": S.user.id } : {}),
+    },
     body: body ? JSON.stringify(body) : undefined,
   });
+  if (expectedActor && S.user?.id !== expectedActor)
+    throw new Error("Session changed; stale response discarded");
   if (!r.ok) {
     const e = await r.json().catch(() => ({}));
+    if (
+      typeof e.detail === "string" &&
+      (e.detail.startsWith("Session account changed") || e.detail === "Invalid CSRF token")
+    )
+      careSessionChanged();
     const error = new Error(typeof e.detail === "string" ? e.detail : "Request unavailable");
     error.status = r.status;
     throw error;
   }
-  return r.json();
+  const result = await r.json();
+  if (expectedActor && S.user?.id !== expectedActor)
+    throw new Error("Session changed; stale response discarded");
+  if (["/login", "/logout"].includes(path)) announceCareSessionChange();
+  return result;
 }
 function note(t) {
   $("#notice").textContent = t;
@@ -101,6 +117,9 @@ function taskCard(t, hero = false) {
   return `<section class="card ${hero ? "hero" : ""}"><div class="eyebrow">${esc(t.payload.period)} · ${esc(t.payload.time)}</div><h2>${esc(t.payload.title)}</h2><p class="muted">${t.status === "completed" ? "Confirmed by participant" : esc(t.status === "pending" ? "Not yet confirmed" : t.status)}</p><div class="actions">${reviewHold ? '<p class="error">This task is waiting for source review. Please ask your care team for help.</p>' : ""}${S.data.scopes.includes("respond") && !reviewHold ? `<button class="primary" data-response="completed" data-id="${t.id}">Done</button><button data-response="deferred" data-id="${t.id}">Later</button>` : ""}<button data-coach="${t.id}">Step guide</button></div></section>`;
 }
 function render() {
+  if (!S.user || !S.data) return;
+  document.body.classList.toggle("care-chat-page", careActive());
+  pauseCareAudio();
   const family = S.user.role === "family";
   const tasks = records("task").filter(
     (t) => t.status !== "superseded" && !t.payload.is_routine_template && !t.payload.occurrence_id,
@@ -165,6 +184,7 @@ function bind() {
         if (S.dirty && !confirm("Discard unsaved report edits?")) return;
         S.dirty = false;
         stopCompanion(false);
+        stopCareCapture();
         S.tab = b.dataset.tab;
         render();
         if (S.tab === "weekly")
@@ -353,6 +373,8 @@ setInterval(async () => {
     S.busy ||
     S.reportBusy ||
     S.care?.busy ||
+    careVoiceBusy() ||
+    careAudioPlaying() ||
     S.dirty ||
     S.recording ||
     S.voiceState === "speaking" ||

@@ -6,17 +6,30 @@ const esc = (s) =>
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
   );
 async function api(path, method = "GET", body) {
+  const expectedActor = S.user?.id;
   const r = await fetch("/api" + path, {
     method,
-    headers: { ...(body ? { "Content-Type": "application/json" } : {}), "X-CSRF-Token": S.csrf },
+    headers: {
+      ...(body ? { "Content-Type": "application/json" } : {}),
+      "X-CSRF-Token": S.csrf,
+      ...(S.user ? { "X-Expected-Actor": S.user.id } : {}),
+    },
     body: body ? JSON.stringify(body) : undefined,
   });
   const d = await r.json().catch(() => ({}));
+  if (expectedActor && S.user?.id !== expectedActor)
+    throw new Error("Session changed; stale response discarded");
   if (!r.ok) {
+    if (
+      typeof d.detail === "string" &&
+      (d.detail.startsWith("Session account changed") || d.detail === "Invalid CSRF token")
+    )
+      careSessionChanged();
     const error = new Error(typeof d.detail === "string" ? d.detail : "Request failed");
     error.status = r.status;
     throw error;
   }
+  if (["/login", "/logout"].includes(path)) announceCareSessionChange();
   return d;
 }
 function note(t) {
@@ -72,6 +85,9 @@ function caseTable() {
   }</tbody></table></div>`;
 }
 function render() {
+  if (!S.user || !S.data) return;
+  document.body.classList.toggle("care-chat-page", careActive());
+  pauseCareAudio();
   let content = "";
   const cases = rows("case"),
     pending = cases.filter((r) => r.status === "awaiting_review");
@@ -160,13 +176,14 @@ function bind() {
       .querySelectorAll("form input,form select,form textarea,form button")
       .forEach((el) => (el.disabled = true));
   document
-    .querySelectorAll("form:not(#care-compose)")
+    .querySelectorAll("form:not(#care-compose):not(#care-voice-form):not(#care-search)")
     .forEach((f) => f.addEventListener("input", () => (S.dirty = true)));
   document.querySelectorAll("[data-tab]").forEach(
     (b) =>
       (b.onclick = () => {
         if (S.dirty && !confirm("Discard unsaved edits?")) return;
         S.dirty = false;
+        stopCareCapture();
         S.tab = b.dataset.tab;
         if (["sources", "report", "messages"].includes(S.tab)) guard(refresh);
         else render();
@@ -316,6 +333,8 @@ setInterval(async () => {
     S.draftBusy ||
     S.reportBusy ||
     S.care?.busy ||
+    careVoiceBusy() ||
+    careAudioPlaying() ||
     document.hidden ||
     ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)
   )

@@ -4,12 +4,21 @@ import hashlib
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .db import Audit, CareMessage, Grant, User, get_db, now
+from .care_domain import attach_to_message, conversation, conversation_id, emit, enrich
+from .db import (
+    Audit,
+    CareAttachment,
+    CareMessage,
+    Grant,
+    User,
+    get_db,
+    now,
+)
 from .security import authenticated, authorize
 
 router = APIRouter(prefix="/api/patients/{pid}/messages", tags=["care messages"])
@@ -51,7 +60,18 @@ def pack(row, actor):
         "id": row.id,
         "sender_id": row.sender_id,
         "recipient_id": row.recipient_id,
-        "body": row.body,
+        "body": "Message withdrawn" if row.withdrawn_at else row.body,
+        "message_type": "system"
+        if row.withdrawn_at
+        else "voice"
+        if row.media
+        else "text",
+        "voice": (
+            row.media
+            | {"url": f"/api/patients/{row.patient_id}/messages/voice/{row.id}"}
+        )
+        if row.media and not row.withdrawn_at
+        else None,
         "created_at": row.created_at,
         "opened_at": row.opened_at,
         "state": "opened_in_app" if row.opened_at else "saved_in_app",
@@ -85,6 +105,7 @@ def inbox(pid: str, u: User = Depends(authenticated), db: Session = Depends(get_
             CareMessage.recipient_id == u.id,
             CareMessage.sender_id.in_(ids),
             CareMessage.opened_at.is_(None),
+            CareMessage.withdrawn_at.is_(None),
         )
         .group_by(CareMessage.sender_id)
         .all()
@@ -95,6 +116,8 @@ def inbox(pid: str, u: User = Depends(authenticated), db: Session = Depends(get_
             func.max(CareMessage.created_at),
             func.max(CareMessage.opened_at),
             func.count(CareMessage.opened_at),
+            func.max(CareMessage.withdrawn_at),
+            func.count(CareMessage.withdrawn_at),
         )
         .filter(
             CareMessage.patient_id == pid,
@@ -114,6 +137,42 @@ def inbox(pid: str, u: User = Depends(authenticated), db: Session = Depends(get_
             ]
         ).encode()
     ).hexdigest()
+    from sqlalchemy import case
+
+    latest_rows = (
+        db.query(
+            CareMessage,
+            func.row_number()
+            .over(
+                partition_by=case(
+                    (CareMessage.sender_id == u.id, CareMessage.recipient_id),
+                    else_=CareMessage.sender_id,
+                ),
+                order_by=(CareMessage.created_at.desc(), CareMessage.id.desc()),
+            )
+            .label("position"),
+        )
+        .filter(
+            CareMessage.patient_id == pid,
+            or_(
+                and_(CareMessage.sender_id == u.id, CareMessage.recipient_id.in_(ids)),
+                and_(CareMessage.recipient_id == u.id, CareMessage.sender_id.in_(ids)),
+            ),
+        )
+        .subquery()
+    )
+    latest = {}
+    for r in db.query(latest_rows).filter(latest_rows.c.position == 1):
+        other = r.recipient_id if r.sender_id == u.id else r.sender_id
+        latest[other] = {
+            "id": r.id,
+            "preview": "Message withdrawn"
+            if r.withdrawn_at
+            else r.body[:100] or "Attachment",
+            "created_at": r.created_at,
+            "outgoing": r.sender_id == u.id,
+            "opened": bool(r.opened_at),
+        }
     return {
         "contacts": [
             {
@@ -121,6 +180,8 @@ def inbox(pid: str, u: User = Depends(authenticated), db: Session = Depends(get_
                 "name": person.name,
                 "role": person.role,
                 "unopened": received.get(person.id, 0),
+                "last_message": latest.get(person.id),
+                "conversation_id": conversation_id(pid, u.id, person.id),
             }
             for person, _ in contacts
         ],
@@ -136,10 +197,13 @@ def thread(
     peer_id: str,
     before: str | None = Query(default=None, max_length=60),
     limit: int = Query(default=40, ge=1, le=100),
+    q: str = Query(default="", max_length=120),
+    kind: str = Query(default="", max_length=20),
     u: User = Depends(authenticated),
     db: Session = Depends(get_db),
 ):
     target = peer(db, u, pid, peer_id)
+    conv = conversation(db, pid, u, target)
     query = pair_query(db, pid, u.id, target.id)
     if before:
         cursor = query.filter(CareMessage.id == before).first()
@@ -154,6 +218,46 @@ def thread(
                 ),
             )
         )
+    if q:
+        term = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        query = query.filter(
+            CareMessage.withdrawn_at.is_(None),
+            CareMessage.body.ilike("%" + term + "%", escape="\\"),
+        )
+    if kind:
+        if kind not in {"text", "voice", "audio", "image", "video", "document"}:
+            raise HTTPException(422, "Unsupported message filter")
+        query = query.filter(CareMessage.withdrawn_at.is_(None))
+        if kind == "voice":
+            query = query.filter(
+                or_(
+                    CareMessage.media["content_type"].as_string().is_not(None),
+                    CareMessage.id.in_(
+                        db.query(CareAttachment.message_id).filter(
+                            CareAttachment.kind == "voice",
+                            CareAttachment.status == "committed",
+                        )
+                    ),
+                )
+            )
+        elif kind == "text":
+            query = query.filter(
+                CareMessage.media["content_type"].as_string().is_(None),
+                ~CareMessage.id.in_(
+                    db.query(CareAttachment.message_id).filter(
+                        CareAttachment.message_id.is_not(None)
+                    )
+                ),
+            )
+        else:
+            query = query.filter(
+                CareMessage.id.in_(
+                    db.query(CareAttachment.message_id).filter(
+                        CareAttachment.kind == kind,
+                        CareAttachment.status == "committed",
+                    )
+                )
+            )
     rows = (
         query.order_by(CareMessage.created_at.desc(), CareMessage.id.desc())
         .limit(limit + 1)
@@ -161,26 +265,43 @@ def thread(
     )
     more = len(rows) > limit
     rows = rows[:limit]
-    return {
+    messages = enrich(db, list(reversed(rows)), u, pack)
+    result = {
+        "conversation": {
+            "id": conv.id,
+            "type": "direct",
+            "sequence": conv.sequence,
+            "status": conv.status,
+        },
         "contact": {"id": target.id, "name": target.name, "role": target.role},
-        "messages": [pack(r, u) for r in reversed(rows)],
+        "messages": messages,
         "next_before": rows[-1].id if more else None,
         "as_of": now(),
     }
+    db.commit()
+    return result
 
 
 class Send(BaseModel):
     model_config = ConfigDict(extra="forbid")
     command_id: str = Field(min_length=16, max_length=100, pattern=r"^[A-Za-z0-9_-]+$")
-    body: str = Field(min_length=1, max_length=2000)
+    body: str = Field(default="", max_length=2000)
+    attachment_ids: list[str] = Field(default_factory=list, max_length=6)
+    reply_to_id: str | None = Field(default=None, max_length=60)
 
     @field_validator("body")
     @classmethod
     def readable_text(cls, value):
         value = value.strip()
-        if not value or any(ord(c) < 32 and c not in "\n\r\t" for c in value):
+        if any(ord(c) < 32 and c not in "\n\r\t" for c in value):
             raise ValueError("Enter a text message without control characters")
         return value
+
+    @model_validator(mode="after")
+    def has_content(self):
+        if not self.body and not self.attachment_ids:
+            raise ValueError("Enter text or attach a file")
+        return self
 
 
 class Opened(BaseModel):
@@ -197,31 +318,63 @@ def send(
     db: Session = Depends(get_db),
 ):
     target = peer(db, u, pid, peer_id)
+    conv = conversation(db, pid, u, target)
+    if conv.status != "active":
+        raise HTTPException(409, "Conversation is archived")
     existing = (
         db.query(CareMessage)
         .filter_by(sender_id=u.id, command_id=body.command_id)
         .first()
     )
     if existing:
-        if (existing.patient_id, existing.recipient_id, existing.body) != (
-            pid,
-            target.id,
-            body.body,
+        linked = {
+            r.id for r in db.query(CareAttachment).filter_by(message_id=existing.id)
+        }
+        if (
+            existing.media
+            or linked != set(body.attachment_ids)
+            or existing.reply_to_id != body.reply_to_id
+            or (
+                existing.patient_id,
+                existing.recipient_id,
+                existing.body,
+            )
+            != (
+                pid,
+                target.id,
+                body.body,
+            )
         ):
             raise HTTPException(
                 409, "Message command was already used for different content"
             )
-        return pack(existing, u)
+        return enrich(db, [existing], u, pack)[0]
+    if body.reply_to_id:
+        quoted = (
+            pair_query(db, pid, u.id, target.id)
+            .filter(
+                CareMessage.id == body.reply_to_id, CareMessage.withdrawn_at.is_(None)
+            )
+            .first()
+        )
+        if not quoted:
+            raise HTTPException(
+                404, "Reply source is not available in this conversation"
+            )
     row = CareMessage(
         patient_id=pid,
         sender_id=u.id,
         recipient_id=target.id,
         body=body.body,
         command_id=body.command_id,
+        conversation_id=conv.id,
+        reply_to_id=body.reply_to_id,
     )
     try:
         db.add(row)
         db.flush()
+        attach_to_message(db, u, conv, row, body.attachment_ids)
+        emit(db, conv, row, "message.created")
         db.add(
             Audit(
                 patient_id=pid,
@@ -236,7 +389,7 @@ def send(
         raise HTTPException(
             409, "Message command changed concurrently; refresh the conversation"
         ) from None
-    return pack(row, u)
+    return enrich(db, [row], u, pack)[0]
 
 
 @router.post("/threads/{peer_id}/opened")
@@ -261,6 +414,9 @@ def opened(
     for row in changed:
         row.opened_at = at
     if changed:
+        conv = conversation(db, pid, u, target)
+        for row in changed:
+            emit(db, conv, row, "receipt.opened")
         db.add(
             Audit(
                 patient_id=pid,

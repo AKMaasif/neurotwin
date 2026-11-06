@@ -33,7 +33,23 @@ def authenticated(request: Request, db: Session = Depends(get_db)):
     if request.method not in {"GET", "HEAD", "OPTIONS"}:
         if not hmac.compare_digest(request.headers.get("x-csrf-token", ""), row.csrf):
             raise HTTPException(403, "Invalid CSRF token")
-    return db.get(User, row.user_id)
+    actor = db.get(User, row.user_id)
+    if request.headers.get("x-expected-actor") not in (None, actor.id):
+        raise HTTPException(409, "Session account changed; sign in again")
+    request.state.actor_id = actor.id
+    bind_actor(db, actor.id)
+    return actor
+
+
+def bind_actor(db, actor_id):
+    db.info["care_actor"] = actor_id
+    if db.bind.dialect.name == "postgresql":
+        from sqlalchemy import text
+
+        db.execute(
+            text("SELECT set_config('neurotwin.actor_id', :actor, true)"),
+            {"actor": actor_id},
+        )
 
 
 def authorize(db, actor, patient_id, scope):

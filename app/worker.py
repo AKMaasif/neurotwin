@@ -55,11 +55,18 @@ def run_once(db):
 
 
 if __name__ == "__main__":
+    next_media_cleanup = 0
     while True:
         try:
             with Session() as db:
                 run_once(db)
-        except SQLAlchemyError:
+            if time.monotonic() >= next_media_cleanup:
+                from .media_maintenance import cleanup
+
+                with Session() as db:
+                    cleanup(db)
+                next_media_cleanup = time.monotonic() + 300
+        except (SQLAlchemyError, OSError):
             logging.getLogger(__name__).warning(
                 "Reminder database unavailable; retrying without confirming delivery."
             )

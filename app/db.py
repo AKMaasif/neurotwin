@@ -15,7 +15,15 @@ from sqlalchemy import (
     create_engine,
     event,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    mapped_column,
+    sessionmaker,
+)
+from sqlalchemy.orm import (
+    Session as OrmSession,
+)
 
 from .config import settings
 
@@ -104,15 +112,114 @@ class CareMessage(Base):
             "created_at",
             "id",
         ),
+        Index("ix_care_message_timeline", "conversation_id", "created_at", "id"),
     )
     id: Mapped[str] = mapped_column(String(60), primary_key=True, default=uid)
     patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"), index=True)
     sender_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
     recipient_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
     body: Mapped[str] = mapped_column(Text)
+    media: Mapped[dict] = mapped_column(JSON, default=dict, server_default="{}")
     command_id: Mapped[str] = mapped_column(String(100))
     created_at: Mapped[str] = mapped_column(String(50), default=now)
     opened_at: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    conversation_id: Mapped[str | None] = mapped_column(
+        ForeignKey("care_conversations.id"), index=True, nullable=True
+    )
+    reply_to_id: Mapped[str | None] = mapped_column(
+        ForeignKey("care_messages.id"), nullable=True
+    )
+    withdrawn_at: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+
+class CareConversation(Base):
+    __tablename__ = "care_conversations"
+    __table_args__ = (UniqueConstraint("patient_id", "first_user", "second_user"),)
+    id: Mapped[str] = mapped_column(String(60), primary_key=True)
+    patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"), index=True)
+    first_user: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    second_user: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    created_by: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    status: Mapped[str] = mapped_column(String(30), default="active")
+    sequence: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[str] = mapped_column(String(50), default=now)
+
+
+class CareParticipant(Base):
+    __tablename__ = "care_participants"
+    __table_args__ = (UniqueConstraint("conversation_id", "user_id"),)
+    id: Mapped[str] = mapped_column(String(60), primary_key=True, default=uid)
+    conversation_id: Mapped[str] = mapped_column(
+        ForeignKey("care_conversations.id"), index=True
+    )
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    grant_id: Mapped[str] = mapped_column(ForeignKey("grants.id"))
+    joined_at: Mapped[str] = mapped_column(String(50), default=now)
+    notifications: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class CareAttachment(Base):
+    """Attachment metadata and its resumable upload session share one identity."""
+
+    __tablename__ = "care_attachments"
+    __table_args__ = (UniqueConstraint("uploader_id", "client_attachment_id"),)
+    id: Mapped[str] = mapped_column(String(60), primary_key=True, default=uid)
+    conversation_id: Mapped[str] = mapped_column(
+        ForeignKey("care_conversations.id"), index=True
+    )
+    uploader_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    client_attachment_id: Mapped[str] = mapped_column(String(100))
+    client_message_id: Mapped[str] = mapped_column(String(100))
+    message_id: Mapped[str | None] = mapped_column(
+        ForeignKey("care_messages.id"), index=True, nullable=True
+    )
+    filename: Mapped[str] = mapped_column(String(200))
+    claimed_type: Mapped[str] = mapped_column(String(150))
+    kind: Mapped[str] = mapped_column(String(30))
+    expected_size: Mapped[int] = mapped_column(Integer)
+    offset: Mapped[int] = mapped_column(Integer, default=0)
+    expected_sha256: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(40), default="uploading")
+    original_key: Mapped[str] = mapped_column(String(250))
+    object_key: Mapped[str | None] = mapped_column(String(250), nullable=True)
+    detail: Mapped[dict] = mapped_column(JSON, default=dict)
+    error: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    expires_at: Mapped[str] = mapped_column(String(50))
+    created_at: Mapped[str] = mapped_column(String(50), default=now)
+
+
+class CareReceipt(Base):
+    __tablename__ = "care_receipts"
+    __table_args__ = (UniqueConstraint("message_id", "recipient_id"),)
+    id: Mapped[str] = mapped_column(String(60), primary_key=True, default=uid)
+    message_id: Mapped[str] = mapped_column(ForeignKey("care_messages.id"), index=True)
+    recipient_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    delivered_at: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    playback_started_at: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    playback_completed_at: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+
+class CareEvent(Base):
+    """Durable transactional outbox; subscribers consume by conversation sequence."""
+
+    __tablename__ = "care_events"
+    __table_args__ = (UniqueConstraint("conversation_id", "sequence"),)
+    id: Mapped[str] = mapped_column(String(60), primary_key=True, default=uid)
+    conversation_id: Mapped[str] = mapped_column(
+        ForeignKey("care_conversations.id"), index=True
+    )
+    sequence: Mapped[int] = mapped_column(Integer)
+    message_id: Mapped[str] = mapped_column(ForeignKey("care_messages.id"))
+    event_type: Mapped[str] = mapped_column(String(40))
+    created_at: Mapped[str] = mapped_column(String(50), default=now)
+
+
+class CareAudio(Base):
+    __tablename__ = "care_audio"
+    message_id: Mapped[str] = mapped_column(
+        ForeignKey("care_messages.id"), primary_key=True
+    )
+    data: Mapped[bytes] = mapped_column(LargeBinary)
 
 
 class SourceFile(Base):
@@ -264,6 +371,17 @@ if settings.database_url.startswith("sqlite"):
 
 
 Session = sessionmaker(engine, expire_on_commit=False)
+
+
+@event.listens_for(OrmSession, "after_begin")
+def messaging_actor(session, transaction, connection):
+    if connection.dialect.name == "postgresql" and session.info.get("care_actor"):
+        from sqlalchemy import text
+
+        connection.execute(
+            text("SELECT set_config('neurotwin.actor_id', :actor, true)"),
+            {"actor": session.info["care_actor"]},
+        )
 
 
 def get_db():

@@ -25,7 +25,7 @@ function renderCompanion() {
           .map((c) => `<div class="chat ${c.role === "user" ? "user" : ""}">${esc(c.text)}</div>`)
           .join("")}</details>`
       : ""
-  }${guide ? `<section class="card step-guide"><span class="eyebrow">APPROVED ACTIVITY · STEP ${guide.step_index + 1} OF ${guide.steps.length}</span><h2>${esc(guide.task.title)}</h2><p>${esc(guide.steps[guide.step_index])}</p><div class="actions"><button data-say="repeat this step">Read again</button>${guide.step_index + 1 < guide.steps.length ? '<button class="primary" data-say="next step">Next step</button>' : '<button class="primary" data-say="I finished">I finished</button>'}<button data-say="do this later">Do this later</button></div></section>` : ""}${pending ? `<section class="card confirmation" aria-label="Confirm proposed change"><h2>Confirm this change</h2><p>${esc(pending.explanation)}</p><div class="actions"><button class="primary" id="confirmCompanion">Confirm</button><button id="cancelCompanion">Cancel change</button></div></section>` : ""}<p class="muted">A recording goes to the configured speech provider after you finish it. Review the transcript before sending. This app does not save the audio.</p>${S.user.role === "participant" ? `<p class="memory-caption">${S.memory?.enabled ? "Memory on · up to 6 recent turns for 7 days" : "Memory off · this conversation is not saved between sessions"}. <button class="plain" data-tab="settings">Memory settings</button></p>` : ""}`;
+  }${guide ? `<section class="card step-guide"><span class="eyebrow">APPROVED ACTIVITY · STEP ${guide.step_index + 1} OF ${guide.steps.length}</span><h2>${esc(guide.task.title)}</h2><p>${esc(guide.steps[guide.step_index])}</p><div class="actions"><button data-say="repeat this step">Read again</button>${guide.step_index + 1 < guide.steps.length ? '<button class="primary" data-say="next step">Next step</button>' : '<button class="primary" data-say="I finished">I finished</button>'}<button data-say="do this later">Do this later</button></div></section>` : ""}${pending ? `<section class="card confirmation" aria-label="Confirm proposed change"><h2>Confirm this change</h2><p>${esc(pending.explanation)}</p><div class="actions"><button class="primary" id="confirmCompanion">Confirm</button><button id="cancelCompanion">Cancel change</button></div></section>` : ""}<p class="muted">A recording goes to the configured speech provider after you finish it. Review the transcript before sending. Companion recordings are not saved in the app.</p>${S.user.role === "participant" ? `<p class="memory-caption">${S.memory?.enabled ? "Memory on · up to 6 recent turns for 7 days" : "Memory off · this conversation is not saved between sessions"}. <button class="plain" data-tab="settings">Memory settings</button></p>` : ""}`;
 }
 function renderMemorySettings() {
   if (!S.memory) return "";
@@ -344,43 +344,3 @@ window.addEventListener("pagehide", () => stopCompanion(false));
 document.addEventListener("visibilitychange", () => {
   if (document.hidden && (S.recording || S.busy || S.voiceState === "speaking")) stopCompanion();
 });
-
-async function pcmWav(blob) {
-  const ctx = new AudioContext();
-  let decoded;
-  try {
-    decoded = await ctx.decodeAudioData(await blob.arrayBuffer());
-  } finally {
-    await ctx.close();
-  }
-  const offline = new OfflineAudioContext(1, Math.ceil(decoded.duration * 24000), 24000),
-    src = offline.createBufferSource();
-  src.buffer = decoded;
-  src.connect(offline.destination);
-  src.start();
-  const rendered = await offline.startRendering(),
-    samples = rendered.getChannelData(0),
-    buf = new ArrayBuffer(44 + samples.length * 2),
-    v = new DataView(buf);
-  const str = (o, s) => {
-    for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i));
-  };
-  str(0, "RIFF");
-  v.setUint32(4, 36 + samples.length * 2, true);
-  str(8, "WAVE");
-  str(12, "fmt ");
-  v.setUint32(16, 16, true);
-  v.setUint16(20, 1, true);
-  v.setUint16(22, 1, true);
-  v.setUint32(24, 24000, true);
-  v.setUint32(28, 48000, true);
-  v.setUint16(32, 2, true);
-  v.setUint16(34, 16, true);
-  str(36, "data");
-  v.setUint32(40, samples.length * 2, true);
-  for (let i = 0; i < samples.length; i++) {
-    const x = Math.max(-1, Math.min(1, samples[i]));
-    v.setInt16(44 + i * 2, x < 0 ? x * 32768 : x * 32767, true);
-  }
-  return new Blob([buf], { type: "audio/wav" });
-}

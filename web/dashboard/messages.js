@@ -1,5 +1,11 @@
 // Shared care inbox. Unsent message text remains in session memory only.
 function resetCareMessages() {
+  closeCareViewers();
+  closeCareFeed();
+  pauseCareAudio();
+  disposeCareVoice();
+  discardFileDrafts();
+  document.body.classList.remove("care-chat-page");
   S.care = {
     inbox: null,
     peer: null,
@@ -18,7 +24,10 @@ function careActive() {
 function hasCareDrafts() {
   return (
     !!S.care &&
-    (Object.values(S.care.drafts).some((t) => t.trim()) || Object.keys(S.care.pending).length > 0)
+    (Boolean(S.care.voice) ||
+      Boolean(S.care.batch) ||
+      Object.values(S.care.drafts).some((t) => t.trim()) ||
+      Object.keys(S.care.pending).length > 0)
   );
 }
 async function loadCareInbox() {
@@ -29,6 +38,11 @@ async function loadCareInbox() {
   const changed = result.revision !== c.inbox?.revision;
   c.inbox = result;
   if (c.peer && !result.contacts.some((p) => p.id === c.peer)) {
+    closeCareViewers();
+    pauseCareAudio();
+    disposeCareVoice();
+    closeCareFeed();
+    discardFileDrafts();
     c.thread = null;
     c.peer = null;
     c.before = null;
@@ -45,6 +59,8 @@ async function loadCareThread(before = null) {
   if (!peer) return;
   const params = new URLSearchParams({ limit: "40" });
   if (before) params.set("before", before);
+  if (c.query) params.set("q", c.query);
+  if (c.kind) params.set("kind", c.kind);
   try {
     const result = await api(
       `/patients/${pid}/messages/threads/${encodeURIComponent(peer)}?${params}`,
@@ -52,6 +68,22 @@ async function loadCareThread(before = null) {
     if (S.care !== c || S.pid !== pid || c.peer !== peer || c.epoch !== epoch) return;
     c.thread = result;
     c.before = before;
+    if (c.recoveryPeer !== peer) {
+      c.recoverable = await api(`/patients/${pid}/messages/threads/${peer}/uploads`);
+      if (S.care !== c || c.peer !== peer || c.epoch !== epoch) return;
+      c.recoveryPeer = peer;
+    }
+    const delivered = result.messages
+      .filter((m) => m.recipient_id === S.user.id && !m.withdrawn_at && !m.receipt?.delivered_at)
+      .map((m) => m.id);
+    if (careActive() && !document.hidden && delivered.length)
+      await reportCareReceipt(delivered, "delivered");
+    startCareFeed(result.conversation.sequence);
+    if (
+      c.voice?.phase === "unconfirmed" &&
+      result.messages.some((m) => m.command_id === c.voice.command_id)
+    )
+      disposeCareVoice();
     const pending = c.pending[peer];
     if (pending && result.messages.some((m) => m.command_id === pending.command_id)) {
       delete c.pending[peer];
@@ -72,6 +104,8 @@ async function loadCareMessages() {
   try {
     await loadCareInbox();
     if (S.care === c) await loadCareThread(c.before);
+    if (S.care === c && c.peer)
+      c.recoverable = await api(`/patients/${S.pid}/messages/threads/${c.peer}/uploads`);
   } catch (error) {
     if (S.care === c) {
       c.inbox = null;
@@ -83,30 +117,12 @@ async function loadCareMessages() {
 const careRole = (role) =>
   ({ participant: "Patient", family: "Family", clinician: "Clinician" })[role] || role;
 function renderCareMessages() {
-  const c = S.care;
-  if (!c) return '<h1>Messages</h1><section class="card">Loading your care circle…</section>';
-  const history = document.querySelector(".care-history");
-  if (
-    !c.forceLatest &&
-    history?.dataset.peer === c.peer &&
-    history.dataset.page === (c.before || "")
-  ) {
-    c.scroll = {
-      peer: c.peer,
-      page: c.before || "",
-      top: history.scrollTop,
-      bottom: history.scrollHeight - history.clientHeight - history.scrollTop < 60,
-    };
-  }
-  const contact = c.inbox?.contacts.find((p) => p.id === c.peer);
-  const messages = c.thread?.messages || [];
-  const pending = c.pending[c.peer];
-  const unopened = messages.filter((m) => m.recipient_id === S.user.id && !m.opened_at);
-  return `<h1>Care-circle messages</h1><p>Speak with the people connected to this patient. Each conversation is private to its two participants.</p><p class="care-notice">This inbox is not monitored for emergencies. For urgent help, use your locally approved assistance route.</p>${c.error ? `<p class="error" role="alert">${esc(c.error)}</p>` : ""}<div class="care-layout ${contact ? "care-selected" : ""}"><section class="card care-contacts"><h2>Your contacts</h2>${c.inbox?.contacts.map((p) => `<button class="care-contact ${p.id === c.peer ? "selected" : ""}" data-care-contact="${esc(p.id)}" aria-pressed="${p.id === c.peer}" ${c.busy ? "disabled" : ""}><strong>${esc(p.name)}</strong><span>${esc(careRole(p.role))}${p.unopened ? ` · ${p.unopened} not opened` : ""}</span></button>`).join("") || "<p>No messaging contacts are currently available.</p>"}<button id="care-refresh" ${c.busy ? "disabled" : ""}>Refresh inbox</button></section><section class="card care-conversation">${contact ? `<button id="care-back" class="care-back" ${c.busy ? "disabled" : ""}>All contacts</button><h2>${esc(contact.name)}</h2><p class="muted">${esc(careRole(contact.role))} · Times use this device’s timezone.</p><div class="actions"><button id="care-latest" ${c.busy ? "disabled" : ""}>Latest messages</button>${c.thread?.next_before ? `<button id="care-older" ${c.busy ? "disabled" : ""}>Older messages</button>` : ""}</div>${c.before ? '<p class="muted">Viewing an older page. New messages are available from Latest messages.</p>' : ""}<ol class="care-history" data-peer="${esc(c.peer)}" data-page="${esc(c.before || "")}" aria-label="Conversation history" tabindex="0">${messages.map((m) => `<li class="care-message ${m.sender_id === S.user.id ? "outgoing" : "incoming"}"><strong>${esc(m.sender_id === S.user.id ? "You" : contact.name)}</strong><p class="care-body">${esc(m.body)}</p><small>${esc(new Date(m.created_at).toLocaleString())}<br>${m.opened_at ? `Opened in app ${esc(new Date(m.opened_at).toLocaleString())}` : "Saved in app · not acknowledged as opened"}</small></li>`).join("") || '<li class="muted">No messages on this page. Write a message below.</li>'}</ol>${unopened.length ? `<button id="care-opened" ${c.busy ? "disabled" : ""}>Confirm messages opened (${unopened.length})</button><p class="muted">This sends an opening acknowledgement, not a claim that you understood or acted on the message.</p>` : ""}<form id="care-compose"><label>Your message<textarea name="body" maxlength="2000" rows="4" required ${pending || c.busy ? "disabled" : ""}>${esc(pending?.body ?? c.drafts[c.peer] ?? "")}</textarea></label><p class="muted">${pending ? "Saving is unconfirmed. Retry sends the same message ID, so a lost response does not create a duplicate." : "Draft text stays in this session until sent. It is not saved for offline delivery."}</p><button class="primary" ${c.busy ? "disabled" : ""}>${pending ? "Retry saving this message" : "Send message"}</button></form><p class="muted">Messages do not change the approved care plan. No SMS, email, call or push notification is sent.</p>` : "<h2>Choose a contact</h2><p>Select a person to open your direct conversation.</p>"}</section></div>`;
+  return renderModernCare();
 }
 function bindCareMessages() {
   if (!careActive() || !S.care) return;
   const c = S.care;
+  bindCareVoice();
   const history = document.querySelector(".care-history");
   if (history) {
     const previous = c.scroll;
@@ -137,6 +153,7 @@ function bindCareMessages() {
     (b) =>
       (b.onclick = () =>
         run(async () => {
+          if (b.dataset.careContact !== c.peer && !changeCareVoiceContact()) return;
           c.peer = b.dataset.careContact;
           c.thread = null;
           c.before = null;
@@ -145,6 +162,7 @@ function bindCareMessages() {
   );
   if ($("#care-back"))
     $("#care-back").onclick = () => {
+      if (!changeCareVoiceContact()) return;
       c.peer = null;
       c.thread = null;
       c.before = null;
@@ -156,6 +174,9 @@ function bindCareMessages() {
     $("#care-latest").onclick = () =>
       run(async () => {
         c.forceLatest = true;
+        c.query = "";
+        c.kind = "";
+        c.needsLatest = false;
         await loadCareInbox();
         await loadCareThread();
       });
@@ -168,10 +189,15 @@ function bindCareMessages() {
     });
     $("#care-compose").onsubmit = (e) => {
       e.preventDefault();
+      if (c.batch && !c.batch.approved) {
+        sendFileBatch();
+        return;
+      }
       const target = c.peer;
       const body = c.pending[target] || {
         command_id: crypto.randomUUID(),
         body: textarea.value.trim(),
+        reply_to_id: c.reply?.id || null,
       };
       if (!body.body || body.body.length > 2000) {
         note("Write a message of 1 to 2,000 characters before sending.");
@@ -181,11 +207,15 @@ function bindCareMessages() {
       c.drafts[target] = body.body;
       run(async () => {
         try {
-          await api(
-            `/patients/${S.pid}/messages/threads/${encodeURIComponent(target)}`,
-            "POST",
-            body,
+          const prior = await api(
+            `/patients/${S.pid}/messages/threads/${encodeURIComponent(target)}/command/${body.command_id}`,
           );
+          if (!prior.message)
+            await api(
+              `/patients/${S.pid}/messages/threads/${encodeURIComponent(target)}`,
+              "POST",
+              body,
+            );
         } catch (error) {
           if (error.status === 422 && S.care === c) delete c.pending[target];
           throw error;
@@ -193,6 +223,7 @@ function bindCareMessages() {
         if (S.care !== c) return;
         delete c.pending[target];
         c.drafts[target] = "";
+        c.reply = null;
         c.forceLatest = true;
         await loadCareInbox();
         await loadCareThread();
@@ -203,7 +234,7 @@ function bindCareMessages() {
   if ($("#care-opened"))
     $("#care-opened").onclick = () => {
       const ids = c.thread.messages
-        .filter((m) => m.recipient_id === S.user.id && !m.opened_at)
+        .filter((m) => m.recipient_id === S.user.id && !m.opened_at && !m.withdrawn_at)
         .map((m) => m.id);
       run(async () => {
         await api(
@@ -216,6 +247,7 @@ function bindCareMessages() {
         note("Opening acknowledgement saved.");
       });
     };
+  bindChatFeatures();
 }
 let carePolling = false;
 setInterval(async () => {
@@ -225,6 +257,8 @@ setInterval(async () => {
     !careActive() ||
     !S.care ||
     S.care.busy ||
+    careVoiceBusy() ||
+    careAudioPlaying() ||
     carePolling ||
     document.hidden ||
     ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)
@@ -233,13 +267,16 @@ setInterval(async () => {
   carePolling = true;
   const c = S.care;
   try {
+    await flushCareReceipts();
     const changed = await loadCareInbox();
-    if (changed && S.care === c) {
+    if ((changed || c.needsSync || (!c.source && c.peer)) && S.care === c) {
+      c.needsSync = false;
       if (c.peer && !c.before) await loadCareThread();
       if (careActive()) render();
     }
   } catch (error) {
     if (S.care === c) {
+      closeCareFeed();
       c.thread = null;
       c.inbox = null;
       c.error = error.message;

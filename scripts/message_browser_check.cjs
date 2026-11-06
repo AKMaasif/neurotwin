@@ -106,7 +106,7 @@ fs.mkdirSync(out, { recursive: true });
     await send(family, literal);
     await patient.locator("#care-latest").click();
     await wait(patient, () => !S.care.busy);
-    await patient.getByText(literal, { exact: true }).waitFor();
+    await patient.locator(".care-history").getByText(literal, { exact: true }).waitFor();
     assert.equal(await patient.locator(".care-body img").count(), 0);
     assert.equal(await patient.evaluate(() => !!window.careXss), false);
     steps.push("family replies render as escaped plain text");
@@ -116,7 +116,7 @@ fs.mkdirSync(out, { recursive: true });
     const clinicianText = `Synthetic appointment question ${runId}`;
     await send(family, clinicianText);
     await choose(doctor, "family");
-    await doctor.getByText(clinicianText, { exact: true }).waitFor();
+    await doctor.locator(".care-history").getByText(clinicianText, { exact: true }).waitFor();
     await send(doctor, `Synthetic scheduling reply ${runId}`);
     steps.push(
       "family and clinician exchange direct messages while patient-family contents remain private",
