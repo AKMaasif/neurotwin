@@ -1,13 +1,17 @@
 """Transactional in-app outbox projection. No fabricated SMS/push delivery."""
 
+import logging
 import time
 
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 
 from .db import Audit, Grant, Outbox, Session
+from .routines import tick
 
 
 def run_once(db):
+    tick(db)
     pending = (
         db.execute(
             select(Outbox)
@@ -52,6 +56,13 @@ def run_once(db):
 
 if __name__ == "__main__":
     while True:
-        with Session() as db:
-            run_once(db)
+        try:
+            with Session() as db:
+                run_once(db)
+        except SQLAlchemyError:
+            logging.getLogger(__name__).warning(
+                "Reminder database unavailable; retrying without confirming delivery."
+            )
+            time.sleep(5)
+            continue
         time.sleep(2)

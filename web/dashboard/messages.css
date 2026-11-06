@@ -1,0 +1,112 @@
+.care-layout {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.care-layout .card {
+  min-width: 0;
+}
+.care-contact {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin: 10px 0;
+  border-radius: 14px;
+  padding: 16px;
+}
+.care-contact strong,
+.care-contact span {
+  display: block;
+  margin: 4px 0;
+}
+.care-contact.selected {
+  border-color: #4a7c68;
+  background: #edf5f0;
+  color: #244e3e;
+}
+.care-notice {
+  padding: 14px 18px;
+  border-left: 3px solid #a48a54;
+  background: #faf7ed;
+  color: #524933;
+  border-radius: 4px;
+}
+.care-history {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 24px 0;
+}
+.care-message {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid #dfe6e2;
+  max-width: 90%;
+  min-width: 120px;
+}
+.care-message.outgoing {
+  align-self: flex-end;
+  background: #eaf2ed;
+}
+.care-message.incoming {
+  align-self: flex-start;
+  background: #f6f8f7;
+}
+.care-message strong {
+  font-size: 0.9em;
+}
+.care-message small {
+  display: block;
+  font-size: 0.8em;
+  color: #52645c;
+}
+.care-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 8px 0;
+}
+.care-back {
+  display: none;
+}
+#care-compose {
+  margin-top: 24px;
+}
+@media (max-width: 700px) {
+  .care-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .care-conversation {
+    display: none;
+  }
+  .care-selected .care-contacts {
+    display: none;
+  }
+  .care-selected .care-conversation {
+    display: block;
+  }
+  .care-back {
+    display: block;
+    margin-bottom: 18px;
+  }
+  .care-message {
+    max-width: 95%;
+  }
+  .care-message.outgoing {
+    background: #eeebff;
+  }
+}
+
+.care-history {
+  max-height: 480px;
+  overflow: auto;
+  padding: 4px;
+  overscroll-behavior: contain;
+}
+@media (max-width: 700px) {
+  .care-history {
+    max-height: 45vh;
+  }
+}

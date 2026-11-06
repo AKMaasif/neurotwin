@@ -233,3 +233,154 @@ nav svg {
     font-size: 0.65rem;
   }
 }
+.voice-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 72px;
+  padding: 16px;
+  background: #edf2ff;
+  border: 1px solid #d6def7;
+  border-radius: 18px;
+  margin: 14px 0 20px;
+}
+.status-dot {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #7f91b7;
+}
+.status-dot.listening {
+  background: #2563eb;
+  box-shadow: 0 0 0 6px #2563eb15;
+}
+.companion-shortcuts {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0;
+}
+.companion-shortcuts button {
+  justify-content: flex-start;
+  text-align: left;
+}
+.step-guide p {
+  font-size: 1.16rem;
+  line-height: 1.6;
+  color: var(--text-main);
+}
+.confirmation {
+  border: 2px solid #718de6;
+  background: #f6f8ff;
+}
+.check-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 18px 0;
+  font-weight: 500;
+}
+.check-label input {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  margin: 2px 0;
+}
+.memory-caption {
+  font-size: 0.84rem;
+  line-height: 1.6;
+}
+.high-contrast {
+  --text-secondary: #18243c;
+  --surface-card: #fff;
+  --phone-bg: #fff;
+}
+.high-contrast .muted {
+  color: #18243c;
+}
+.voice-status.error {
+  background: #fff1f0;
+  border-color: #e2b5b0;
+}
+#chat .actions {
+  align-items: stretch;
+}
+#chat button {
+  min-width: 90px;
+}
+.schedule-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.weekday-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.weekday-options label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.weekday-options input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+.routine-row {
+  padding: 18px 0;
+  border-top: 1px solid #dbe1f1;
+}
+.routine-row:first-of-type {
+  border-top: 0;
+}
+.routine-row h3 {
+  font-size: 1.05rem;
+}
+.routine-consent {
+  margin: 18px 0;
+  padding: 14px;
+  border-radius: 14px;
+  background: #f0f4ff;
+}
+.routine-activity .actions {
+  flex-direction: column;
+  align-items: stretch;
+}
+.routine-activity button {
+  text-align: left;
+}
+.reminder-evidence {
+  border-top: 1px solid #dbe1f1;
+  margin-top: 16px;
+  padding-top: 12px;
+}
+.offline-actions {
+  border: 2px solid #be9332;
+  background: #fff9e9;
+}
+fieldset {
+  border: 1px solid #d6dded;
+  border-radius: 12px;
+  padding: 12px;
+  margin: 12px 0 18px;
+}
+legend {
+  font-weight: 600;
+}
+details summary {
+  cursor: pointer;
+  font-weight: 600;
+  margin: 14px 0;
+}
+.routine-schedule {
+  padding-top: 12px;
+}
+@media (max-width: 370px) {
+  .schedule-dates {
+    grid-template-columns: 1fr;
+  }
+}

@@ -12,7 +12,11 @@ async function api(path, method = "GET", body) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(typeof d.detail === "string" ? d.detail : "Request failed");
+  if (!r.ok) {
+    const error = new Error(typeof d.detail === "string" ? d.detail : "Request failed");
+    error.status = r.status;
+    throw error;
+  }
   return d;
 }
 function note(t) {
@@ -32,6 +36,7 @@ const rows = (k) => S.data.records.filter((r) => r.kind === k);
 async function refresh() {
   S.data = await api(`/patients/${S.pid}/workspace`);
   S.report = await api(`/patients/${S.pid}/report`);
+  S.routineData = await api(`/patients/${S.pid}/routines`);
   S.documents = await api(`/patients/${S.pid}/documents`);
   if (S.tab === "sources") {
     if (!S.documents.some((d) => d.id === S.documentId)) S.documentId = S.documents[0]?.id;
@@ -39,6 +44,8 @@ async function refresh() {
       ? await api(`/patients/${S.pid}/documents/${S.documentId}/details`)
       : null;
   }
+  if (S.tab === "report") await loadWeeklyReports();
+  if (S.tab === "messages") await loadCareMessages();
   render();
 }
 function login() {
@@ -69,7 +76,7 @@ function render() {
   const cases = rows("case"),
     pending = cases.filter((r) => r.status === "awaiting_review");
   if (S.tab === "overview")
-    content = `<h1>Clinical caseload & active concerns</h1><p>Assigned patient evidence and follow-up. Synthetic development environment.</p><section class="card"><div class="eyebrow">CURRENT ASSIGNED WORKSPACE</div><div class="stat">${esc(S.data.patient.name)}</div><div class="strip"><span style="width:100%"></span></div><div class="actions"><span class="badge">${pending.length} awaiting review</span><span class="badge">${rows("task").filter((t) => t.status !== "superseded").length} current tasks</span><span class="badge hold">Clinical model not validated</span></div><p class="muted">Updated ${esc(new Date(S.data.as_of).toLocaleString())}. EHR and external dispatch are not connected.</p></section><div class="grid"><section class="card"><h2>Current activity evidence</h2><p>${esc(S.report.narrative)}</p><p class="muted">${esc(S.report.evidence)}</p></section><section class="card"><h2>Longitudinal measurements</h2><p>${rows("model").length ? "Research results are available in Patient workspace." : "Insufficient history. No stability or disease score is available."}</p><button data-tab="patient">Open patient workspace</button></section></div><section class="card"><h2>Review pipeline</h2>${caseTable()}</section>`;
+    content = `<h1>Clinical caseload & active concerns</h1><p>Assigned patient evidence and follow-up. Synthetic development environment.</p><section class="card"><div class="eyebrow">CURRENT ASSIGNED WORKSPACE</div><div class="stat">${esc(S.data.patient.name)}</div><div class="strip"><span style="width:100%"></span></div><div class="actions"><span class="badge">${pending.length} awaiting review</span><span class="badge">${rows("task").filter((t) => t.status !== "superseded" && !t.payload.is_routine_template && rows("plan").some((p) => p.id === t.payload.plan_id && p.status === "approved")).length} current tasks</span><span class="badge hold">Clinical model not validated</span></div><p class="muted">Updated ${esc(new Date(S.data.as_of).toLocaleString())}. EHR and external dispatch are not connected.</p></section><div class="grid"><section class="card"><h2>Current activity evidence</h2><p>${esc(S.report.narrative)}</p><p class="muted">${esc(S.report.evidence)}</p></section><section class="card"><h2>Longitudinal measurements</h2><p>${rows("model").length ? "Research results are available in Patient workspace." : "Insufficient history. No stability or disease score is available."}</p><button data-tab="patient">Open patient workspace</button></section></div><section class="card"><h2>Review pipeline</h2>${caseTable()}</section>`;
   if (S.tab === "queue")
     content = `<h1>Assigned review queue</h1><p>Reported concerns remain visible independently of numerical results.</p><section class="card">${caseTable()}</section>`;
   if (S.tab === "patient")
@@ -97,6 +104,7 @@ function render() {
         .join("") || "<p>No model result. Missing data remains unavailable.</p>"
     }</section>`;
   if (S.tab === "sources") content = renderSourcePage();
+  if (S.tab === "routines") content = renderClinicalRoutines();
   if (S.tab === "support")
     content = `<h1>Family support requests</h1><p>Granted contacts and actual in-app ownership states.</p>${
       rows("help")
@@ -106,14 +114,8 @@ function render() {
         )
         .join("") || '<section class="card">No help requests.</section>'
     }`;
-  if (S.tab === "report")
-    content = `<h1>Factual activity report</h1><section class="card"><h2>${esc(S.report.narrative)}</h2><p>${esc(S.report.evidence)}</p><table><thead><tr><th>Status</th><th>Occurrences</th></tr></thead><tbody>${Object.entries(
-      S.report.counts,
-    )
-      .map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v}</td></tr>`)
-      .join(
-        "",
-      )}</tbody></table><p>Denominator: ${S.report.denominator} current task occurrences.</p></section>`;
+  if (S.tab === "messages") content = renderCareMessages();
+  if (S.tab === "report") content = renderWeeklyReports();
   if (S.tab === "providers")
     content = `<h1>Model connections</h1><section class="card"><h2>Verify account catalog</h2><p>Lists accessible models without running inference. Keys remain on the server.</p><button id="catalog">Check configured providers</button><pre id="catalogResult" class="source"></pre></section><section class="card"><h2>Routing boundaries</h2><p>Gemini Flash: structured app requests. Muse Spark standard: bounded drafting adapter. Pro: selected review tasks. Numerical results and permissions remain deterministic. No live provider inference has been certified by this interface.</p></section>`;
   if (S.tab === "audit")
@@ -132,7 +134,9 @@ function render() {
       ["queue", "Work queue"],
       ["patient", "Patient workspace"],
       ["sources", "Source verification"],
+      ["routines", "Daily routines"],
       ["support", "Family support"],
+      ["messages", "Care messages"],
       ["report", "Activity report"],
       ["providers", "Model connections"],
       ["audit", "Audit"],
@@ -146,6 +150,9 @@ function render() {
   bind();
 }
 function bind() {
+  bindCareMessages();
+  bindWeeklyReports();
+  bindClinicalRoutines();
   bindSourcePage();
   bindEvidenceDraft();
   if (S.sourceBusy || S.draftBusy || S.pdfBusy)
@@ -153,7 +160,7 @@ function bind() {
       .querySelectorAll("form input,form select,form textarea,form button")
       .forEach((el) => (el.disabled = true));
   document
-    .querySelectorAll("form")
+    .querySelectorAll("form:not(#care-compose)")
     .forEach((f) => f.addEventListener("input", () => (S.dirty = true)));
   document.querySelectorAll("[data-tab]").forEach(
     (b) =>
@@ -161,7 +168,7 @@ function bind() {
         if (S.dirty && !confirm("Discard unsaved edits?")) return;
         S.dirty = false;
         S.tab = b.dataset.tab;
-        if (S.tab === "sources") guard(refresh);
+        if (["sources", "report", "messages"].includes(S.tab)) guard(refresh);
         else render();
       }),
   );
@@ -181,8 +188,21 @@ function bind() {
   $("#dark").onclick = () => document.body.classList.toggle("dark-mode");
   $("#logout").onclick = () =>
     guard(async () => {
+      if (
+        hasCareDrafts() &&
+        !confirm(
+          "Discard unsent message drafts? A request with an unconfirmed response may already be saved in the conversation.",
+        )
+      )
+        return;
       await api("/logout", "POST");
+      resetCareMessages();
       S.user = null;
+      S.reportNotes = {};
+      S.weekly = null;
+      S.reportHistory = [];
+      S.reportId = null;
+      S.reportEpoch = (S.reportEpoch || 0) + 1;
       S.data = null;
       login();
     });
@@ -254,6 +274,16 @@ function bind() {
       });
 }
 async function start() {
+  S.tab = "overview";
+  resetCareMessages();
+  S.reportNotes = {};
+  S.weekly = null;
+  S.reportHistory = [];
+  S.reportId = null;
+  S.reportEnd = null;
+  S.reportZone = "Asia/Dubai";
+  S.dirty = false;
+  S.reportEpoch = (S.reportEpoch || 0) + 1;
   if (S.user.role !== "clinician") {
     location.href = "/mobile/";
     return;
@@ -284,6 +314,8 @@ setInterval(async () => {
     S.pdfBusy ||
     S.sourceBusy ||
     S.draftBusy ||
+    S.reportBusy ||
+    S.care?.busy ||
     document.hidden ||
     ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)
   )
@@ -296,7 +328,13 @@ setInterval(async () => {
   } catch (e) {
     if (e.message === "Sign in required" || e.message === "Access not granted") {
       S.data = null;
+      resetCareMessages();
       S.user = null;
+      S.reportNotes = {};
+      S.weekly = null;
+      S.reportHistory = [];
+      S.reportId = null;
+      S.reportEpoch = (S.reportEpoch || 0) + 1;
       login();
       note("Access expired or changed. Sign in again.");
     }

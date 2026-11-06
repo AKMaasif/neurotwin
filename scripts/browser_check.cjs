@@ -1,3 +1,4 @@
+const baseUrl = process.env.NEUROTWIN_BASE_URL || "http://127.0.0.1:8140";
 const { chromium } = require("playwright");
 const fs = require("fs"),
   path = require("path");
@@ -24,7 +25,7 @@ const fs = require("fs"),
       }),
       page = await context.newPage();
     page.on("pageerror", (e) => errors.push(e.message));
-    await page.goto("http://127.0.0.1:8140/" + (mobile ? "mobile/" : "dashboard/"));
+    await page.goto(baseUrl + "/" + (mobile ? "mobile/" : "dashboard/"));
     if (mobile) await page.locator("[name=username]").selectOption(role);
     else await page.locator("[name=username]").fill(role);
     await page.locator("[name=password]").fill(password);

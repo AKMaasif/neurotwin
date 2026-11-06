@@ -7,6 +7,11 @@ const S = {
   chat: [],
   recording: false,
   busy: false,
+  voiceState: "idle",
+  voiceEpoch: 0,
+  draftText: "",
+  contacts: [],
+  memory: null,
 };
 const $ = (s) => document.querySelector(s);
 const esc = (s) =>
@@ -14,15 +19,18 @@ const esc = (s) =>
     /[&<>"']/g,
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
   );
-async function api(path, method = "GET", body) {
+async function api(path, method = "GET", body, signal) {
   const r = await fetch("/api" + path, {
     method,
+    signal,
     headers: { ...(body ? { "Content-Type": "application/json" } : {}), "X-CSRF-Token": S.csrf },
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!r.ok) {
     const e = await r.json().catch(() => ({}));
-    throw new Error(typeof e.detail === "string" ? e.detail : "Request unavailable");
+    const error = new Error(typeof e.detail === "string" ? e.detail : "Request unavailable");
+    error.status = r.status;
+    throw error;
   }
   return r.json();
 }
@@ -37,8 +45,28 @@ function records(kind) {
 }
 async function refresh() {
   S.data = await api(`/patients/${S.pid}/workspace`);
+  await updateRoutineData();
+  await loadOfflineActions();
+  S.contacts = S.data.scopes.includes("help")
+    ? await api(`/patients/${S.pid}/companion/contacts`)
+    : [];
+  for (const key of ["guide", "pendingAction"]) {
+    const task = S[key]?.task;
+    if (
+      task &&
+      !records("task").some(
+        (t) =>
+          t.id === task.id &&
+          t.version === task.version &&
+          !records("plan").find((p) => p.id === t.payload.plan_id)?.payload.source_review_required,
+      )
+    )
+      S[key] = null;
+  }
   const pref = records("preference")[0];
   document.documentElement.classList.toggle("large", pref?.payload.text_size === "large");
+  if (S.tab === "weekly") await loadWeeklyReports();
+  if (S.tab === "messages") await loadCareMessages();
   render();
 }
 function icon(k) {
@@ -74,31 +102,45 @@ function taskCard(t, hero = false) {
 }
 function render() {
   const family = S.user.role === "family";
-  const tasks = records("task").filter((t) => t.status !== "superseded");
+  const tasks = records("task").filter(
+    (t) => t.status !== "superseded" && !t.payload.is_routine_template && !t.payload.occurrence_id,
+  );
   const plan = records("plan").find((p) => p.status === "approved");
   let body = "";
   if (S.tab === "home") {
-    body = `<h1>${family ? "Care circle overview" : "Hello, " + esc(S.user.name)}</h1><p>${esc(new Intl.DateTimeFormat("en", { dateStyle: "full" }).format(new Date()))}</p>${family ? `<section class="card"><h2>Shared support</h2><p>Task responses are participant reports. No clinical stability estimate is available.</p><button data-tab="support">Open help requests</button></section>` : tasks[0] ? taskCard(tasks.find((t) => t.status === "pending") || tasks[0], true) : '<section class="card">No active task. Your care team can review your plan.</section>'}<section class="card"><h2>Your current plan</h2><p>${esc(plan?.payload.instructions || "No approved plan available.")}</p><p class="muted">Synthetic support plan · ${esc(plan?.payload.signed_by || "Not signed")}</p>${plan?.payload.source_review_required ? '<p class="error">A source was corrected. Your care team needs to review this plan. Please ask for help before acting on affected instructions.</p>' : ""}</section><section class="card"><h2>One thing at a time</h2><div class="actions"><button data-tab="plan">My plan</button><button data-tab="support">Ask for help</button></div></section>`;
+    body = `<h1>${family ? "Care circle overview" : "Hello, " + esc(S.memory?.enabled && S.memory.preferred_name ? S.memory.preferred_name : S.user.name)}</h1><p>${esc(new Intl.DateTimeFormat("en", { dateStyle: "full" }).format(new Date()))}</p>${renderDailyActivities()}${family ? `<section class="card"><h2>Shared support</h2><p>Task responses are participant reports. No clinical stability estimate is available.</p><button data-tab="support">Open help requests</button></section>` : tasks[0] ? taskCard(tasks.find((t) => t.status === "pending") || tasks[0], true) : S.routineData?.occurrences.some(activeOccurrence) ? "" : '<section class="card">No active task. Your care team can review your plan.</section>'}<section class="card"><h2>Your current plan</h2><p>${esc(plan?.payload.source_review_required ? "Your plan is waiting for care-team review." : plan?.payload.instructions || "No approved plan available.")}</p><p class="muted">Synthetic support plan · ${esc(plan?.payload.signed_by || "Not signed")}</p>${plan?.payload.source_review_required ? '<p class="error">A source was corrected. Your care team needs to review this plan. Please ask for help before acting on affected instructions.</p>' : ""}</section><section class="card"><h2>One thing at a time</h2><div class="actions"><button data-tab="plan">My plan</button><button data-tab="support">Ask for help</button></div></section>`;
   }
+  if (S.tab === "home")
+    body +=
+      '<section class="card"><h2>This week</h2><p>Review recorded activities and reports shared by your care team.</p><button data-tab="weekly">Weekly summary</button></section>';
+  if (S.data.scopes.includes("messages") && S.tab === "home")
+    body +=
+      '<section class="card"><h2>Your care circle</h2><p>Talk with your family or care team.</p><button data-tab="messages">Messages</button></section>';
+  if (S.tab === "messages") body = renderCareMessages();
+  if (S.tab === "weekly") body = renderWeeklyReports();
   if (S.tab === "plan")
-    body = `<h1>${family ? "Shared tasks" : "My plan"}</h1><p>Follow the current approved instructions. Ask for help when you need it.</p>${tasks.map((t) => taskCard(t)).join("")}`;
+    body = `<h1>${family ? "Shared tasks" : "My plan"}</h1><p>Follow the current approved instructions. Ask for help when you need it.</p>${tasks.map((t) => taskCard(t)).join("")}${renderDailyActivities()}${renderRoutineManager()}`;
   if (S.tab === "check")
     body = `<h1>My check</h1><section class="card"><h2>No assessment assigned</h2><p>Research measurements need an approved protocol and suitable device capture. This build does not diagnose cognitive impairment.</p><button data-tab="support">Report a concern</button></section>`;
-  if (S.tab === "companion")
-    body = `<h1>Your companion</h1><div class="avatar" aria-hidden="true"><div class="face">• •</div></div><p class="muted">${S.recording ? "Recording — select Stop to finish." : "Ready when you are. Nothing is listening in the background."}</p>${S.chat.map((c) => `<div class="chat ${c.role === "user" ? "user" : ""}">${esc(c.text)}</div>`).join("")}<form id="chat"><label>How can I help?<input name="text" id="chatInput" placeholder="Open settings" maxlength="3000" required></label><div class="actions"><button class="primary">Send</button><button type="button" id="voice">${S.recording ? "Stop recording" : "Speak"}</button><button type="button" id="stop">Stop audio</button></div></form>`;
+  if (S.tab === "companion") body = renderCompanion();
   if (S.tab === "support")
-    body = `<h1>Support</h1><section class="card"><h2>Ask for practical help</h2><p>No emergency service is monitored or contacted by this app.</p><form id="help"><label>Recipient<select name="recipient_id"><option value="${family ? "participant" : "family"}">${family ? "Mansoor" : "Fatima"} (granted contact)</option></select></label><label>Your request<textarea name="text" maxlength="1000" required>Please help me prepare transport for my appointment.</textarea></label><button class="primary">Confirm and save request</button></form></section>${records(
+    body = `<h1>Support</h1><section class="card"><h2>Ask for practical help</h2><p>No emergency service is monitored or contacted by this app.</p><form id="help"><label>Recipient<select name="recipient_id">${S.contacts.map((c) => `<option value="${esc(c.id)}">${esc(c.name)} · ${esc(c.role)}</option>`).join("")}</select></label><label>Your request<textarea name="text" maxlength="1000" required>${esc(S.helpDraft || "Please help me prepare transport for my appointment.")}</textarea></label><button class="primary" ${S.contacts.length ? "" : "disabled"}>Confirm and save request</button></form></section>${records(
       "help",
     )
       .map(
         (h) =>
-          `<section class="card"><h2>${esc(h.status)}</h2><p>${esc(h.payload.text)}</p>${h.payload.recipient_id === S.user.id && h.status === "requested" ? `<button data-accept="${h.id}">Accept responsibility</button>` : ""}<p class="muted">Saved in app. Push/SMS is not connected.</p></section>`,
+          `<section class="card"><h2>${esc(h.status === "closed_unconfirmed" ? "Closed without activity confirmation" : h.status.replaceAll("_", " "))}</h2><p>${esc(h.payload.text)}</p>${h.payload.recipient_id === S.user.id && h.status === "requested" ? `<button data-accept="${h.id}">Accept responsibility</button>` : ""}<p class="muted">Saved in app. Push/SMS is not connected.</p></section>`,
       )
       .join(
         "",
       )}<section class="card"><h2>Tell your care team</h2><form id="concern"><label>Your concern<textarea name="text" maxlength="1500" required></textarea></label><label><input type="checkbox" name="urgent" style="width:auto"> I am reporting a sudden concerning change</label><button>Save for review</button></form><p class="muted">For urgent help, do not wait for an app reply. Use your locally approved assistance route.</p></section>`;
+  if (S.tab === "support" && S.data.scopes.includes("messages"))
+    body = body.replace(
+      "<h1>Support</h1>",
+      '<h1>Support</h1><section class="card"><h2>Your conversations</h2><button data-tab="messages">Messages</button></section>',
+    );
   if (S.tab === "settings")
-    body = `<h1>Settings</h1><section class="card"><h2>Reading comfort</h2><button id="size">${document.documentElement.classList.contains("large") ? "Use normal text" : "Use larger text"}</button><button id="contrast">Toggle contrast</button></section><section class="card"><h2>Your session</h2><p>Signed in as ${esc(S.user.name)}. Family access requires its own account.</p><button id="logout">Sign out</button></section>`;
+    body = `<h1>Settings</h1><section class="card"><h2>Reading comfort</h2><button id="size">${document.documentElement.classList.contains("large") ? "Use normal text" : "Use larger text"}</button><button id="contrast">Toggle contrast</button></section>${renderMemorySettings()}${renderNotificationSettings()}<section class="card"><h2>Your session</h2><p>Signed in as ${esc(S.user.name)}. Family access requires its own account.</p><button id="logout">Sign out</button></section>`;
   $("#app").innerHTML =
     `<header><strong>NeuroCompanion</strong><button class="plain" data-tab="settings">Settings</button></header><div class="scope">${esc(S.data.patient.name)} · ${esc(family ? "Authorized relative" : "Participant")}<br><span class="muted">Synthetic development workspace · ${navigator.onLine ? "Server-connected" : "Offline"}</span></div><main>${body}</main><nav aria-label="Main navigation">${[
       ["home", "Home"],
@@ -115,11 +157,26 @@ function render() {
   bind();
 }
 function bind() {
+  bindCareMessages();
+  bindWeeklyReports();
   document.querySelectorAll("[data-tab]").forEach(
     (b) =>
       (b.onclick = () => {
+        if (S.dirty && !confirm("Discard unsaved report edits?")) return;
+        S.dirty = false;
+        stopCompanion(false);
         S.tab = b.dataset.tab;
         render();
+        if (S.tab === "weekly")
+          guard(async () => {
+            await loadWeeklyReports();
+            if (S.tab === "weekly") render();
+          });
+        if (S.tab === "messages")
+          guard(async () => {
+            await loadCareMessages();
+            if (S.tab === "messages") render();
+          });
         window.scrollTo(0, 0);
       }),
   );
@@ -141,7 +198,8 @@ function bind() {
     (b) =>
       (b.onclick = () => {
         const t = records("task").find((t) => t.id === b.dataset.coach);
-        note(t.payload.steps.join(" "));
+        S.tab = "companion";
+        send("guide my activity", { id: t.id, version: t.version });
       }),
   );
   document.querySelectorAll("[data-accept]").forEach(
@@ -185,11 +243,6 @@ function bind() {
         );
       });
     };
-  if ($("#chat"))
-    $("#chat").onsubmit = (e) => {
-      e.preventDefault();
-      send($("#chatInput").value);
-    };
   if ($("#size"))
     $("#size").onclick = () =>
       guard(async () => {
@@ -203,21 +256,41 @@ function bind() {
   if ($("#logout"))
     $("#logout").onclick = () =>
       guard(async () => {
+        await loadOfflineActions();
+        if (
+          S.offlineActions.length &&
+          !confirm("Signing out will discard unsent responses on this device. Continue?")
+        )
+          return;
+        if (
+          hasCareDrafts() &&
+          !confirm(
+            "Discard unsent message drafts? A request with an unconfirmed response may already be saved in the conversation.",
+          )
+        )
+          return;
+        stopCompanion(false);
+        await clearOfflineActions(S.user.id);
+        await closeDeviceNotifications();
         await api("/logout", "POST");
+        resetCareMessages();
         S.user = null;
+        S.weekly = null;
+        S.reportHistory = [];
+        S.reportId = null;
+        S.reportEpoch = (S.reportEpoch || 0) + 1;
         S.data = null;
         S.chat = [];
+        S.memory = null;
+        S.pendingAction = null;
+        S.guide = null;
+        S.draftText = "";
+        S.helpDraft = "";
+        S.contacts = [];
         login();
       });
-  if ($("#voice")) $("#voice").onclick = recordVoice;
-  if ($("#stop"))
-    $("#stop").onclick = () => {
-      speechSynthesis.cancel();
-      if (S.recorder?.state === "recording") {
-        S.cancelRecording = true;
-        S.recorder.stop();
-      }
-    };
+  bindCompanion();
+  bindRoutines();
 }
 async function guard(fn) {
   try {
@@ -226,79 +299,35 @@ async function guard(fn) {
     note(e.message);
   }
 }
-async function send(text) {
-  if (S.busy) return;
-  S.busy = true;
-  S.chat.push({ role: "user", text });
-  render();
-  try {
-    const r = await api(`/patients/${S.pid}/companion`, "POST", { text });
-    S.chat.push({ role: "bot", text: r.explanation });
-    if (r.intent === "navigate") {
-      if (r.screen !== "none") S.tab = r.screen;
-    }
-    if (r.intent === "set_text_size") {
-      await api(`/patients/${S.pid}/preferences`, "POST", { text_size: r.text_size });
-      await refresh();
-    }
-    if (r.intent === "prepare_help") S.tab = "support";
-    render();
-    const u = new SpeechSynthesisUtterance(r.explanation);
-    u.rate = 0.9;
-    speechSynthesis.speak(u);
-  } catch (e) {
-    note(e.message);
-  } finally {
-    S.busy = false;
-  }
-}
-async function recordVoice() {
-  if (S.recorder?.state === "recording") {
-    S.recorder.stop();
-    return;
-  }
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    S.cancelRecording = false;
-    const rec = new MediaRecorder(stream),
-      chunks = [];
-    S.recorder = rec;
-    rec.ondataavailable = (e) => chunks.push(e.data);
-    rec.onstop = async () => {
-      clearTimeout(S.recordTimer);
-      stream.getTracks().forEach((t) => t.stop());
-      S.recording = false;
-      render();
-      if (S.cancelRecording) return;
-      const form = new FormData();
-      form.append("audio", await pcmWav(new Blob(chunks, { type: rec.mimeType })), "recording.wav");
-      await guard(async () => {
-        const r = await fetch(`/api/patients/${S.pid}/voice/transcribe`, {
-          method: "POST",
-          headers: { "X-CSRF-Token": S.csrf },
-          body: form,
-        });
-        if (!r.ok) throw new Error("Voice unavailable. Please type your request.");
-        const d = await r.json();
-        $("#chatInput").value = d.text;
-        note("Check the transcript, then select Send.");
-      });
-    };
-    rec.start();
-    S.recording = true;
-    render();
-    S.recordTimer = setTimeout(() => {
-      if (rec.state === "recording") rec.stop();
-    }, 20000);
-  } catch {
-    note("Microphone unavailable. You can type instead.");
-  }
-}
 async function start() {
+  S.tab = "home";
+  resetCareMessages();
+  S.reportNotes = {};
+  S.weekly = null;
+  S.reportHistory = [];
+  S.reportId = null;
+  S.reportEnd = null;
+  S.reportZone = "Asia/Dubai";
+  S.dirty = false;
+  S.reportEpoch = (S.reportEpoch || 0) + 1;
+  S.memory = null;
+  S.chat = [];
+  S.pendingAction = null;
+  S.guide = null;
+  S.draftText = "";
+  S.helpDraft = "";
   const ps = await api("/patients");
   S.pid = ps[0]?.id;
   if (!S.pid) throw new Error("No active workspace grant");
   await refresh();
+  if (S.user.role === "participant" && S.data.scopes.includes("preferences")) {
+    S.memory = await api(`/patients/${S.pid}/companion/memory`);
+    S.chat = S.memory.history.flatMap((h) => [
+      { role: "user", text: h.user },
+      { role: "bot", text: h.assistant },
+    ]);
+    render();
+  }
 }
 (async () => {
   try {
@@ -314,46 +343,6 @@ async function start() {
   }
 })();
 
-async function pcmWav(blob) {
-  const ctx = new AudioContext();
-  let decoded;
-  try {
-    decoded = await ctx.decodeAudioData(await blob.arrayBuffer());
-  } finally {
-    await ctx.close();
-  }
-  const offline = new OfflineAudioContext(1, Math.ceil(decoded.duration * 24000), 24000),
-    src = offline.createBufferSource();
-  src.buffer = decoded;
-  src.connect(offline.destination);
-  src.start();
-  const rendered = await offline.startRendering(),
-    samples = rendered.getChannelData(0),
-    buf = new ArrayBuffer(44 + samples.length * 2),
-    v = new DataView(buf);
-  const str = (o, s) => {
-    for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i));
-  };
-  str(0, "RIFF");
-  v.setUint32(4, 36 + samples.length * 2, true);
-  str(8, "WAVE");
-  str(12, "fmt ");
-  v.setUint32(16, 16, true);
-  v.setUint16(20, 1, true);
-  v.setUint16(22, 1, true);
-  v.setUint32(24, 24000, true);
-  v.setUint32(28, 48000, true);
-  v.setUint16(32, 2, true);
-  v.setUint16(34, 16, true);
-  str(36, "data");
-  v.setUint32(40, samples.length * 2, true);
-  for (let i = 0; i < samples.length; i++) {
-    const x = Math.max(-1, Math.min(1, samples[i]));
-    v.setInt16(44 + i * 2, x < 0 ? x * 32768 : x * 32767, true);
-  }
-  return new Blob([buf], { type: "audio/wav" });
-}
-
 let revision = null,
   syncing = false;
 setInterval(async () => {
@@ -361,6 +350,12 @@ setInterval(async () => {
     !S.user ||
     !S.pid ||
     syncing ||
+    S.busy ||
+    S.reportBusy ||
+    S.care?.busy ||
+    S.dirty ||
+    S.recording ||
+    S.voiceState === "speaking" ||
     document.hidden ||
     ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)
   )
@@ -372,8 +367,24 @@ setInterval(async () => {
     revision = d.revision;
   } catch (e) {
     if (e.message === "Sign in required" || e.message === "Access not granted") {
+      stopCompanion(false);
+      await clearOfflineActions(S.user.id);
+      await closeDeviceNotifications();
+      S.routineData = null;
+      S.offlineActions = [];
       S.data = null;
+      resetCareMessages();
       S.user = null;
+      S.reportNotes = {};
+      S.weekly = null;
+      S.reportHistory = [];
+      S.reportId = null;
+      S.reportEpoch = (S.reportEpoch || 0) + 1;
+      S.chat = [];
+      S.memory = null;
+      S.draftText = "";
+      S.pendingAction = null;
+      S.guide = null;
       login();
       note("Access expired or changed. Sign in again.");
     }

@@ -5,6 +5,7 @@ import json
 import secrets
 import time
 import wave
+from array import array
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 from typing import Literal
@@ -19,7 +20,8 @@ from sqlalchemy.orm import Session as DbSession
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .agents import AGENTS
-from .ai import ProviderUnavailable, gateway, local_intent
+from .ai import ProviderUnavailable, gateway
+from .companion import router as companion_router
 from .config import ROOT, settings
 from .db import (
     Audit,
@@ -37,7 +39,16 @@ from .db import (
 )
 from .document_intelligence import router as intelligence_router
 from .documents import router as document_router
+from .messages import router as message_router
 from .numerics import estimate
+from .reports import router as report_router
+from .routines import (
+    router as routine_router,
+)
+from .routines import (
+    sync_task_response,
+    validate_scheduled_task,
+)
 from .security import authenticated, authorize, digest_token, password_matches
 from .seed import seed
 from .upload_limits import DocumentUploadLimit
@@ -65,6 +76,10 @@ app.add_middleware(DocumentUploadLimit)
 app.add_middleware(
     TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "testserver"]
 )
+app.include_router(report_router)
+app.include_router(message_router)
+app.include_router(routine_router)
+app.include_router(companion_router)
 app.include_router(document_router)
 app.include_router(intelligence_router)
 attempts = defaultdict(deque)
@@ -132,10 +147,6 @@ class Concern(Input):
 class Review(Command):
     decision: Literal["approve", "request_information", "reject"]
     rationale: str = Field(min_length=3, max_length=1500)
-
-
-class Turn(Input):
-    text: str = Field(min_length=1, max_length=3000)
 
 
 class Speech(Input):
@@ -583,9 +594,31 @@ def changes(
         .order_by(Record.id)
         .all()
     )
+    from .db import Reminder, Routine, RoutineOccurrence
+
+    routines = (
+        db.query(Routine.id, Routine.version, Routine.status)
+        .filter(Routine.patient_id == pid)
+        .order_by(Routine.id)
+        .all()
+    )
+    notices = (
+        db.query(Reminder.id, Reminder.version, Reminder.state)
+        .join(RoutineOccurrence, RoutineOccurrence.id == Reminder.occurrence_id)
+        .join(Routine, Routine.id == RoutineOccurrence.routine_id)
+        .filter(Routine.patient_id == pid, Reminder.recipient_id == u.id)
+        .order_by(Reminder.id)
+        .all()
+    )
     return {
         "revision": hashlib.sha256(
-            json.dumps([list(r) for r in records]).encode()
+            json.dumps(
+                [
+                    [list(r) for r in records],
+                    [list(r) for r in routines],
+                    [list(r) for r in notices],
+                ]
+            ).encode()
         ).hexdigest(),
         "as_of": now(),
     }
@@ -618,6 +651,8 @@ def task_response(
         or plan.version != r.payload["plan_version"]
     ):
         raise HTTPException(409, "Plan changed; refresh")
+    validate_scheduled_task(db, r)
+    sync_task_response(db, r, body.response)
     r.status = body.response
     r.version += 1
     r.payload = r.payload | {
@@ -833,18 +868,20 @@ def report(pid: str, u: User = Depends(authenticated), db: DbSession = Depends(g
     tasks = [
         t
         for t in db.query(Record).filter_by(patient_id=pid, kind="task")
-        if t.payload.get("plan_id") in active and t.status != "superseded"
+        if t.payload.get("plan_id") in active
+        and t.status != "superseded"
+        and not t.payload.get("is_routine_template")
     ]
     counts = {
         s: sum(t.status == s for t in tasks)
-        for s in ["completed", "deferred", "skipped", "help", "pending"]
+        for s in ["completed", "deferred", "skipped", "help", "pending", "unconfirmed"]
     }
     return {
         "scope": "current_occurrences",
         "counts": counts,
         "denominator": len(tasks),
         "evidence": "participant reports; not independently observed",
-        "narrative": f"{counts['completed']} confirmed, {counts['pending']} unconfirmed.",
+        "narrative": f"{counts['completed']} confirmed, {sum(counts[s] for s in ['pending', 'deferred', 'help', 'unconfirmed'])} unconfirmed.",
         "clinical_recommendations": None,
         "as_of": now(),
     }
@@ -901,82 +938,6 @@ def observation(
     return pack(m)
 
 
-@app.post("/api/patients/{pid}/companion")
-async def companion(
-    pid: str,
-    body: Turn,
-    u: User = Depends(authenticated),
-    db: DbSession = Depends(get_db),
-):
-    p = authorize(db, u, pid, "summary")
-    if any(
-        x in body.text.casefold()
-        for x in ["sudden confusion", "chest pain", "cannot breathe"]
-    ):
-        return {
-            "intent": "clinical_review",
-            "explanation": "Do not wait for this app. Use your locally approved urgent-help route or contact a person who can help now. No emergency service has been contacted.",
-            "source": "local_safety_template",
-            "action_status": "not_executed",
-        }
-    proposal = local_intent(body.text)
-    source = "local_parser"
-    if proposal is None:
-        if not p.synthetic:
-            raise HTTPException(
-                403, "External model processing is not enabled for real records"
-            )
-        try:
-            proposal = await gateway.intent(body.text)
-            source = "gemini_structured"
-        except (ProviderUnavailable, ValueError):
-            return {
-                "intent": "clarify",
-                "explanation": "I can open a page, read your approved plan, change text size, or prepare a help request. Which would you like?",
-                "source": "deterministic_fallback",
-                "action_status": "not_executed",
-            }
-    # Model wording never asserts execution or enters the clinical fact record.
-    result = proposal.model_dump()
-    result["source"] = source
-    result["action_status"] = "proposal_only"
-    if proposal.intent == "set_text_size":
-        authorize(db, u, pid, "preferences")
-        result["text_size"] = "large"
-        result["explanation"] = "Ready to increase text size."
-    elif proposal.intent == "read_plan":
-        plan = (
-            db.query(Record)
-            .filter_by(patient_id=pid, kind="plan", status="approved")
-            .first()
-        )
-        result["explanation"] = (
-            (
-                "A source for your plan was corrected. Please ask your care team to review the affected instructions."
-                if plan.payload.get("source_review_required")
-                else plan.payload["instructions"]
-            )
-            if plan
-            else "No approved plan is available."
-        )
-    elif proposal.intent == "prepare_help":
-        authorize(db, u, pid, "help")
-        result["explanation"] = (
-            "Choose an authorized recipient and confirm the help request. It has not been sent."
-        )
-    elif proposal.intent == "navigate":
-        result["explanation"] = "Open " + proposal.screen + "."
-    else:
-        result["explanation"] = (
-            "Please choose a supported app action, or contact your care team about a clinical concern."
-        )
-    audit(
-        db, u, pid, "companion.proposal", {"intent": proposal.intent, "source": source}
-    )
-    db.commit()
-    return result
-
-
 @app.get("/api/providers/catalog")
 async def catalogs(u: User = Depends(authenticated)):
     if u.role != "clinician":
@@ -1005,16 +966,28 @@ async def transcribe(
                 wav.getnchannels() != 1
                 or wav.getsampwidth() != 2
                 or wav.getframerate() not in [16000, 24000]
+                or wav.getnframes() == 0
                 or wav.getnframes() / wav.getframerate() > 30
             ):
                 raise ValueError("Unsupported audio format")
+            if not any(array("h", wav.readframes(wav.getnframes()))):
+                raise HTTPException(
+                    422, "No clear audio detected. Please try again or type."
+                )
     except (wave.Error, EOFError, ValueError):
         raise HTTPException(415, "Invalid or unsupported PCM WAV")
+    db.rollback()
     try:
         text = await gateway.transcribe(data, audio.content_type)
     except ProviderUnavailable:
         raise HTTPException(503, "Speech provider unavailable; use text")
-    return {"text": text, "audio_retained": False, "source": "meta_transcribe"}
+    db.expire_all()
+    authorize(db, u, pid, "summary")
+    if not text.strip():
+        raise HTTPException(422, "No clear words detected. Please try again or type.")
+    if len(text) > 3000:
+        raise HTTPException(422, "Please record a shorter request.")
+    return {"text": text.strip(), "audio_retained": False, "source": "meta_transcribe"}
 
 
 @app.get("/")

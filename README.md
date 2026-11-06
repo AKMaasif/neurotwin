@@ -7,7 +7,10 @@ A brain health support prototype connecting older adults, families and clinician
 ## Features
 
 - Accessible patient interface with large text, daily support tasks and voice/text navigation.
+- One-step activity coaching, confirmed changes, family acceptance status and opt-in companion memory.
 - Family help requests, clinician review and versioned care plans requiring explicit approval.
+- Private patient–family–clinician text conversations with explicit opening acknowledgements and safe send retries.
+- Time-zone-aware routines, quiet hours, snoozing, consented family follow-up and offline response reconciliation.
 - PDF, Word, Excel, CSV, text and image intake with background processing, local OCR and source references.
 - Keyword search, optional semantic retrieval and separately labelled AI visual descriptions.
 - Patient-scoped permissions, sessions, CSRF protection, audit events and stale-source checks.
@@ -36,7 +39,7 @@ Open the [mobile app](http://127.0.0.1:8140/mobile/), [clinical dashboard](http:
 
 Bootstrap creates an ignored `.env` with a generated `DEMO_PASSWORD`. Local accounts are `participant`, `family`, `clinician` and `other`. Use separate browser profiles for independent roles. SQLite is the default; set `DATABASE_URL` before applying migrations to use PostgreSQL. `scripts/local_postgres.py` optionally provisions a separate loopback-only development cluster when PostgreSQL tools are available.
 
-AI is disabled by default. To enable it, set `GEMINI_API_KEY`, `META_API_KEY` and `AI_ENABLED=true` in `.env`, then restart the API. Available model names and provider URLs are configurable in `.env.example`. Cloud actions require synthetic workspaces. Voice recording needs browser microphone permission. The optional `uv run python -m app.worker` projects in-app notifications; it does not send SMS or push notifications.
+AI is disabled by default. To enable it, set `GEMINI_API_KEY`, `META_API_KEY` and `AI_ENABLED=true` in `.env`, then restart the API. Available model names and provider URLs are configurable in `.env.example`. Cloud actions require synthetic workspaces. Voice recording needs browser microphone permission. Run `uv run python -m app.worker` in a separate terminal for routine scheduling and in-app notification projection. It does not send SMS or background push notifications.
 
 ## Checks
 
@@ -62,6 +65,63 @@ uv run python -m scripts.retrieval_benchmark
 ```
 
 Browser checks create fictional records in the local workspace. Screenshots and test output stay in ignored `test-results/`. The source browser check and provider smoke scripts make paid synthetic inference calls; run them deliberately after configuring keys. `PLAYWRIGHT_EXECUTABLE_PATH` can point browser checks at an existing Chromium executable.
+
+Companion memory is off by default. Participants can remember preferences and up to 6 text exchanges for 7 days, separately permit AI context sharing, or forget them. Expired entries are purged on the next memory access. Memory is not exposed to family or clinician accounts. Activity coaching reads the current approved plan; saved task/setting changes require confirmation. Recording stops on navigation or interruption, and transcripts require Send before execution. Finished recordings go to the configured speech provider; the app does not retain raw audio. Spoken replies use the browser/device speech service. Background push delivery remains unfinished; the routines below provide server scheduling, in-app reminders and permission-based device alerts while the app is visible.
+
+```sh
+uv run python -m scripts.companion_benchmark
+node scripts/companion_browser_check.cjs
+```
+
+The companion browser check uses a synthetic microphone and mocked ASR/speech output to test recording, cancellation and confirmation behavior; it does not measure speech recognition accuracy. Provider smoke checks are separate paid calls.
+
+## Routines and reminders
+
+Clinicians propose daily routines from approved activities in Dashboard > Daily routines. Participants confirm them in My Plan > Daily routines, choose weekdays and date ranges, adjust quiet hours and optionally authorize a family contact to follow up after a grace period. Participants can also schedule an approved activity themselves. Automatic family follow-up is off by default.
+
+Keep `uv run python -m app.worker` running. It retries transient database errors without marking a delivery successful. It creates one dated occurrence per routine and local date, using the selected IANA time zone. Ambiguous clock times use the earlier occurrence; nonexistent times shift to the first valid minute. Scheduler recovery catches up at most seven dates. Activities older than 24 hours expire as unconfirmed, never automatically missed. Pauses, changed plans and revoked grants cancel pending reminders.
+
+Done, snooze and explicit help requests are participant reports. A reminder acknowledgement does not complete the activity or accept responsibility for helping. Family follow-up uses the existing help-request acceptance flow. Three snoozes per occurrence are allowed, with a 15-minute default; quiet hours postpone automatic reminders and follow-up.
+
+On supported secure browser contexts, Settings > Device notifications requests permission for generic alerts while the app is open and visible. The service worker contains no offline app cache or push subscription. A browser-requested alert is not proof it was displayed or read. Denied/unsupported notifications leave in-app reminders available. Notification text omits patient names and activity details.
+
+An already-open app can queue responses in IndexedDB when connectivity fails. Packets contain IDs and action/version metadata, not document or activity text. They are labelled unconfirmed until the server acknowledges them. Reconnect retries use idempotent commands; changed routines or expired access require review and never overwrite current server state. Queued actions expire after 24 hours. The server also rejects late responses if the scheduler was unavailable. Sign-out warns before discarding unsent responses and closes device alerts. Production browser-storage protections and real-device delivery testing are still required.
+
+```sh
+node scripts/routine_browser_check.cjs
+```
+
+This synthetic browser test exercises real IndexedDB/network interruption and service-worker registration. Notification display is a test double because the headless environment denies native notification display. Actual device notification visibility is not validated. Core and companion browser checks accept `NEUROTWIN_BASE_URL` for isolated local test instances.
+
+## Weekly reports
+
+Open **Activity report** in the clinical dashboard, or **Weekly summary** from mobile Home. Choose a week ending and reporting timezone. Seven-day counts and four-week comparisons use recorded activity denominators, not an inferred adherence or cognitive-health score. Routine activities use their scheduled date; one-time activities use their creation date. Late responses can revise a live historical week. Dates without records do not establish missed activities, and historical expected schedules are unavailable.
+
+Clinicians can save frozen clinical or recipient-specific family snapshots. Family snapshots exclude clinical documents, research measurements, review notes and companion memory; only approved reports are visible to the named, currently authorized relative. Scope reductions hide incompatible saved reports. Source changes block approval of an old draft. AI fact selection is optional, synthetic-only and restricted to exact computed facts; unsupported output is rejected. No report automatically changes a care plan. Snapshot approvals are in-app clinician decisions, not external signatures or dispatch.
+
+Reporting fails explicitly above 10,000 source records, occurrences or matching events. Timelines show at most 200 actions with truncation disclosed; saved-report lists show 12 recent snapshots. Larger deployments need partitioned reporting and pagination.
+
+```sh
+node scripts/report_browser_check.cjs
+```
+
+The report browser check supports `NEUROTWIN_BASE_URL`, uses synthetic accounts, and simulates an AI outage without a paid inference call. It verifies clinical/family views, approval sharing, stale-source rejection and empty weeks. Backend tests additionally check exact-fact AI validation and permission changes during generation on SQLite and PostgreSQL.
+
+## Care-circle messages
+
+Open **Care messages** in the clinical dashboard, or **Messages** from mobile Home or Support. Each conversation is bound to one patient and its two participants; clinician assignment does not expose other people’s private conversations. Both people need an active patient grant with the `messages` scope. Access is checked again for history, sends, retries and opening acknowledgements, including requests that reuse an earlier command ID. Removing either grant or messaging scope blocks that conversation.
+
+Messages are plain text, up to 2,000 characters, and are saved directly in the app. They are excluded from ordinary workspaces, weekly reports and AI context. Contacts show the number not yet acknowledged as opened. Fetching a conversation does not create a receipt: the recipient explicitly acknowledges the displayed incoming messages. “Opened in app” is not proof of comprehension, treatment adherence or external delivery. Message content is excluded from audit metadata.
+
+The client shows 40 messages per page, with Older and Latest controls. It polls while the inbox is open and visible, avoids replacing text during typing, and retains drafts only in session memory. A lost send response keeps the exact text and command ID for retry; the server prevents duplicate messages. Drafts and pending requests are cleared on sign-out, access expiry or a new login. Reloading or closing the app can lose unsent text, and the browser is asked to warn first. No offline message delivery queue is provided. The companion can open Messages or Weekly summary; it cannot send messages or acknowledge them automatically.
+
+This is an unmonitored, synthetic in-app text channel. It does not send SMS, email, push, voice notes or calls, and messages do not modify approved care plans. Production identity, retention and encrypted storage work described below remain necessary.
+
+```sh
+node scripts/message_browser_check.cjs
+```
+
+The browser check accepts `NEUROTWIN_BASE_URL`, uses separate synthetic role sessions, and tests direct-message privacy, explicit acknowledgements, escaped content, a genuinely committed message with a lost HTTP response, duplicate-free retry, draft navigation and sign-out isolation. Backend tests cover pagination, patient and organization boundaries, scope revocation, atomic acknowledgements and companion navigation on SQLite and PostgreSQL.
 
 ## Project layout
 

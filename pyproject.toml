@@ -23,6 +23,7 @@ dependencies = [
     "onnxruntime>=1.23,<2",
     "olefile>=0.47,<1",
     "defusedxml>=0.7,<1",
+    "tzdata>=2025.2",
 ]
 
 [dependency-groups]
