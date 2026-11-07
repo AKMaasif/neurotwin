@@ -1,0 +1,50 @@
+.research-panel {
+  margin-block: 1.5rem;
+  overflow-wrap: anywhere;
+}
+.research-panel > summary {
+  cursor: pointer;
+  font-weight: 700;
+  min-height: 2.75rem;
+}
+.research-panel [data-research-status] {
+  min-height: 1.5em;
+}
+.research-session {
+  border-top: 1px solid #ddd9ee;
+  padding-block: 1.25rem;
+}
+.research-session h3 {
+  margin-block: 0.4rem;
+}
+.research-session form {
+  display: grid;
+  gap: 1rem;
+  margin-block: 1rem;
+}
+.research-session label {
+  display: grid;
+  gap: 0.5rem;
+}
+.research-session .research-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+.research-choice input {
+  flex: 0 0 1.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.research-session button {
+  min-height: 2.75rem;
+  margin-block: 0.3rem;
+  white-space: normal;
+}
+.research-session select {
+  width: 100%;
+  min-width: 0;
+}
+.research-session ul {
+  padding-inline-start: 1.25rem;
+}

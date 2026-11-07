@@ -67,6 +67,7 @@ function workspaceWritesBusy() {
     S.draftBusy ||
     S.reportBusy ||
     S.routineSending ||
+    S.researchBusy ||
     S.busy ||
     S.care?.busy
   );

@@ -212,6 +212,7 @@ function bind() {
   );
 
   bindWorkspacePicker();
+  bindResearchSessions();
   bindCareMessages();
   bindWeeklyReports();
   document.querySelectorAll("[data-tab]").forEach(

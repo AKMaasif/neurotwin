@@ -148,6 +148,7 @@ function bind() {
     region.setAttribute("aria-label", "Scrollable evidence table");
   });
   bindWorkspacePicker();
+  bindResearchSessions();
   bindCareMessages();
   bindWeeklyReports();
   bindClinicalRoutines();

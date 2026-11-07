@@ -26,6 +26,7 @@ DEFAULT_CHECKS = [
     "clinical_privacy_browser_check",
 ]
 SUPPORTED_CHECKS = DEFAULT_CHECKS + [
+    "research_browser_check",
     "adaptive_mobile_browser_check",
     "care_pages_browser_check",
     "family_reports_design_check",
