@@ -19,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session as DbSession
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from .account_password import router as account_password_router
 from .account_sessions import router as account_sessions_router
 from .agents import AGENTS
 from .ai import ProviderUnavailable, gateway
@@ -93,6 +94,7 @@ app.include_router(research_router)
 app.include_router(iot_simulation_router)
 app.include_router(camera_router)
 app.include_router(account_sessions_router)
+app.include_router(account_password_router)
 app.include_router(message_router)
 app.include_router(media_router)
 app.include_router(care_realtime_router)

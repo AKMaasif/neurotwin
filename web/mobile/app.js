@@ -124,7 +124,7 @@ function icon(k) {
 }
 function login() {
   $("#app").innerHTML =
-    `<main class="login"><div class="eyebrow">NEUROTWIN</div><h1>A little support for your day</h1><p>Sign in to your own workspace.</p><form id="login"><label>Account<select name="username"><option value="participant">Participant (synthetic)</option><option value="family">Family (synthetic)</option></select></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="primary">Sign in</button><p class="muted">Local development accounts. Password is stored in the server .env file.</p><p id="error" role="alert"></p></form></main>`;
+    `<main class="login"><div class="eyebrow">NEUROTWIN</div><h1>A little support for your day</h1><p>Sign in to your own workspace.</p><form id="login"><label>Account<select name="username"><option value="participant">Participant (synthetic)</option><option value="family">Family (synthetic)</option></select></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="primary">Sign in</button><p class="muted">Development accounts. Use your current password; the initial password is set in the server .env file.</p><p id="error" role="alert"></p></form></main>`;
   $("#login").onsubmit = async (e) => {
     e.preventDefault();
     try {
@@ -420,16 +420,22 @@ setInterval(async () => {
     ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)
   )
     return;
+  const actor = S.user.id,
+    workspaceEpoch = S.workspaceEpoch;
   syncing = true;
   try {
     const d = await api(`/patients/${S.pid}/changes`);
     if (revision && revision !== d.revision) await refresh();
+    if (S.user?.id !== actor || S.workspaceEpoch !== workspaceEpoch) return;
     revision = d.revision;
   } catch (e) {
+    if (S.user?.id !== actor || S.workspaceEpoch !== workspaceEpoch) return;
     if (e.message === "Sign in required" || e.message === "Access not granted") {
       stopCompanion(false);
-      await clearOfflineActions(S.user.id);
+      await clearOfflineActions(actor);
+      if (S.user?.id !== actor || S.workspaceEpoch !== workspaceEpoch) return;
       await closeDeviceNotifications();
+      if (S.user?.id !== actor || S.workspaceEpoch !== workspaceEpoch) return;
       S.routineData = null;
       S.offlineActions = [];
       S.data = null;

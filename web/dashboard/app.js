@@ -80,7 +80,7 @@ async function refresh() {
 
 function login() {
   $("#app").innerHTML =
-    `<div class="login"><div class="eyebrow">NEUROTWIN CLINICAL</div><h1>Your review workspace</h1><p>Sign in with an assigned professional account.</p><form id="login"><label>Account<input name="username" value="clinician" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="primary">Sign in</button><p class="muted">Synthetic local development. Password is in the server .env file.</p><p id="error" role="alert"></p></form></div>`;
+    `<div class="login"><div class="eyebrow">NEUROTWIN CLINICAL</div><h1>Your review workspace</h1><p>Sign in with an assigned professional account.</p><form id="login"><label>Account<input name="username" value="clinician" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="primary">Sign in</button><p class="muted">Synthetic development accounts. Use your current password; the initial password is set in the server .env file.</p><p id="error" role="alert"></p></form></div>`;
   $("#login").onsubmit = (e) => {
     e.preventDefault();
     guard(async () => {
@@ -342,12 +342,16 @@ setInterval(async () => {
     ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)
   )
     return;
+  const actor = S.user.id,
+    workspaceEpoch = S.workspaceEpoch;
   syncing = true;
   try {
     const d = await api(`/patients/${S.pid}/changes`);
     if (revision && revision !== d.revision) await refresh();
+    if (S.user?.id !== actor || S.workspaceEpoch !== workspaceEpoch) return;
     revision = d.revision;
   } catch (e) {
+    if (S.user?.id !== actor || S.workspaceEpoch !== workspaceEpoch) return;
     if (e.message === "Sign in required" || e.message === "Access not granted") {
       S.data = null;
       resetCareMessages();
