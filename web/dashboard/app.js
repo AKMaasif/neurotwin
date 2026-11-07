@@ -24,7 +24,9 @@ async function api(path, method = "GET", body) {
   if (expectedActor && S.user?.id !== expectedActor)
     throw new Error("Session changed; stale response discarded");
   if (!r.ok) {
-    if (
+    if (r.status === 401 && expectedActor)
+      careSessionChanged("Your session expired or was signed out. Sign in again.");
+    else if (
       typeof d.detail === "string" &&
       (d.detail.startsWith("Session account changed") || d.detail === "Invalid CSRF token")
     )
@@ -96,6 +98,8 @@ function render() {
   let content = "";
   const cases = rows("case");
   if (S.tab === "overview") content = renderClinicalOverview();
+  if (S.tab === "account")
+    content = `<h1>Account security</h1><section class="card"><h2>${esc(S.user.name)}</h2>${renderAccountSessions()}</section>`;
   if (S.tab === "queue") content = renderClinicalQueue();
   if (S.tab === "patient") content = renderClinicalPatient();
   if (S.tab === "sources") content = renderSourcePage();
@@ -130,6 +134,7 @@ function render() {
       ["report", "Activity report"],
       ["providers", "Model connections"],
       ["audit", "Audit"],
+      ["account", "Account security"],
     ]
       .filter(([key]) => clinicalTabAllowed(key))
       .map(
@@ -149,6 +154,7 @@ function bind() {
   });
   bindWorkspacePicker();
   bindResearchSessions();
+  bindAccountSessions();
   bindIotSimulation();
   bindCareMessages();
   bindWeeklyReports();

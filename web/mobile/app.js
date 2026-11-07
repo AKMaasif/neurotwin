@@ -39,7 +39,9 @@ async function api(path, method = "GET", body, signal) {
     throw new Error("Session changed; stale response discarded");
   if (!r.ok) {
     const e = await r.json().catch(() => ({}));
-    if (
+    if (r.status === 401 && expectedActor)
+      careSessionChanged("Your session expired or was signed out. Sign in again.");
+    else if (
       typeof e.detail === "string" &&
       (e.detail.startsWith("Session account changed") || e.detail === "Invalid CSRF token")
     )
@@ -214,6 +216,7 @@ function bind() {
 
   bindWorkspacePicker();
   bindResearchSessions();
+  bindAccountSessions();
   bindIotSimulation();
   bindCameraAssistance();
   bindCareMessages();

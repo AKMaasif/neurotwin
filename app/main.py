@@ -19,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session as DbSession
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from .account_sessions import router as account_sessions_router
 from .agents import AGENTS
 from .ai import ProviderUnavailable, gateway
 from .camera_assistance import router as camera_router
@@ -91,6 +92,7 @@ app.include_router(report_router)
 app.include_router(research_router)
 app.include_router(iot_simulation_router)
 app.include_router(camera_router)
+app.include_router(account_sessions_router)
 app.include_router(message_router)
 app.include_router(media_router)
 app.include_router(care_realtime_router)
@@ -491,7 +493,9 @@ def login(
     if len(q) >= 5:
         raise HTTPException(429, "Try again later")
     q.append(t)
-    u = db.get(User, body.username)
+    u = db.execute(
+        select(User).where(User.id == body.username).with_for_update()
+    ).scalar_one_or_none()
     if not u or not password_matches(body.password, u.password_hash):
         raise HTTPException(401, "Invalid credentials")
     old_cookie = request.cookies.get("nt_session")

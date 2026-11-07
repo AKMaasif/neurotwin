@@ -344,13 +344,13 @@ async function recoverCareVoice(row) {
   }
 }
 
-function careSessionChanged() {
+function careSessionChanged(message = "Session account changed. Sign in again.") {
   clearPatientContext();
   S.user = null;
   S.csrf = "";
   S.workspaces = [];
   login();
-  note("Session account changed. Sign in again.");
+  note(message);
 }
 const careSessionChannel = window.BroadcastChannel
   ? new BroadcastChannel("neurotwin-session")

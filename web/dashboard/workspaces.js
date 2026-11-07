@@ -83,8 +83,9 @@ function workspaceState(message = "Choose the patient you want to work with.", l
   document.body.classList.remove("care-chat-page");
   const hasPatients = !!S.workspaces?.length;
   $("#app").innerHTML =
-    `<main class="workspace-state"><p class="eyebrow">NEUROTWIN · AUTHORIZED WORKSPACES</p><h1>${loading ? "Opening workspace" : hasPatients ? "Choose a patient" : "No active patient workspace"}</h1><p role="status">${esc(message)}</p>${loading ? '<progress aria-label="Loading authorized patient workspace"></progress>' : `${renderWorkspacePicker()}<div class="actions"><button id="workspace-retry">Refresh access</button><button id="workspace-signout">Sign out</button></div><p class="muted">Only currently authorized patient workspaces are listed. Switching patients never changes your account or permissions.</p>`}</main>`;
+    `<main class="workspace-state"><p class="eyebrow">NEUROTWIN · AUTHORIZED WORKSPACES</p><h1>${loading ? "Opening workspace" : hasPatients ? "Choose a patient" : "No active patient workspace"}</h1><p role="status">${esc(message)}</p>${loading ? '<progress aria-label="Loading authorized patient workspace"></progress>' : `${renderWorkspacePicker()}<div class="actions"><button id="workspace-retry">Refresh access</button><button id="workspace-signout">Sign out</button></div><p class="muted">Only currently authorized patient workspaces are listed. Switching patients never changes your account or permissions.</p>${renderAccountSessions()}`}</main>`;
   bindWorkspacePicker();
+  bindAccountSessions();
   if ($("#workspace-retry"))
     $("#workspace-retry").onclick = () =>
       guard(async () => {

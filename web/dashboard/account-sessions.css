@@ -1,0 +1,15 @@
+.account-sessions {
+  margin-block: 1rem;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.account-sessions summary {
+  cursor: pointer;
+  font-weight: 700;
+  min-height: 2.75rem;
+}
+.account-sessions button {
+  min-height: 2.75rem;
+  white-space: normal;
+  max-width: 100%;
+}

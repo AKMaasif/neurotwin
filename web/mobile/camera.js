@@ -143,6 +143,8 @@ function bindCameraAssistance() {
       const body = await response.json();
       if (!current() || ticket !== generation) return;
       if (!response.ok) {
+        if (response.status === 401)
+          careSessionChanged("Your session expired or was signed out. Sign in again.");
         if (
           typeof body.detail === "string" &&
           (body.detail.startsWith("Session account changed") ||
