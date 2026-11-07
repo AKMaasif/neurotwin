@@ -143,6 +143,7 @@ function taskCard(t, hero = false) {
 }
 function render() {
   if (!S.user || !S.data) return;
+  clearCameraAssistance();
   document.body.classList.toggle("care-chat-page", careActive());
   pauseCareAudio();
   document.body.dataset.mobilePage = S.tab;
@@ -213,6 +214,8 @@ function bind() {
 
   bindWorkspacePicker();
   bindResearchSessions();
+  bindIotSimulation();
+  bindCameraAssistance();
   bindCareMessages();
   bindWeeklyReports();
   document.querySelectorAll("[data-tab]").forEach(

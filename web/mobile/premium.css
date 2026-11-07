@@ -528,6 +528,7 @@ textarea:focus-visible {
 .companion-presence {
   position: relative;
   width: 10rem;
+  max-width: 100%;
   height: 7.5rem;
   margin: 1.25rem auto;
   color: #6555b6;

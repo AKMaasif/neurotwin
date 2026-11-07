@@ -176,3 +176,5 @@ Real patient data, production identity/RLS, isolated malware scanning, encrypted
 Authorized patient switching, clinician plan/case review and participant privacy controls are documented in [workspace and privacy verification](docs/workspaces-and-privacy.md). Multiple authorized patients require a deliberate choice; switching clears private drafts, microphone resources and stale responses. Settings supports confirmed access removal and an explicit export of retained companion memory; this is not a complete medical-record export/deletion process.
 
 [Per-role contract evaluation](docs/agent-contract-evaluation.md) provides reproducible software checks for all eight registry roles. Scores are contract pass rates, not clinical accuracy. The [development ledger](DEVELOPMENT_PLAN.md) distinguishes locally verified, planned and externally gated work.
+
+[Research dataset preflight](docs/research-data-readiness.md) checks provenance references, split leakage, missing values and protocol consistency offline. Its synthetic example demonstrates the data contract only; formal assessments, model training and clinical validation remain gated.

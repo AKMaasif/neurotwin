@@ -26,6 +26,8 @@ DEFAULT_CHECKS = [
     "clinical_privacy_browser_check",
 ]
 SUPPORTED_CHECKS = DEFAULT_CHECKS + [
+    "camera_browser_check",
+    "iot_browser_check",
     "research_browser_check",
     "adaptive_mobile_browser_check",
     "care_pages_browser_check",

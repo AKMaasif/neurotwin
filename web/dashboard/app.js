@@ -149,6 +149,7 @@ function bind() {
   });
   bindWorkspacePicker();
   bindResearchSessions();
+  bindIotSimulation();
   bindCareMessages();
   bindWeeklyReports();
   bindClinicalRoutines();

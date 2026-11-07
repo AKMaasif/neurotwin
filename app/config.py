@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     meta_base_url: str = "https://api.meta.ai/v1"
     ai_enabled: bool = False
     gemini_routine_model: str = "gemini-2.5-flash"
+    gemini_camera_model: str = "gemini-2.5-flash"
     gemini_review_model: str = "gemini-2.5-pro"
     meta_draft_model: str = "muse-spark-1.3"
     meta_transcribe_model: str = "muse-voice-transcribe-1.0"

@@ -1,0 +1,44 @@
+.camera-panel {
+  margin-block: 1.5rem;
+  overflow-wrap: anywhere;
+}
+.camera-panel summary {
+  cursor: pointer;
+  font-weight: 700;
+  min-height: 2.75rem;
+}
+.camera-panel label,
+.camera-panel form {
+  display: grid;
+  gap: 0.75rem;
+  margin-block: 1rem;
+}
+.camera-panel input[type="file"] {
+  min-width: 0;
+  width: 100%;
+  font-size: 0.9em;
+}
+.camera-panel .camera-consent {
+  display: flex;
+  align-items: flex-start;
+}
+.camera-consent input {
+  flex: 0 0 1.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.camera-panel img {
+  max-width: 100%;
+  max-height: 20rem;
+  object-fit: contain;
+  border-radius: 1rem;
+}
+.camera-panel button {
+  min-height: 2.75rem;
+  white-space: normal;
+  margin-block: 0.3rem;
+}
+.camera-panel [data-camera-result]:not(:empty) {
+  border-inline-start: 0.25rem solid #8054e8;
+  padding-inline-start: 1rem;
+}

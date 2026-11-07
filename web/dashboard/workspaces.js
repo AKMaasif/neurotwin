@@ -1,4 +1,5 @@
 function clearPatientContext(patientId = null) {
+  if (typeof clearCameraAssistance === "function") clearCameraAssistance();
   const nextEpoch = (S.workspaceEpoch || 0) + 1;
   const nextReportEpoch = (S.reportEpoch || 0) + 1;
   S.workspaceEpoch = nextEpoch;
@@ -68,6 +69,8 @@ function workspaceWritesBusy() {
     S.reportBusy ||
     S.routineSending ||
     S.researchBusy ||
+    S.iotBusy ||
+    S.cameraBusy ||
     S.busy ||
     S.care?.busy
   );

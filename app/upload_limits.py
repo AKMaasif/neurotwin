@@ -12,7 +12,9 @@ class DocumentUploadLimit:
         path = scope.get("path", "")
         if scope["type"] != "http" or scope.get("method") not in {"POST", "PATCH"}:
             return await self.app(scope, receive, send)
-        if scope.get("method") == "PATCH" and "/messages/uploads/" in path:
+        if path.endswith("/camera/check"):
+            limit, label = 1024 * 1024, "Camera sample exceeds 1 MB"
+        elif scope.get("method") == "PATCH" and "/messages/uploads/" in path:
             limit, label = 1024 * 1024, "Upload chunk exceeds 1 MB"
         elif path.endswith("/documents/upload"):
             limit, label = 41 * 1024 * 1024, "Document upload request exceeds 41 MB"

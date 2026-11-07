@@ -21,6 +21,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .agents import AGENTS
 from .ai import ProviderUnavailable, gateway
+from .camera_assistance import router as camera_router
 from .care_logging import install as install_care_logging
 from .care_realtime import router as care_realtime_router
 from .companion import router as companion_router
@@ -41,6 +42,7 @@ from .db import (
 )
 from .document_intelligence import router as intelligence_router
 from .documents import router as document_router
+from .iot_simulation import router as iot_simulation_router
 from .media_uploads import router as media_router
 from .messages import router as message_router
 from .numerics import estimate
@@ -87,6 +89,8 @@ app.add_middleware(
 )
 app.include_router(report_router)
 app.include_router(research_router)
+app.include_router(iot_simulation_router)
+app.include_router(camera_router)
 app.include_router(message_router)
 app.include_router(media_router)
 app.include_router(care_realtime_router)

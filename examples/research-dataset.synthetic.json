@@ -1,0 +1,44 @@
+{
+  "schema_version": "1",
+  "synthetic": true,
+  "source_reference": "hand-authored-software-contract-fixture",
+  "permission_reference": "synthetic-example-only-no-human-data",
+  "rows": [
+    {
+      "sample_id": "example-train-1",
+      "participant_id": "synthetic-a",
+      "split": "train",
+      "time_days": 0,
+      "value": 0.1,
+      "quality": "usable",
+      "protocol_id": "software-example",
+      "protocol_version": "1",
+      "mode": "self",
+      "consent_reference": "synthetic-fixture-no-human-participant"
+    },
+    {
+      "sample_id": "example-validation-1",
+      "participant_id": "synthetic-b",
+      "split": "validation",
+      "time_days": 0,
+      "value": 0.2,
+      "quality": "usable",
+      "protocol_id": "software-example",
+      "protocol_version": "1",
+      "mode": "self",
+      "consent_reference": "synthetic-fixture-no-human-participant"
+    },
+    {
+      "sample_id": "example-test-1",
+      "participant_id": "synthetic-c",
+      "split": "test",
+      "time_days": 0,
+      "value": 0.3,
+      "quality": "usable",
+      "protocol_id": "software-example",
+      "protocol_version": "1",
+      "mode": "self",
+      "consent_reference": "synthetic-fixture-no-human-participant"
+    }
+  ]
+}
