@@ -4,6 +4,7 @@ import datetime as dt
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy.orm import Session
 
@@ -132,6 +133,41 @@ def forget_memory(
     )
     db.commit()
     return DEFAULT_MEMORY | {"version": row.version if row else 0, "retention_days": 7}
+
+
+@router.post("/memory/export")
+def export_memory(
+    pid: str, u: User = Depends(authenticated), db: Session = Depends(get_db)
+):
+    """Participant-only, explicit export of retained companion memory, not medical records."""
+    participant(db, u, pid)
+    row = memory_row(db, pid)
+    data = memory_data(row)
+    db.add(
+        Audit(
+            patient_id=pid,
+            actor=u.id,
+            action="companion.memory_exported",
+            detail={"version": row.version if row else 0},
+        )
+    )
+    result = {
+        "schema_version": "neurotwin.companion-memory.v1",
+        "patient_id": pid,
+        "exported_at": now(),
+        "retention_days": 7,
+        "version": row.version if row else 0,
+        "memory": data,
+        "scope": "Retained companion preferences and text turns only. Excludes messages, medical records and raw audio.",
+    }
+    db.commit()
+    return JSONResponse(
+        result,
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": 'attachment; filename="neurotwin-companion-memory.json"',
+        },
+    )
 
 
 @router.get("/contacts")

@@ -1,0 +1,49 @@
+.workspace-picker {
+  display: block;
+  min-width: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: inherit;
+}
+.workspace-picker select {
+  display: block;
+  width: 100%;
+  margin: 6px 0 0;
+  min-height: 48px;
+  min-width: 0;
+  max-width: 100%;
+  font: inherit;
+}
+.workspace-state {
+  max-width: 680px;
+  width: 100%;
+  margin: 6vh auto;
+  padding: 24px;
+}
+.workspace-state .workspace-picker {
+  margin: 24px 0;
+}
+.workspace-state .actions {
+  margin: 24px 0;
+}
+.workspace-state progress {
+  width: 100%;
+  margin: 20px 0;
+}
+.topbar .workspace-picker {
+  max-width: 360px;
+  width: 100%;
+}
+.mobile-header + .workspace-picker {
+  padding: 12px;
+  margin: 0 0 12px;
+  border: 1px solid #d4dff3;
+  border-radius: 14px;
+  background: #fff;
+  color: #263d64;
+}
+@media (min-width: 1101px) {
+  .topbar .workspace-picker {
+    width: 260px;
+  }
+}

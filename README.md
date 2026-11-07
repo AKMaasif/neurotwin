@@ -169,3 +169,10 @@ Uploads are limited to 8 files per batch, 10 MB per file and 50 active documents
 Source facts require individual human verification. AI visual descriptions are interpretations and are excluded from clinical fact extraction. Reprocessing or removing a source invalidates dependent plans and indexes.
 
 Real patient data, production identity/RLS, isolated malware scanning, encrypted storage lifecycle/restore, distributed infrastructure and clinical validation remain unfinished. EHR connectivity, video calls, external reminder delivery and emergency dispatch are not connected. Keep this development server on loopback and do not enter real patient records.
+
+
+## Current engineering milestone
+
+Authorized patient switching, clinician plan/case review and participant privacy controls are documented in [workspace and privacy verification](docs/workspaces-and-privacy.md). Multiple authorized patients require a deliberate choice; switching clears private drafts, microphone resources and stale responses. Settings supports confirmed access removal and an explicit export of retained companion memory; this is not a complete medical-record export/deletion process.
+
+[Per-role contract evaluation](docs/agent-contract-evaluation.md) provides reproducible software checks for all eight registry roles. Scores are contract pass rates, not clinical accuracy. The [development ledger](DEVELOPMENT_PLAN.md) distinguishes locally verified, planned and externally gated work.

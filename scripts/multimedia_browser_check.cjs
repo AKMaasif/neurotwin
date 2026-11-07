@@ -292,6 +292,24 @@ const wait = async (page, fn, arg) => {
     console.log(JSON.stringify({ status: "passed", steps, errors }));
   } catch (error) {
     if (patient)
+      console.error(
+        "Synthetic messaging state:",
+        await patient.evaluate(() => ({
+          tab: S.tab,
+          peer: S.care?.peer,
+          error: S.care?.error,
+          batch: S.care?.batch && {
+            phase: S.care.batch.phase,
+            error: S.care.batch.error,
+            caption: S.care.batch.caption,
+          },
+          messages: S.care?.thread?.messages.map((message) => ({
+            body: message.body,
+            id: message.id,
+          })),
+        })),
+      );
+    if (patient)
       await patient.screenshot({ path: path.join(out, "multimedia-failure.png"), fullPage: true });
     console.error("Completed checks:", steps);
     throw error;

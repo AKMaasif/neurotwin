@@ -1,0 +1,486 @@
+/* Mobile-app-only adaptive shell. Shared clinical and messaging files stay unchanged.
+   48rem: room for a labelled rail; 75rem: room for a full navigation column.
+   Page grids respond to their available content width, not the device name. */
+:root {
+  --adaptive-page: clamp(0.75rem, 2.2vw, 2rem);
+  --adaptive-gap: clamp(1rem, 2vw, 1.75rem);
+  --adaptive-card: clamp(1rem, 1.6vw, 1.5rem);
+  --adaptive-nav: 7rem;
+  --adaptive-limit: 112rem;
+}
+#app {
+  width: 100%;
+  max-width: var(--adaptive-limit);
+  min-height: 100dvh;
+  margin-inline: auto;
+  background: var(--phone-bg);
+  padding: max(1rem, env(safe-area-inset-top)) max(var(--adaptive-page), env(safe-area-inset-right))
+    calc(var(--mobile-dock-height) + 2.5rem + env(safe-area-inset-bottom))
+    max(var(--adaptive-page), env(safe-area-inset-left));
+  border: 0;
+}
+.adaptive-shell,
+.adaptive-workspace,
+.adaptive-content,
+.plan-primary,
+.plan-context {
+  min-width: 0;
+}
+.adaptive-navigation,
+.adaptive-nav-slot {
+  display: contents;
+}
+.adaptive-brand,
+.adaptive-nav-context {
+  display: none;
+}
+.adaptive-content {
+  container: workspace / inline-size;
+}
+.adaptive-content > *,
+.plan-layout > *,
+.schedule-dates > * {
+  min-width: 0;
+}
+.adaptive-content :is(h1, h2, h3, p, small, strong, summary, label, .badge) {
+  overflow-wrap: anywhere;
+}
+.adaptive-content :is(input, select, textarea, audio, video, img) {
+  max-width: 100%;
+  min-width: 0;
+}
+.adaptive-content button,
+.adaptive-content .button {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+.adaptive-content p {
+  line-height: 1.6;
+}
+.adaptive-content h1 {
+  font-size: clamp(1.75rem, 1.4rem + 1vw, 2.35rem);
+}
+.adaptive-content .card {
+  padding: var(--adaptive-card);
+}
+.plan-context {
+  display: grid;
+  gap: var(--adaptive-gap);
+  align-content: start;
+}
+.plan-context .plan-help-strip,
+.plan-context .plan-care-note {
+  margin-bottom: 0;
+}
+.routine-row {
+  container: routine / inline-size;
+}
+.routine-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
+  gap: var(--adaptive-gap);
+}
+.routine-identifier {
+  display: block;
+  color: var(--mobile-secondary);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+  margin-block: 0.5rem;
+}
+.routine-row > button {
+  width: 100%;
+}
+.routine-row .muted {
+  overflow-wrap: anywhere;
+}
+.routine-row > h3 {
+  line-height: 1.5;
+}
+.routine-consent {
+  min-width: 0;
+}
+.adaptive-content fieldset {
+  min-inline-size: 0;
+}
+.adaptive-content pre {
+  max-width: 100%;
+  overflow: auto;
+}
+.adaptive-content .reading-controls {
+  flex-wrap: wrap;
+}
+.login,
+.workspace-state {
+  max-width: 34rem;
+  margin-inline: auto;
+}
+.login {
+  padding-block: clamp(2rem, 10vh, 7rem);
+}
+nav[aria-label="Main navigation"] {
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+nav[aria-label="Main navigation"] button {
+  min-height: 3rem;
+  font-size: 0.74rem;
+}
+@media (max-width: 370px) {
+  nav[aria-label="Main navigation"] button {
+    font-size: 0.65rem;
+  }
+}
+.skip-link {
+  position: fixed;
+  left: 0.75rem;
+  top: 0.75rem;
+  z-index: 30;
+  transform: translateY(-200%);
+}
+.skip-link:focus {
+  transform: none;
+}
+.adaptive-content :is(section[id], li[id]) {
+  scroll-margin-block: 1rem;
+}
+@supports not (container-type: inline-size) {
+  .adaptive-content {
+    width: 100%;
+  }
+}
+@container routine (min-width: 32rem) {
+  .routine-row > button {
+    width: auto;
+  }
+  .routine-row .routine-consent {
+    max-width: 44rem;
+  }
+}
+@container workspace (min-width: 42rem) {
+  .adaptive-home {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--adaptive-gap);
+    align-items: start;
+  }
+  .adaptive-home > :is(.home-heading, .home-welcome, .home-hero, .home-connections) {
+    grid-column: 1 / -1;
+  }
+  .adaptive-home > .card {
+    margin-block: 0;
+  }
+  .adaptive-home .home-shortcuts {
+    margin-block: 0;
+  }
+  .settings-private-options {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--adaptive-gap);
+    align-items: start;
+  }
+  .settings-private-options > .card {
+    margin-block: 0;
+  }
+  .support-page {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--adaptive-gap);
+    align-items: start;
+  }
+  .support-page
+    > :is(
+      .care-page-heading,
+      .support-intro,
+      .support-jump-links,
+      .care-urgent-note,
+      .support-request-history
+    ) {
+    grid-column: 1 / -1;
+  }
+  .support-page > .card {
+    margin-block: 0;
+  }
+  .plan-timeline .plan-period ol {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: var(--adaptive-gap);
+  }
+  .plan-timeline-item:only-child {
+    grid-column: 1 / -1;
+  }
+  .plan-spotlight {
+    min-height: 15rem;
+    padding: 2rem;
+  }
+  .plan-spotlight h2 {
+    max-width: 24ch;
+    font-size: 1.75rem;
+  }
+  .plan-spotlight p {
+    max-width: 45ch;
+  }
+  .plan-orbit {
+    width: 14rem;
+    height: 14rem;
+    right: -2rem;
+  }
+  .family-overview {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--adaptive-gap);
+    align-items: start;
+  }
+  .family-overview > :is(.care-page-heading, .family-destinations, .family-plan-note) {
+    grid-column: 1 / -1;
+  }
+}
+@container workspace (min-width: 68rem) {
+  .plan-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem);
+    gap: var(--adaptive-gap);
+    align-items: start;
+  }
+  .plan-context {
+    position: sticky;
+    top: 1.5rem;
+  }
+  .plan-context .plan-help-strip .actions {
+    flex-direction: column;
+  }
+  .plan-context .plan-help-strip button {
+    width: 100%;
+  }
+}
+@media (min-width: 48rem) {
+  #app {
+    padding: 0 var(--adaptive-page) 0 0;
+  }
+  .adaptive-shell {
+    display: grid;
+    grid-template-columns: var(--adaptive-nav) minmax(0, 1fr);
+    gap: var(--adaptive-gap);
+    align-items: start;
+  }
+  .adaptive-navigation {
+    display: flex;
+    position: sticky;
+    top: 0;
+    flex-direction: column;
+    height: 100dvh;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 1.5rem 0.65rem;
+    background: #efedfa;
+    border-right: 1px solid #d9dff1;
+  }
+  .adaptive-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+  }
+  .adaptive-brand > strong,
+  #nav-density {
+    display: none;
+  }
+  .adaptive-nav-slot {
+    display: block;
+  }
+  nav[aria-label="Main navigation"] {
+    position: static;
+    transform: none;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    gap: 0.65rem;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  nav[aria-label="Main navigation"] button {
+    flex: none;
+    width: 100%;
+    min-height: 4rem;
+    font-size: 0.75rem;
+    padding: 0.6rem 0.2rem;
+    border-radius: 0.85rem;
+    background: transparent;
+    gap: 0.4rem;
+  }
+  nav[aria-label="Main navigation"] button.active {
+    background: #fff;
+    color: #174bb7;
+    box-shadow: 0 2px 8px #333b6d0a;
+  }
+  .adaptive-nav-context {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    margin-top: auto;
+    padding-top: 2rem;
+    align-items: center;
+  }
+  .adaptive-nav-context > strong,
+  .adaptive-nav-context > small {
+    display: none;
+  }
+  .adaptive-nav-context > button {
+    flex-direction: column;
+    width: 100%;
+    padding: 0.6rem 0.2rem;
+    font-size: 0.75rem;
+    min-height: 3rem;
+    background: transparent;
+    border: 0;
+    border-radius: 0.85rem;
+  }
+  .adaptive-nav-context svg {
+    width: 1.4rem;
+    height: 1.4rem;
+  }
+  .adaptive-nav-context button[aria-current="page"] {
+    color: #174bb7;
+    background: white;
+  }
+  .adaptive-workspace {
+    padding-block: 1.5rem 3rem;
+  }
+  .adaptive-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #dce2f5;
+  }
+  .adaptive-topbar .mobile-header {
+    margin: 0;
+  }
+  .adaptive-topbar .workspace-picker {
+    flex: 1 1 16rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  .mobile-header {
+    min-height: 3rem;
+  }
+  .mobile-header > [data-tab="settings"] {
+    display: none;
+  }
+  .scope {
+    width: fit-content;
+    max-width: 100%;
+    min-width: 18rem;
+  }
+  .mobile-header + .workspace-picker {
+    max-width: 30rem;
+  }
+  .adaptive-companion {
+    max-width: 48rem;
+    margin-inline: auto;
+  }
+  .check-page {
+    max-width: 50rem;
+    margin-inline: auto;
+  }
+  .care-chat-page .care-layout {
+    grid-template-columns: minmax(13rem, 0.85fr) minmax(0, 2fr);
+  }
+  .care-chat-page .care-conversation {
+    height: max(32rem, calc(100dvh - 15rem));
+  }
+  #notice {
+    bottom: 1.5rem;
+    max-width: 38rem;
+    left: calc(50% + var(--adaptive-nav) / 2);
+  }
+  .high-contrast .adaptive-navigation {
+    background: #fff;
+    border-color: #111;
+  }
+  .high-contrast .adaptive-navigation nav button.active,
+  .high-contrast .adaptive-nav-context button[aria-current="page"] {
+    background: #111;
+    color: #fff;
+  }
+}
+@media (min-width: 75rem) {
+  :root {
+    --adaptive-nav: 15rem;
+  }
+  .adaptive-navigation {
+    padding: 1.75rem 1rem;
+  }
+  .adaptive-brand {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+  }
+  .adaptive-brand > strong {
+    display: block;
+    font-size: 0.8rem;
+  }
+  #nav-density {
+    display: flex;
+    margin-left: auto;
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    padding: 0.25rem;
+  }
+  nav[aria-label="Main navigation"] button {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 0.85rem;
+    padding: 0.85rem;
+    font-size: 0.95rem;
+    min-height: 3.5rem;
+  }
+  .adaptive-nav-context {
+    align-items: flex-start;
+    border-top: 1px solid #d9dff1;
+  }
+  .adaptive-nav-context > strong,
+  .adaptive-nav-context > small {
+    display: block;
+    overflow-wrap: anywhere;
+  }
+  .adaptive-nav-context > small {
+    color: #505c75;
+    font-size: 0.8rem;
+  }
+  .adaptive-nav-context > button {
+    flex-direction: row;
+    justify-content: flex-start;
+    padding: 0.85rem;
+    gap: 0.85rem;
+    font-size: 0.95rem;
+  }
+  .nav-compact {
+    --adaptive-nav: 7rem;
+  }
+  .nav-compact .adaptive-brand {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .nav-compact .adaptive-brand > strong,
+  .nav-compact .adaptive-nav-context > strong,
+  .nav-compact .adaptive-nav-context > small {
+    display: none;
+  }
+  .nav-compact #nav-density {
+    margin-left: 0;
+  }
+  .nav-compact nav[aria-label="Main navigation"] button,
+  .nav-compact .adaptive-nav-context > button {
+    flex-direction: column;
+    justify-content: center;
+    padding: 0.6rem 0.2rem;
+    font-size: 0.75rem;
+  }
+}

@@ -1,3 +1,4 @@
+const base = process.env.NEUROTWIN_BASE_URL || "http://127.0.0.1:8140";
 const { chromium } = require("playwright");
 const fs = require("fs"),
   path = require("path");
@@ -56,16 +57,14 @@ const fs = require("fs"),
     };
   }
   async function login(page, role) {
-    await page.goto("http://127.0.0.1:8140/" + (role === "clinician" ? "dashboard/" : "mobile/"));
+    await page.goto(base + "/" + (role === "clinician" ? "dashboard/" : "mobile/"));
     if (role === "clinician") await page.locator("[name=username]").fill(role);
     else await page.locator("[name=username]").selectOption(role);
     await page.locator("[name=password]").fill(password);
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
-    await page
-      .getByText("synthetic data only", { exact: false })
-      .or(page.getByText("Synthetic development workspace", { exact: false }))
-      .first()
-      .waitFor();
+    await page.locator(role === "clinician" ? ".topbar" : ".scope").waitFor();
+    if (!(await page.evaluate(() => S.data.patient.synthetic)))
+      throw Error("Routine browser check requires synthetic data");
   }
   async function propose(label) {
     await clinician.getByRole("button", { name: "Patient workspace", exact: true }).click();
@@ -227,7 +226,7 @@ const fs = require("fs"),
           }),
       );
     const second = await patientContext.newPage();
-    await second.goto("http://127.0.0.1:8140/mobile/");
+    await second.goto(base + "/mobile/");
     await second.waitForFunction(() => S.routineData);
     await Promise.all([
       patient.evaluate(() => pollRoutineNotifications()),

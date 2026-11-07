@@ -1,0 +1,339 @@
+/* Family coordination is task-led; activity reports show evidence, never a health score. */
+.family-patient-panel {
+  position: relative;
+  overflow: hidden;
+  padding: 24px;
+  background: #e1ebf8;
+  border: 1px solid #ccdcef;
+  border-radius: 26px 26px 8px 26px;
+}
+.family-panel-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  color: #4c6385;
+  display: block;
+}
+.family-patient-panel h2 {
+  font-size: 1.4rem;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  margin: 12px 0;
+  max-width: 18ch;
+}
+.family-patient-panel p {
+  font-size: 0.94rem;
+}
+.family-patient-panel > button {
+  background: #fff;
+  border-color: #bdcde5;
+  color: #244a87;
+  width: 100%;
+}
+.family-linked-art {
+  display: block;
+  height: 44px;
+  position: relative;
+  margin-bottom: 16px;
+}
+.family-linked-art i {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  top: 2px;
+  border: 3px solid #7192c8;
+  border-radius: 50%;
+}
+.family-linked-art i:last-child {
+  left: 25px;
+  border-color: #a08cbe;
+}
+.family-request-card {
+  border-left: 3px solid #9e83b8;
+  border-radius: 0 18px 18px 0;
+  background: #fff;
+  padding: 20px;
+  margin: 12px 0;
+  box-shadow: 0 4px 18px #687ca00b;
+}
+.family-request-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: #6d588b;
+}
+.family-request-card p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.family-request-card button {
+  width: 100%;
+}
+.family-request-card small {
+  display: block;
+  font-size: 0.8rem;
+  color: #54617a;
+  margin-top: 12px;
+}
+.family-clear-state {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px;
+  background: #ffffff91;
+  border: 1px dashed #c4cfe4;
+  border-radius: 18px;
+}
+.family-clear-state > span {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  background: #e5ebf6;
+  color: #536a91;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.family-clear-state strong {
+  font-size: 0.95rem;
+}
+.family-clear-state p {
+  font-size: 0.88rem;
+  margin: 6px 0 0;
+}
+.family-accepted-note {
+  font-size: 0.85rem;
+  padding: 10px 2px;
+}
+.family-destinations {
+  display: grid;
+  gap: 10px;
+  margin-top: 26px;
+}
+.family-destinations > button {
+  border-radius: 18px;
+  width: 100%;
+  display: flex;
+  text-align: left;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 18px 14px;
+}
+.family-destinations > button > span:nth-child(2) {
+  min-width: 0;
+  flex: 1;
+}
+.family-destinations strong,
+.family-destinations small {
+  display: block;
+}
+.family-destinations strong {
+  font-size: 0.95rem;
+}
+.family-destinations small {
+  font-size: 0.8rem;
+  color: #54627a;
+  margin-top: 4px;
+  font-weight: 400;
+}
+.family-plan-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 24px 2px 0;
+  margin-top: 24px;
+  border-top: 1px solid #d8dfed;
+}
+.family-plan-note svg {
+  width: 25px;
+  height: 25px;
+  color: #62769b;
+}
+.family-plan-note h2 {
+  font-size: 1.05rem;
+}
+.family-plan-note p {
+  font-size: 0.9rem;
+}
+.mobile-report-page > h1 {
+  font-size: 2rem;
+  letter-spacing: -0.035em;
+  padding-top: 10px;
+}
+.mobile-report-page {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.mobile-report-page input,
+.mobile-report-page select {
+  min-width: 0;
+  max-width: 100%;
+}
+.mobile-report-page #report-period {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+.mobile-report-page #report-period label {
+  min-width: 0;
+}
+.mobile-report-page #report-period button {
+  width: 100%;
+}
+.mobile-report-page .card {
+  box-shadow: none;
+}
+.mobile-week-record {
+  border-radius: 25px 25px 25px 8px;
+  padding: 24px;
+  background: #244fba;
+  color: #fff;
+  margin: 18px 0;
+}
+.mobile-week-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #e3ecff;
+}
+.mobile-week-dates {
+  font-size: 0.9rem;
+  color: white;
+  margin: 14px 0 18px;
+}
+.mobile-week-dates small {
+  display: block;
+  font-size: 0.78rem;
+  margin-top: 5px;
+  color: #e3ecff;
+}
+.mobile-week-record h2 {
+  font-size: 1.05rem;
+  font-weight: 500;
+  line-height: 1.5;
+  color: #fff;
+}
+.mobile-week-record h2 strong {
+  font-size: 3.2rem;
+  font-weight: 700;
+  display: block;
+  line-height: 1.1;
+  letter-spacing: -0.05em;
+  margin-bottom: 8px;
+}
+.mobile-week-record > p {
+  color: #fff;
+}
+.mobile-week-record .mobile-evidence-boundary {
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: #edf2ff;
+  margin-bottom: 0;
+  border-top: 1px solid #ffffff40;
+  padding-top: 14px;
+}
+.mobile-record-states h2 {
+  font-size: 1.15rem;
+}
+.mobile-record-states dl {
+  margin: 18px 0;
+}
+.mobile-record-states dl > div {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid #e0e6f0;
+}
+.mobile-record-states dt {
+  flex: 1;
+  font-size: 0.92rem;
+}
+.mobile-record-states dd {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+}
+.mobile-missing-records {
+  font-size: 0.85rem;
+  line-height: 1.65;
+}
+.mobile-report-page .report-bars {
+  margin-top: 20px;
+}
+.mobile-report-page .report-bar-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  padding: 16px 0;
+}
+.mobile-report-page .report-bar-row strong {
+  font-size: 0.86rem;
+  color: #344d79;
+}
+.mobile-report-page .report-bar-row > span {
+  font-size: 0.84rem;
+  color: #51617a;
+}
+.mobile-report-page .report-bar {
+  background: #eef1f7;
+  height: 12px;
+  border-radius: 5px;
+}
+.mobile-report-page .report-confirmed {
+  background: #456fc2;
+}
+.mobile-report-page .report-other {
+  background: #b6bfcd;
+}
+.mobile-report-page [data-report] {
+  display: block;
+  text-align: left;
+  width: 100%;
+  min-width: 0;
+  border-radius: 16px;
+  padding: 16px;
+  font-size: 0.9rem;
+}
+.mobile-report-page [data-report][aria-pressed="true"] {
+  background: #eaf0ff;
+  border-color: #6586ce;
+}
+.mobile-report-page .report-timeline {
+  max-height: 500px;
+}
+.mobile-report-page .report-timeline time {
+  font-size: 0.78rem;
+}
+.mobile-report-page .report-timeline strong,
+.mobile-report-page .report-timeline span {
+  font-size: 0.9rem;
+}
+.mobile-report-page .report-timeline small {
+  font-size: 0.75rem;
+}
+.high-contrast .family-patient-panel,
+.high-contrast .family-request-card,
+.high-contrast .family-clear-state {
+  background: #fff;
+  color: #111;
+  border: 1px solid #111;
+}
+.high-contrast .family-panel-label,
+.high-contrast .family-request-label {
+  color: #111;
+}
+.high-contrast .mobile-week-record {
+  background: #111;
+}
+.high-contrast .mobile-record-states dt,
+.high-contrast .mobile-report-page .report-bar-row strong,
+.high-contrast .mobile-report-page .report-bar-row > span {
+  color: #111;
+}
+.high-contrast .mobile-report-page [data-report][aria-pressed="true"] {
+  color: #fff;
+  background: #111;
+  border-color: #111;
+}

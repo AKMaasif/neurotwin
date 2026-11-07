@@ -21,6 +21,8 @@ const esc = (s) =>
   );
 async function api(path, method = "GET", body, signal) {
   const expectedActor = S.user?.id;
+  const expectedWorkspace = S.workspaceEpoch;
+  const patientRequest = path.startsWith("/patients/");
   const r = await fetch("/api" + path, {
     method,
     signal,
@@ -31,6 +33,8 @@ async function api(path, method = "GET", body, signal) {
     },
     body: body ? JSON.stringify(body) : undefined,
   });
+  if (patientRequest && expectedWorkspace !== S.workspaceEpoch)
+    throw new Error("Workspace changed; stale response discarded");
   if (expectedActor && S.user?.id !== expectedActor)
     throw new Error("Session changed; stale response discarded");
   if (!r.ok) {
@@ -45,6 +49,8 @@ async function api(path, method = "GET", body, signal) {
     throw error;
   }
   const result = await r.json();
+  if (patientRequest && expectedWorkspace !== S.workspaceEpoch)
+    throw new Error("Workspace changed; stale response discarded");
   if (expectedActor && S.user?.id !== expectedActor)
     throw new Error("Session changed; stale response discarded");
   if (["/login", "/logout"].includes(path)) announceCareSessionChange();
@@ -60,12 +66,24 @@ function records(kind) {
   return S.data.records.filter((r) => r.kind === kind);
 }
 async function refresh() {
-  S.data = await api(`/patients/${S.pid}/workspace`);
-  await updateRoutineData();
+  const pid = S.pid,
+    epoch = S.workspaceEpoch;
+  const data = await fetchAuthorizedWorkspace(pid);
+  if (!data) return;
+  const [routineData, contacts, sharingAccess] = await Promise.all([
+    api(`/patients/${pid}/routines`),
+    data.scopes.includes("help") ? api(`/patients/${pid}/companion/contacts`) : Promise.resolve([]),
+    S.user.role === "participant" && data.scopes.includes("sharing")
+      ? api(`/patients/${pid}/grants`)
+      : Promise.resolve([]),
+  ]);
+  if (S.pid !== pid || S.workspaceEpoch !== epoch) return;
+  S.data = data;
+  S.routineData = routineData;
+  S.contacts = contacts;
+  S.sharingAccess = sharingAccess;
   await loadOfflineActions();
-  S.contacts = S.data.scopes.includes("help")
-    ? await api(`/patients/${S.pid}/companion/contacts`)
-    : [];
+  if (S.pid !== pid || S.workspaceEpoch !== epoch) return;
   for (const key of ["guide", "pendingAction"]) {
     const task = S[key]?.task;
     if (
@@ -80,13 +98,20 @@ async function refresh() {
       S[key] = null;
   }
   const pref = records("preference")[0];
-  document.documentElement.classList.toggle("large", pref?.payload.text_size === "large");
+  document.documentElement.classList.toggle(
+    "large",
+    S.user.role === "participant" ? pref?.payload.text_size === "large" : !!S.accountTextLarge,
+  );
   if (S.tab === "weekly") await loadWeeklyReports();
   if (S.tab === "messages") await loadCareMessages();
   render();
 }
 function icon(k) {
   const paths = {
+    messages: "M4 4h16v13H9l-5 4z M8 8h8m-8 4h6",
+    weekly: "M5 3h14v18H5z M8 8h8m-8 5h8m-8 5h5",
+    settings:
+      "M12 3v3m0 12v3M3 12h3m12 0h3M6 6l2 2m8 8 2 2M6 18l2-2m8-8 2-2 M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0",
     home: "M3 10 12 3l9 7v11H3z M9 21v-8h6v8",
     check: "M9 3h6v3h5v15H4V6h5z M8 13l3 3 5-6",
     companion: "M5 5h14v12H9l-4 4z M8 10h1m6 0h1",
@@ -120,62 +145,73 @@ function render() {
   if (!S.user || !S.data) return;
   document.body.classList.toggle("care-chat-page", careActive());
   pauseCareAudio();
+  document.body.dataset.mobilePage = S.tab;
   const family = S.user.role === "family";
   const tasks = records("task").filter(
     (t) => t.status !== "superseded" && !t.payload.is_routine_template && !t.payload.occurrence_id,
   );
   const plan = records("plan").find((p) => p.status === "approved");
   let body = "";
-  if (S.tab === "home") {
-    body = `<h1>${family ? "Care circle overview" : "Hello, " + esc(S.memory?.enabled && S.memory.preferred_name ? S.memory.preferred_name : S.user.name)}</h1><p>${esc(new Intl.DateTimeFormat("en", { dateStyle: "full" }).format(new Date()))}</p>${renderDailyActivities()}${family ? `<section class="card"><h2>Shared support</h2><p>Task responses are participant reports. No clinical stability estimate is available.</p><button data-tab="support">Open help requests</button></section>` : tasks[0] ? taskCard(tasks.find((t) => t.status === "pending") || tasks[0], true) : S.routineData?.occurrences.some(activeOccurrence) ? "" : '<section class="card">No active task. Your care team can review your plan.</section>'}<section class="card"><h2>Your current plan</h2><p>${esc(plan?.payload.source_review_required ? "Your plan is waiting for care-team review." : plan?.payload.instructions || "No approved plan available.")}</p><p class="muted">Synthetic support plan · ${esc(plan?.payload.signed_by || "Not signed")}</p>${plan?.payload.source_review_required ? '<p class="error">A source was corrected. Your care team needs to review this plan. Please ask for help before acting on affected instructions.</p>' : ""}</section><section class="card"><h2>One thing at a time</h2><div class="actions"><button data-tab="plan">My plan</button><button data-tab="support">Ask for help</button></div></section>`;
-  }
-  if (S.tab === "home")
-    body +=
-      '<section class="card"><h2>This week</h2><p>Review recorded activities and reports shared by your care team.</p><button data-tab="weekly">Weekly summary</button></section>';
-  if (S.data.scopes.includes("messages") && S.tab === "home")
-    body +=
-      '<section class="card"><h2>Your care circle</h2><p>Talk with your family or care team.</p><button data-tab="messages">Messages</button></section>';
+  if (S.tab === "home") body = `<div class="adaptive-home">${renderMobileHome(tasks, plan)}</div>`;
   if (S.tab === "messages") body = renderCareMessages();
-  if (S.tab === "weekly") body = renderWeeklyReports();
-  if (S.tab === "plan")
-    body = `<h1>${family ? "Shared tasks" : "My plan"}</h1><p>Follow the current approved instructions. Ask for help when you need it.</p>${tasks.map((t) => taskCard(t)).join("")}${renderDailyActivities()}${renderRoutineManager()}`;
-  if (S.tab === "check")
-    body = `<h1>My check</h1><section class="card"><h2>No assessment assigned</h2><p>Research measurements need an approved protocol and suitable device capture. This build does not diagnose cognitive impairment.</p><button data-tab="support">Report a concern</button></section>`;
-  if (S.tab === "companion") body = renderCompanion();
-  if (S.tab === "support")
-    body = `<h1>Support</h1><section class="card"><h2>Ask for practical help</h2><p>No emergency service is monitored or contacted by this app.</p><form id="help"><label>Recipient<select name="recipient_id">${S.contacts.map((c) => `<option value="${esc(c.id)}">${esc(c.name)} · ${esc(c.role)}</option>`).join("")}</select></label><label>Your request<textarea name="text" maxlength="1000" required>${esc(S.helpDraft || "Please help me prepare transport for my appointment.")}</textarea></label><button class="primary" ${S.contacts.length ? "" : "disabled"}>Confirm and save request</button></form></section>${records(
-      "help",
+  if (S.tab === "weekly") body = `<div class="mobile-report-page">${renderWeeklyReports()}</div>`;
+  if (S.tab === "plan") body = renderMobilePlan(tasks, plan);
+  if (S.tab === "check") body = renderMobileCheck();
+  if (S.tab === "companion") body = `<div class="adaptive-companion">${renderCompanion()}</div>`;
+  if (S.tab === "support") body = renderMobileSupport();
+  if (S.tab === "settings") body = renderMobileSettings();
+  const followLatest =
+    careActive() &&
+    !S.care?.before &&
+    (S.care?.forceLatest || !S.care?.scroll || S.care.scroll.bottom);
+  $("#app").innerHTML =
+    `<a class="skip-link" href="#mobile-content">Skip to content</a><div class="adaptive-shell"><aside class="adaptive-navigation"><div class="adaptive-brand"><span class="brand-mark" aria-hidden="true">${brandMark()}</span><strong>NeuroCompanion</strong><button id="nav-density" class="plain" aria-label="Toggle compact navigation" aria-expanded="${!document.documentElement.classList.contains("nav-compact")}">↔</button></div><div class="adaptive-nav-slot"></div><div class="adaptive-nav-context"><span class="patient-initial" aria-hidden="true">${esc(S.data.patient.name.slice(0, 1))}</span><strong>${esc(S.data.patient.name)}</strong><small>${esc(family ? "Authorized relative" : "Participant")} workspace</small><button data-tab="settings" aria-current="${S.tab === "settings" ? "page" : "false"}">${icon("settings")}<span>Settings</span></button></div></aside><div class="adaptive-workspace"><div class="adaptive-topbar"><header class="mobile-header"><div class="mobile-brand"><span class="brand-mark" aria-hidden="true">${brandMark()}</span><strong>NeuroCompanion</strong></div>${family ? `<button class="plain family-companion" data-tab="companion" aria-label="Companion">${icon("companion")}</button>` : ""}<button class="reference-reminders plain" data-tab="plan" aria-label="View reminders"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 16h14l-2-3V9a5 5 0 0 0-10 0v4l-2 3ZM9 20h6"/></svg>${S.routineData?.reminders.some((item) => item.state !== "acknowledged") ? '<span class="reminder-dot"></span>' : ""}</button><button class="plain reference-profile" data-tab="settings" aria-label="Settings"><span>${esc(S.user.name.slice(0, 1))}</span></button></header>${renderWorkspacePicker()}<div class="scope"><span class="patient-initial" aria-hidden="true">${esc(S.data.patient.name.slice(0, 1))}</span><span><strong>${esc(S.data.patient.name)}</strong><small>${esc(family ? "Authorized relative" : "Participant")} · Synthetic development workspace</small></span>${!navigator.onLine ? '<span class="offline-label" role="status">Offline</span>' : ""}</div></div><main id="mobile-content" class="adaptive-content" tabindex="-1">${body}</main><nav aria-label="Main navigation">${mobileNavigation(
+      family,
     )
       .map(
-        (h) =>
-          `<section class="card"><h2>${esc(h.status === "closed_unconfirmed" ? "Closed without activity confirmation" : h.status.replaceAll("_", " "))}</h2><p>${esc(h.payload.text)}</p>${h.payload.recipient_id === S.user.id && h.status === "requested" ? `<button data-accept="${h.id}">Accept responsibility</button>` : ""}<p class="muted">Saved in app. Push/SMS is not connected.</p></section>`,
-      )
-      .join(
-        "",
-      )}<section class="card"><h2>Tell your care team</h2><form id="concern"><label>Your concern<textarea name="text" maxlength="1500" required></textarea></label><label><input type="checkbox" name="urgent" style="width:auto"> I am reporting a sudden concerning change</label><button>Save for review</button></form><p class="muted">For urgent help, do not wait for an app reply. Use your locally approved assistance route.</p></section>`;
-  if (S.tab === "support" && S.data.scopes.includes("messages"))
-    body = body.replace(
-      "<h1>Support</h1>",
-      '<h1>Support</h1><section class="card"><h2>Your conversations</h2><button data-tab="messages">Messages</button></section>',
-    );
-  if (S.tab === "settings")
-    body = `<h1>Settings</h1><section class="card"><h2>Reading comfort</h2><button id="size">${document.documentElement.classList.contains("large") ? "Use normal text" : "Use larger text"}</button><button id="contrast">Toggle contrast</button></section>${renderMemorySettings()}${renderNotificationSettings()}<section class="card"><h2>Your session</h2><p>Signed in as ${esc(S.user.name)}. Family access requires its own account.</p><button id="logout">Sign out</button></section>`;
-  $("#app").innerHTML =
-    `<header><strong>NeuroCompanion</strong><button class="plain" data-tab="settings">Settings</button></header><div class="scope">${esc(S.data.patient.name)} · ${esc(family ? "Authorized relative" : "Participant")}<br><span class="muted">Synthetic development workspace · ${navigator.onLine ? "Server-connected" : "Offline"}</span></div><main>${body}</main><nav aria-label="Main navigation">${[
-      ["home", "Home"],
-      ["check", "My Check"],
-      ["companion", "Companion"],
-      ["plan", "My Plan"],
-      ["support", "Support"],
-    ]
-      .map(
         ([key, label]) =>
-          `<button data-tab="${key}" class="${S.tab === key ? "active" : ""}" aria-current="${S.tab === key ? "page" : "false"}">${icon(key)}${label}</button>`,
+          `<button data-tab="${key}" aria-label="${label}" title="${label}" class="${S.tab === key ? "active" : ""}" aria-current="${S.tab === key ? "page" : "false"}">${icon(key)}<span>${label}</span></button>`,
       )
-      .join("")}</nav>`;
+      .join("")}</nav></div></div>`;
+  document
+    .querySelector(".adaptive-nav-slot")
+    .append(document.querySelector('nav[aria-label="Main navigation"]'));
+  syncMobileDock();
   bind();
+  syncMobileHistory(followLatest);
 }
 function bind() {
+  bindPlanFilters();
+  bindRoutineFilters();
+  if ($("#nav-density"))
+    $("#nav-density").onclick = () => {
+      const compact = document.documentElement.classList.toggle("nav-compact");
+      $("#nav-density").setAttribute("aria-expanded", String(!compact));
+    };
+  document.querySelectorAll("[data-revoke-access]").forEach(
+    (button) =>
+      (button.onclick = () =>
+        guard(async () => {
+          const person = S.sharingAccess?.find(
+            (item) => item.actor_id === button.dataset.revokeAccess,
+          );
+          if (
+            !person ||
+            !confirm(
+              `Remove ${person.name}'s access to this patient? Future app access will stop. Previously downloaded information cannot be recalled.`,
+            )
+          )
+            return;
+          await api(
+            `/patients/${S.pid}/grants/${encodeURIComponent(person.actor_id)}/revoke`,
+            "POST",
+          );
+          await refresh();
+          note("Access removed. Previously downloaded information is not recalled.");
+        })),
+  );
+
+  bindWorkspacePicker();
   bindCareMessages();
   bindWeeklyReports();
   document.querySelectorAll("[data-tab]").forEach(
@@ -186,6 +222,7 @@ function bind() {
         stopCompanion(false);
         stopCareCapture();
         S.tab = b.dataset.tab;
+        if (S.tab === "companion") setVoiceState("idle");
         render();
         if (S.tab === "weekly")
           guard(async () => {
@@ -266,19 +303,31 @@ function bind() {
   if ($("#size"))
     $("#size").onclick = () =>
       guard(async () => {
+        if (!S.data.scopes.includes("preferences")) {
+          S.accountTextLarge = !document.documentElement.classList.contains("large");
+          document.documentElement.classList.toggle("large", S.accountTextLarge);
+          const button = $("#size");
+          button.textContent = S.accountTextLarge ? "Use normal text" : "Use larger text";
+          button.setAttribute("aria-pressed", String(S.accountTextLarge));
+          note("Text size changed for this open app.");
+          return;
+        }
         await api(`/patients/${S.pid}/preferences`, "POST", {
           text_size: document.documentElement.classList.contains("large") ? "normal" : "large",
         });
         await refresh();
       });
   if ($("#contrast"))
-    $("#contrast").onclick = () => document.body.classList.toggle("high-contrast");
+    $("#contrast").onclick = (event) => {
+      const enabled = document.body.classList.toggle("high-contrast");
+      event.currentTarget.setAttribute("aria-pressed", String(enabled));
+    };
   if ($("#logout"))
     $("#logout").onclick = () =>
       guard(async () => {
         await loadOfflineActions();
         if (
-          S.offlineActions.length &&
+          (await countOfflineActions(S.user.id)) > 0 &&
           !confirm("Signing out will discard unsent responses on this device. Continue?")
         )
           return;
@@ -293,7 +342,8 @@ function bind() {
         await clearOfflineActions(S.user.id);
         await closeDeviceNotifications();
         await api("/logout", "POST");
-        resetCareMessages();
+        clearPatientContext();
+        S.workspaces = [];
         S.user = null;
         S.weekly = null;
         S.reportHistory = [];
@@ -320,35 +370,14 @@ async function guard(fn) {
   }
 }
 async function start() {
-  S.tab = "home";
-  resetCareMessages();
-  S.reportNotes = {};
-  S.weekly = null;
-  S.reportHistory = [];
-  S.reportId = null;
-  S.reportEnd = null;
-  S.reportZone = "Asia/Dubai";
-  S.dirty = false;
-  S.reportEpoch = (S.reportEpoch || 0) + 1;
-  S.memory = null;
-  S.chat = [];
-  S.pendingAction = null;
-  S.guide = null;
-  S.draftText = "";
-  S.helpDraft = "";
-  const ps = await api("/patients");
-  S.pid = ps[0]?.id;
-  if (!S.pid) throw new Error("No active workspace grant");
-  await refresh();
-  if (S.user.role === "participant" && S.data.scopes.includes("preferences")) {
-    S.memory = await api(`/patients/${S.pid}/companion/memory`);
-    S.chat = S.memory.history.flatMap((h) => [
-      { role: "user", text: h.user },
-      { role: "bot", text: h.assistant },
-    ]);
-    render();
-  }
+  clearPatientContext();
+  S.accountTextLarge = false;
+  S.workspaceChanging = false;
+  S.workspaces = await api("/patients");
+  if (S.workspaces.length === 1) await activateWorkspace(S.workspaces[0].id, true);
+  else workspaceState();
 }
+
 (async () => {
   try {
     S.user = await api("/session");
@@ -369,6 +398,8 @@ setInterval(async () => {
   if (
     !S.user ||
     !S.pid ||
+    S.workspaceChanging ||
+    !S.data ||
     syncing ||
     S.busy ||
     S.reportBusy ||

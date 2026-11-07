@@ -188,7 +188,7 @@ const fs = require("fs"),
     await p.waitForFunction(() => S.voiceState === "error" && !S.busy);
     await p.locator("#chatInput").fill("Open home");
     await p.getByRole("button", { name: "Send", exact: true }).click();
-    await p.getByRole("heading", { name: /Hello,/ }).waitFor();
+    await p.locator(".home-heading h1").waitFor();
     steps.push("Denied microphone permission retained working text navigation");
     if (errors.length) throw Error(errors.join(";"));
     fs.writeFileSync(

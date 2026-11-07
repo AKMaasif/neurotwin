@@ -345,28 +345,10 @@ async function recoverCareVoice(row) {
 }
 
 function careSessionChanged() {
-  if (typeof stopCompanion === "function") stopCompanion(false);
-  resetCareMessages();
+  clearPatientContext();
   S.user = null;
-  S.data = null;
-  S.chat = [];
-  S.memory = null;
-  S.pendingAction = null;
-  S.guide = null;
-  S.routineData = null;
-  S.offlineActions = [];
-  S.report = null;
-  S.weekly = null;
-  S.reportHistory = [];
-  S.reportNotes = {};
-  S.reportId = null;
-  S.reportEpoch = (S.reportEpoch || 0) + 1;
-  S.documents = [];
-  S.documentDetails = null;
-  S.documentId = null;
-  S.contacts = [];
-  S.draftText = "";
-  S.helpDraft = "";
+  S.csrf = "";
+  S.workspaces = [];
   login();
   note("Session account changed. Sign in again.");
 }

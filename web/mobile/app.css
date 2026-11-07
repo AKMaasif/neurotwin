@@ -4,13 +4,6 @@ body {
   font-size: 18px;
   line-height: 1.5;
 }
-#app {
-  max-width: 480px;
-  min-height: 100dvh;
-  margin: auto;
-  background: var(--phone-bg);
-  padding: 22px 18px 120px;
-}
 header {
   display: flex;
   align-items: center;

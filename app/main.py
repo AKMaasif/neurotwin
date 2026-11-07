@@ -45,6 +45,7 @@ from .media_uploads import router as media_router
 from .messages import router as message_router
 from .numerics import estimate
 from .reports import router as report_router
+from .research import router as research_router
 from .routines import (
     router as routine_router,
 )
@@ -85,6 +86,7 @@ app.add_middleware(
     ],
 )
 app.include_router(report_router)
+app.include_router(research_router)
 app.include_router(message_router)
 app.include_router(media_router)
 app.include_router(care_realtime_router)
@@ -541,9 +543,10 @@ def logout(
 @app.get("/api/patients")
 def patients(u: User = Depends(authenticated), db: DbSession = Depends(get_db)):
     ps = (
-        db.query(Patient)
+        db.query(Patient, Grant)
         .join(Grant, Grant.patient_id == Patient.id)
         .filter(Grant.user_id == u.id, Grant.active.is_(True), Patient.org == u.org)
+        .order_by(Patient.name, Patient.id)
         .all()
     )
     return [
@@ -553,8 +556,10 @@ def patients(u: User = Depends(authenticated), db: DbSession = Depends(get_db)):
             "age": p.age,
             "region": p.region,
             "synthetic": p.synthetic,
+            "scopes": sorted(grant.scopes),
         }
-        for p in ps
+        for p, grant in ps
+        if "summary" in grant.scopes
     ]
 
 
@@ -771,14 +776,31 @@ def concern(
     if old:
         return old
     stages = [
-        {"stage": "permission", "status": "passed"},
+        {
+            "stage": "permission",
+            "status": "passed",
+            "producer": "server.scope_authorizer",
+        },
         {
             "stage": "reported_safety",
             "status": "stopped" if body.urgent_reported else "no_urgent_flag_reported",
+            "producer": "server.reported_safety_gate",
         },
-        {"stage": "context", "status": "needs_human_review"},
-        {"stage": "numeric", "status": "skipped_insufficient_verified_history"},
-        {"stage": "human_review", "status": "awaiting"},
+        {
+            "stage": "context",
+            "status": "needs_human_review",
+            "producer": "server.concern_intake",
+        },
+        {
+            "stage": "numeric",
+            "status": "skipped_insufficient_verified_history",
+            "producer": "server.concern_intake",
+        },
+        {
+            "stage": "human_review",
+            "status": "awaiting",
+            "producer": "human.clinician_review",
+        },
     ]
     r = Record(
         patient_id=pid,
@@ -861,6 +883,35 @@ def preference(
     audit(db, u, pid, "preferences.changed")
     db.commit()
     return pack(r)
+
+
+@app.get("/api/patients/{pid}/grants")
+def sharing_access(
+    pid: str,
+    u: User = Depends(authenticated),
+    db: DbSession = Depends(get_db),
+):
+    authorize(db, u, pid, "sharing")
+    if u.role != "participant":
+        raise HTTPException(403, "Participant sharing access required")
+    grants = (
+        db.query(User, Grant)
+        .join(Grant, Grant.user_id == User.id)
+        .filter(Grant.patient_id == pid, User.org == u.org)
+        .order_by(User.name, User.id)
+        .all()
+    )
+    return [
+        {
+            "actor_id": actor.id,
+            "name": actor.name,
+            "role": actor.role,
+            "active": grant.active,
+            "scopes": sorted(grant.scopes),
+            "can_revoke": actor.id != u.id and grant.active,
+        }
+        for actor, grant in grants
+    ]
 
 
 @app.post("/api/patients/{pid}/grants/{actor_id}/revoke")

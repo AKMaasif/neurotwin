@@ -17,14 +17,15 @@ function routineTime(value, zone) {
 function activeOccurrence(o) {
   return !["completed", "skipped", "cancelled", "expired"].includes(o.status);
 }
-function renderDailyActivities() {
+function renderDailyActivities(limit = null) {
   const data = S.routineData;
   if (!data) return "";
   const family = S.user.role === "family";
   const notices = data.reminders.filter((n) => n.state !== "acknowledged");
-  const occurrences = family
+  const selectedOccurrences = family
     ? data.occurrences.filter((o) => notices.some((n) => n.occurrence_id === o.id))
     : data.occurrences.filter(activeOccurrence).slice(0, 4);
+  const occurrences = limit ? selectedOccurrences.slice(0, limit) : selectedOccurrences;
   return `${S.offlineActions?.length ? `<section class="card offline-actions" role="status"><h2>${S.offlineActions.length} response(s) saved on this device</h2><p>They are not confirmed by the server yet.</p>${S.offlineActions.map((x) => `<p>${x.conflict ? "Needs review: the activity or your access changed." : "Waiting to reconnect."} <button data-discard-offline="${x.id}">Discard queued response</button></p>`).join("")}</section>` : ""}${occurrences
     .map((o) => {
       const r = data.routines.find((r) => r.id === o.routine_id),
@@ -72,7 +73,22 @@ function renderRoutineManager() {
             !p.payload.source_review_required,
         ),
     );
-  return `<section class="card"><h2>Daily routines</h2><p>Use approved activities at the times you choose. Alerts here require the app to be open; the reminder worker runs on the server.</p>${routines.map((r) => `<article class="routine-row"><h3>${esc(r.payload.title)}</h3><p>${esc(r.payload.local_time)} · ${esc(r.payload.timezone)} · ${esc(r.status.replaceAll("_", " "))}</p><p class="muted">${esc(r.payload.start_date)} to ${esc(r.payload.end_date)}. ${r.payload.family_followup ? "Family follow-up is allowed after " + r.payload.grace_minutes + " minutes without confirmation." : "Automatic family follow-up is off."}</p><button data-consent-routine="${r.id}">${r.status === "awaiting_consent" ? "Review proposed routine" : "Timing, sharing and pause controls"}</button>${S.editRoutine === r.id ? renderRoutineControls(r) : ""}</article>`).join("") || "<p>No recurring routine has been set.</p>"}<details><summary>Set a routine for an approved activity</summary><form id="newRoutine"><label>Approved activity<select name="template_id" required>${templates
+  return `<section class="card routine-manager"><h2>Daily routines</h2><p>Use approved activities at the times you choose. Alerts here require the app to be open; the reminder worker runs on the server.</p><div class="reference-routine-filters" role="group" aria-label="Filter scheduled routines">${[
+    ["all", "All", routines.length],
+    [
+      "awaiting_consent",
+      "Awaiting",
+      routines.filter((r) => r.status === "awaiting_consent").length,
+    ],
+    ["active", "Active", routines.filter((r) => r.status === "active").length],
+  ]
+    .map(
+      ([state, label, count]) =>
+        `<button data-routine-filter="${state}" aria-pressed="${(S.routineFilter || "all") === state}">${label} (${count})</button>`,
+    )
+    .join(
+      "",
+    )}</div><p class="routine-filter-empty" role="status" hidden>No routines match this filter.</p><div class="routine-list">${routines.map((r) => `<article class="routine-row" data-routine-state="${esc(r.status)}"><h3><span class="routine-title-icon" aria-hidden="true">${icon("plan")}</span>${esc(r.payload.title)}</h3><details class="routine-details"><summary aria-label="Routine details">•••</summary><div class="routine-popover"><small class="routine-identifier">Routine ${esc(r.id)}</small><p class="routine-sharing-note">${r.payload.family_followup ? "Family follow-up is allowed after " + r.payload.grace_minutes + " minutes without confirmation." : "Automatic family follow-up is off."}</p></div></details><p>${esc(r.payload.local_time)} · ${esc(r.payload.timezone)} <span class="routine-state" data-state="${esc(r.status)}">${esc(r.status.replaceAll("_", " "))}</span></p><p class="muted">${esc(r.payload.start_date)} to ${esc(r.payload.end_date)}</p><button data-consent-routine="${r.id}">${r.status === "awaiting_consent" ? "Review proposed routine" : "Timing, sharing and pause controls"}</button>${S.editRoutine === r.id ? renderRoutineControls(r) : ""}</article>`).join("") || "<p>No recurring routine has been set.</p>"}</div><details><summary>Set a routine for an approved activity</summary><form id="newRoutine"><label>Approved activity<select name="template_id" required>${templates
     .filter((t) => !routines.some((r) => r.template_id === t.id))
     .map((t) => `<option value="${t.id}">${esc(t.payload.title)}</option>`)
     .join(
@@ -129,6 +145,13 @@ async function clearOfflineActions(userId) {
     for (const x of await queueOperation("getAll"))
       if (x.user_id === userId) await queueOperation("delete", x.id);
   } catch {}
+}
+async function countOfflineActions(userId) {
+  try {
+    return (await queueOperation("getAll")).filter((packet) => packet.user_id === userId).length;
+  } catch {
+    return 0;
+  }
 }
 async function submitRoutineResponse(oid, response, recipient = null) {
   const o = S.routineData.occurrences.find((o) => o.id === oid);
@@ -427,7 +450,17 @@ function bindRoutines() {
 }
 let routinesPolling = false;
 setInterval(async () => {
-  if (!S.user || !S.pid || routinesPolling || document.hidden || S.busy || S.recording) return;
+  if (
+    !S.user ||
+    !S.pid ||
+    !S.data ||
+    S.workspaceChanging ||
+    routinesPolling ||
+    document.hidden ||
+    S.busy ||
+    S.recording
+  )
+    return;
   routinesPolling = true;
   try {
     await flushOfflineActions();

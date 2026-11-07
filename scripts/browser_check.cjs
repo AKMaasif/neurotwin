@@ -30,11 +30,9 @@ const fs = require("fs"),
     else await page.locator("[name=username]").fill(role);
     await page.locator("[name=password]").fill(password);
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
-    await page
-      .getByText("Synthetic development workspace", { exact: false })
-      .or(page.getByText("synthetic data only", { exact: false }))
-      .first()
-      .waitFor();
+    await page.locator(mobile ? ".scope" : ".topbar").waitFor();
+    if (!(await page.evaluate(() => S.data.patient.synthetic)))
+      throw Error("Browser checks require a synthetic patient workspace");
     return page;
   }
   try {

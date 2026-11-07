@@ -42,6 +42,8 @@ function reportBars(rows, label) {
 }
 
 function reportDetails(r, clinical) {
+  if (!clinical && typeof renderMobileReportDetails === "function")
+    return renderMobileReportDetails(r);
   return `<section class="card"><div class="eyebrow">${esc(r.start)} TO ${esc(r.end)} · ${esc(r.timezone)}</div><h2>${r.counts.completed} reported complete <span class="muted">of ${r.denominator} recorded activities</span></h2><p>Activity evidence is not a measure of memory or clinical stability.</p><div class="report-counts">${Object.entries(
     r.counts,
   )

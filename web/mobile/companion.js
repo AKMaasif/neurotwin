@@ -15,7 +15,7 @@ function companionStatus() {
 function renderCompanion() {
   const pending = S.pendingAction,
     guide = S.guide;
-  return `<h1>Your companion</h1><div class="avatar" aria-hidden="true"><div class="face">• •</div></div><div class="voice-status ${S.voiceState === "error" ? "error" : ""}" role="status" aria-live="polite" aria-atomic="true"><span class="status-dot ${S.recording ? "listening" : ""}" aria-hidden="true"></span><span id="voiceStatusText">${esc(companionStatus())}</span></div><form id="chat"><label>How can I help?<input name="text" id="chatInput" placeholder="Open settings" maxlength="3000" required value="${esc(S.draftText || "")}"></label><div class="actions"><button class="primary" ${S.busy || S.recording ? "disabled" : ""}>Send</button><button type="button" id="voice" ${S.busy ? "disabled" : ""}>${S.recording ? "Finish recording" : "Speak"}</button><button type="button" id="stop">Stop</button>${S.retryText ? '<button type="button" id="retryCompanion">Retry request</button>' : ""}</div></form><div class="companion-shortcuts"><button data-say="what should I do">Guide my next activity</button><button data-say="read my plan">Read my plan</button><button data-say="help request status">Check family help</button></div>${S.chat
+  return `<h1>Your companion</h1>${companionFigure()}<div class="voice-status ${S.voiceState === "error" ? "error" : ""}" role="status" aria-live="polite" aria-atomic="true"><span class="status-dot ${S.recording ? "listening" : ""}" aria-hidden="true"></span><span id="voiceStatusText">${esc(companionStatus())}</span></div><form id="chat"><label>How can I help?<input name="text" id="chatInput" placeholder="Open settings" maxlength="3000" required value="${esc(S.draftText || "")}"></label><div class="actions"><button class="primary" ${S.busy || S.recording ? "disabled" : ""}>Send</button><button type="button" id="voice" ${S.busy ? "disabled" : ""}>${S.recording ? "Finish recording" : "Speak"}</button><button type="button" id="stop">Stop</button>${S.retryText ? '<button type="button" id="retryCompanion">Retry request</button>' : ""}</div></form><div class="companion-shortcuts"><button data-say="what should I do">Guide my next activity</button><button data-say="read my plan">Read my plan</button><button data-say="help request status">Check family help</button></div>${S.chat
     .slice(-2)
     .map((c) => `<div class="chat ${c.role === "user" ? "user" : ""}">${esc(c.text)}</div>`)
     .join("")}${
@@ -29,7 +29,7 @@ function renderCompanion() {
 }
 function renderMemorySettings() {
   if (!S.memory) return "";
-  return `<section class="card"><h2>Companion memory</h2><p>Choose what to remember. Family and clinician accounts cannot read this conversation memory.</p><form id="memorySettings"><label class="check-label"><input type="checkbox" name="enabled" ${S.memory.enabled ? "checked" : ""}> Remember my preferences and recent conversations</label><label>Name you prefer<input name="preferred_name" maxlength="60" value="${esc(S.memory.preferred_name)}"></label><label>Speaking pace<select name="speech_rate"><option value="normal">Comfortable</option><option value="slow" ${S.memory.speech_rate === "slow" ? "selected" : ""}>Slower</option></select></label><label class="check-label"><input type="checkbox" name="share_with_ai" ${S.memory.share_with_ai ? "checked" : ""}> Allow AI to use remembered messages to understand future requests</label><p class="muted">Off by default. At most 6 text exchanges are kept for 7 days; expired entries are removed when memory is next accessed. Raw audio is not saved. Current requests may use the configured AI even when memory is off.</p><button class="primary">Save memory choices</button></form><button id="forgetMemory">Forget conversations and preferences</button></section>`;
+  return `<section class="card"><h2>Companion memory</h2><p>Choose what to remember. Family and clinician accounts cannot read this conversation memory.</p><form id="memorySettings"><label class="check-label"><input type="checkbox" name="enabled" ${S.memory.enabled ? "checked" : ""}> Remember my preferences and recent conversations</label><label>Name you prefer<input name="preferred_name" maxlength="60" value="${esc(S.memory.preferred_name)}"></label><label>Speaking pace<select name="speech_rate"><option value="normal">Comfortable</option><option value="slow" ${S.memory.speech_rate === "slow" ? "selected" : ""}>Slower</option></select></label><label class="check-label"><input type="checkbox" name="share_with_ai" ${S.memory.share_with_ai ? "checked" : ""}> Allow AI to use remembered messages to understand future requests</label><p class="muted">Off by default. At most 6 text exchanges are kept for 7 days; expired entries are removed when memory is next accessed. Raw audio is not saved. Current requests may use the configured AI even when memory is off.</p><button class="primary">Save memory choices</button></form><div class="actions"><button id="exportMemory">Download my companion memory</button><button id="forgetMemory">Forget conversations and preferences</button></div><p class="muted">The download contains retained companion text and preferences only. It may contain private information. Forgetting clears app memory, not previously downloaded files, care messages, audit records or provider retention.</p></section>`;
 }
 function setVoiceState(state, error = "") {
   S.voiceState = state;
@@ -327,6 +327,28 @@ function bindCompanion() {
         note("Your memory choices were saved.");
       });
     };
+  if ($("#exportMemory"))
+    $("#exportMemory").onclick = () =>
+      guard(async () => {
+        if (
+          !confirm(
+            "Download your private companion preferences and retained text to this device? Only continue on a device you trust.",
+          )
+        )
+          return;
+        const data = await api(`/patients/${S.pid}/companion/memory/export`, "POST");
+        const url = URL.createObjectURL(
+          new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
+        );
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "neurotwin-companion-memory.json";
+        document.body.append(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        note("Companion memory download prepared. Keep the file private.");
+      });
   if ($("#forgetMemory"))
     $("#forgetMemory").onclick = () =>
       guard(async () => {
