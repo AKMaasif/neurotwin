@@ -1,0 +1,28 @@
+{
+  "source": "https://zenodo.org/records/3962060",
+  "doi": "10.5061/dryad.02v6wwpzr",
+  "authors": ["David Bissig", "Deniz Erten-Lyons", "Helmi Lutsep", "Jeffrey Kaye"],
+  "license": "CC0-1.0",
+  "archive": "ENGLISH_VERSION_VALIDATED.zip",
+  "archive_md5": "0ae0e112078d4b792a2921243b03f3e5",
+  "source_version": "SATURN_0-4-0_ENGLISH.py",
+  "source_sha256": "17686678ad2939a2615156fcf8335601f79afeef0ad00d18c602bb9eb0bf541d",
+  "assets": [
+    {
+      "file": "_drawings_01.png",
+      "sha256": "1ca466ec2a4da35334ca8683b6c935f756f2bc836af671b93be8492005985371"
+    },
+    {
+      "file": "_drawings_02.png",
+      "sha256": "d40e7e094959a6c45c56eb1253e84f7c9ce3732f368fe4641f831b29a9229fed"
+    },
+    {
+      "file": "_drawings_03.png",
+      "sha256": "4d284ba2483c0d830cad5c6d20ef64940446b3710f42370ed74384eb20307094"
+    },
+    {
+      "file": "_drawings_04.png",
+      "sha256": "980a57ae55ae98ee5c9cdf030954b068e3ca0b2e171febbf4e9b500427088872"
+    }
+  ]
+}

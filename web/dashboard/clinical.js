@@ -127,7 +127,7 @@ function renderClinicalPatient() {
     .map((d) => `<option value="${d.id}">${esc(d.payload.title)} · v${d.version}</option>`)
     .join(
       "",
-    )}</select></label><label>Instruction<textarea name="instructions" maxlength="1500" required></textarea></label><button>Save draft</button></form></section></div>${renderResearchPanel()}${renderIotSimulation()}<section class="card"><h2>Research model results</h2><p class="muted">Illustrative research output. Not a validated diagnosis, clinical score or referral decision.</p>${
+    )}</select></label><label>Instruction<textarea name="instructions" maxlength="1500" required></textarea></label><button>Save draft</button></form></section></div>${renderAssessmentPanel()}${renderResearchPanel()}${renderIotSimulation()}<section class="card"><h2>Research model results</h2><p class="muted">Illustrative research output. Not a validated diagnosis, clinical score or referral decision.</p>${
     rows("model")
       .map(
         (model) =>

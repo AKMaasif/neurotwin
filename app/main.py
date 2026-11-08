@@ -23,6 +23,7 @@ from .account_password import router as account_password_router
 from .account_sessions import router as account_sessions_router
 from .agents import AGENTS
 from .ai import ProviderUnavailable, gateway
+from .assessments import router as assessment_router
 from .camera_assistance import router as camera_router
 from .care_export import router as care_export_router
 from .care_logging import install as install_care_logging
@@ -92,6 +93,7 @@ app.add_middleware(
 )
 app.include_router(report_router)
 app.include_router(research_router)
+app.include_router(assessment_router)
 app.include_router(iot_simulation_router)
 app.include_router(camera_router)
 app.include_router(account_sessions_router)

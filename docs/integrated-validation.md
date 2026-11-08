@@ -38,3 +38,8 @@ The current application code is based on committed revision `89db79b`; this veri
 
 
 This checkpoint precedes the participant care-summary export. The later feature has its own incremental evidence in `docs/care-summary-export.md`; the current default browser profile has 19 configured flows. The recorded 18-flow run above is historical checkpoint evidence, not a claim that the new export was part of that run.
+
+
+## Assessment delivery checkpoint — 8 November 2026
+
+The later working-tree assessment milestone passed the complete current suite: **500 passed, 4 expected SQLite-only skips** (504 collected), plus all **20 default isolated browser flows**. This supersedes the earlier checkpoint for current engineering coverage without changing its historical figures. The new skip is concurrent assessment assignment, whose PostgreSQL variant passed. Full evidence, adaptation limitations and reproduction: [Assessment verification](assessment-verification.md). Clinical approval/validation and real-device/intended-user testing remain external.

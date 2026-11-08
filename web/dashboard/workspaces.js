@@ -69,6 +69,7 @@ function workspaceWritesBusy() {
     S.reportBusy ||
     S.routineSending ||
     S.researchBusy ||
+    S.assessmentBusy ||
     S.iotBusy ||
     S.cameraBusy ||
     S.careExportBusy ||

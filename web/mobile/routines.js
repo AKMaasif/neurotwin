@@ -475,7 +475,12 @@ setInterval(async () => {
       JSON.stringify(data.routines) +
         JSON.stringify(data.occurrences) +
         JSON.stringify(data.reminders);
-    if (changed && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName))
+    if (
+      changed &&
+      !S.assessmentActive &&
+      !S.assessmentBusy &&
+      !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)
+    )
       render();
     await pollRoutineNotifications();
   } catch {
@@ -488,6 +493,6 @@ window.addEventListener("online", () => {
   if (S.user)
     guard(async () => {
       await flushOfflineActions();
-      await refresh();
+      if (!S.assessmentActive && !S.assessmentBusy) await refresh();
     });
 });

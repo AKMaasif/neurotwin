@@ -215,6 +215,7 @@ function bind() {
   );
 
   bindWorkspacePicker();
+  bindAssessments();
   bindResearchSessions();
   bindAccountSessions();
   bindCareExport();
@@ -410,6 +411,7 @@ setInterval(async () => {
     !S.data ||
     syncing ||
     S.busy ||
+    S.assessmentBusy ||
     S.reportBusy ||
     S.care?.busy ||
     careVoiceBusy() ||
@@ -426,7 +428,11 @@ setInterval(async () => {
   syncing = true;
   try {
     const d = await api(`/patients/${S.pid}/changes`);
-    if (revision && revision !== d.revision) await refresh();
+    if (revision && revision !== d.revision) {
+      // A workspace refresh must never replace a live timed activity.
+      if (S.assessmentActive) return;
+      await refresh();
+    }
     if (S.user?.id !== actor || S.workspaceEpoch !== workspaceEpoch) return;
     revision = d.revision;
   } catch (e) {

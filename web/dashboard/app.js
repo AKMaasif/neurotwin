@@ -153,6 +153,7 @@ function bind() {
     region.setAttribute("aria-label", "Scrollable evidence table");
   });
   bindWorkspacePicker();
+  bindAssessments();
   bindResearchSessions();
   bindAccountSessions();
   bindIotSimulation();
@@ -335,6 +336,7 @@ setInterval(async () => {
     S.sourceBusy ||
     S.draftBusy ||
     S.reportBusy ||
+    S.assessmentBusy ||
     S.care?.busy ||
     careVoiceBusy() ||
     careAudioPlaying() ||

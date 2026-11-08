@@ -1,0 +1,151 @@
+.assessment-panel {
+  margin-block: 1rem;
+  min-width: 0;
+}
+.assessment-panel h2 {
+  font-size: 1.35rem;
+}
+.assessment-panel h4 {
+  font-size: 1.15rem;
+  line-height: 1.55;
+  margin-block: 1rem;
+}
+.assessment-panel p {
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.assessment-panel form {
+  display: grid;
+  gap: 1rem;
+  margin-block: 1rem;
+}
+.assessment-panel label {
+  display: grid;
+  gap: 0.5rem;
+  line-height: 1.5;
+}
+.assessment-panel input,
+.assessment-panel select,
+.assessment-panel textarea {
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+  min-height: 48px;
+  padding: 0.7rem;
+  border: 1px solid #bab3cf;
+  border-radius: 12px;
+  background: #fff;
+  color: #202034;
+}
+.assessment-panel button {
+  min-height: 48px;
+  padding: 0.8rem 1rem;
+  font: inherit;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  margin: 0.3rem 0.2rem;
+}
+.assessment-panel .assessment-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+}
+.assessment-check input[type="checkbox"] {
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  flex: 0 0 24px;
+  margin-top: 0.15rem;
+}
+.assessment-session {
+  margin-block: 1rem;
+  padding: 1rem;
+  border: 1px solid #e7e1f5;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 5px 20px #5946a608;
+}
+.assessment-panel progress {
+  width: 100%;
+  accent-color: #7435ed;
+  height: 12px;
+}
+.assessment-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin-block: 1rem;
+}
+.assessment-choices button {
+  background: #f6f3ff;
+  color: #342067;
+  border: 1px solid #c3b5e9;
+  margin: 0;
+}
+.assessment-choices button[aria-pressed="true"] {
+  background: #6332cf;
+  border-color: #6332cf;
+  color: white;
+  box-shadow: inset 0 0 0 2px white;
+}
+.assessment-trail {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.assessment-trail button {
+  min-height: 64px;
+  border-radius: 50%;
+  font-weight: 700;
+}
+.assessment-word {
+  font-size: clamp(2rem, 8vw, 3rem);
+  font-weight: 750;
+  text-align: center;
+  padding: 1rem;
+  background: white;
+  border: 1px solid #ded7ed;
+  border-radius: 16px;
+}
+.assessment-stimulus {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin-block: 1rem;
+}
+.assessment-panel pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 28rem;
+  overflow: auto;
+  background: #f5f5fa;
+  padding: 1rem;
+  font-size: 0.9rem;
+}
+.assessment-review-item {
+  border-bottom: 1px solid #e5dfef;
+  padding-block: 0.8rem;
+}
+.assessment-panel :focus-visible {
+  outline: 3px solid #462099;
+  outline-offset: 3px;
+}
+.assessment-panel button:disabled {
+  opacity: 0.65;
+}
+.check-availability[hidden],
+.check-explanation[hidden] {
+  display: none;
+}
+@media (max-width: 360px) {
+  .assessment-session {
+    padding: 0.7rem;
+  }
+  .assessment-panel button {
+    margin-inline: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .assessment-panel * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

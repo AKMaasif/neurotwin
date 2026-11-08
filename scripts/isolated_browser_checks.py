@@ -27,6 +27,7 @@ DEFAULT_CHECKS = [
     "care_pages_browser_check",
     "family_reports_design_check",
     "research_browser_check",
+    "assessment_browser_check",
     "iot_browser_check",
     "camera_browser_check",
     "account_sessions_browser_check",

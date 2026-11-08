@@ -105,7 +105,7 @@ const wait = async (page, fn) => {
     assert(await page.evaluate(() => document.documentElement.classList.contains("large")));
     steps.push("text-size preference is saved through the backend and survives a reload");
     await page.getByRole("button", { name: "My Check", exact: true }).click();
-    await page.getByText("NOT AVAILABLE IN THIS BUILD", { exact: true }).waitFor();
+    await page.getByText("CARE-TEAM ASSIGNMENT REQUIRED", { exact: true }).waitFor();
     assert.equal(
       await page.getByRole("button", { name: /start assessment|begin test/i }).count(),
       0,

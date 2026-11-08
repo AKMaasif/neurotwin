@@ -183,3 +183,6 @@ Authorized patient switching, clinician plan/case review and participant privacy
 [Integrated verification](docs/integrated-validation.md) records the full SQLite/PostgreSQL regression and the isolated browser validation profile, including synthetic media setup and the distinction between software, clinical and production validation.
 
 [Participant care-summary export](docs/care-summary-export.md) provides a confirmed, permission-scoped JSON download of approved support records, with explicit exclusions and no clinical-record completeness claim.
+
+
+[SATURN-derived research activities](docs/assessment-selection-and-implementation.md) now connect clinician assignment, explicit participant consent, 20 scored activity groups, response/timing capture, deterministic provisional scoring and independent clinician review. This is a separately labelled unvalidated English adaptation, restricted server-side to synthetic workspaces. It is not an approved mobile SATURN instrument or a diagnosis. Clinical authorization, population/device validation and real-patient enrollment remain external.

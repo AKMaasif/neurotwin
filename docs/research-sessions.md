@@ -1,6 +1,6 @@
 # Synthetic research session boundary
 
-The session API implements workflow storage, not a clinical assessment or a sensor capture instrument. It preserves the existing mobile reference design and the honest My Check unavailable state.
+The session API implements workflow storage, not a clinical assessment or a sensor capture instrument. It remains a separate software-only panel alongside the newer SATURN-derived research activities described below. Both preserve the existing mobile reference design; qualified clinical assessment remains gated.
 
 ## Contract
 
@@ -33,3 +33,8 @@ The shared panel uses the existing patient/actor-scoped API helper and a DOM/pat
 The consent checkbox is required and unchecked by default. Completion requires explicit self-reported quality, administration mode and device category; none is inferred from the browser or presented as a medical measurement. Withdrawal has a confirmation describing retention. The available video administration category records an externally conducted session; it does not connect video calling.
 
 Browser verification: `research_browser_check` passed **9 scenarios**, covering assignment/consent/completion/withdrawal, required fields, family denial, phone/tablet/desktop reflow and enlarged text, failed-request recovery, access-denial clearing and delayed-response isolation. Reports and screenshots are under ignored `test-results/research-ui/`. The initial browser fixture helper was corrected to handle the empty HTML `open` attribute and to avoid navigating family users to a participant-only tab; no application authorization was relaxed. Existing core, companion, care-page and clinical-design checks are also run in isolated fresh databases. Backend session/capture/workspace tests were rerun: **28 passed** across SQLite and PostgreSQL. Formatting, Ruff and whitespace checks pass. This remains local synthetic verification, not clinical or physical-device validation.
+
+
+## Separate assessment module — 8 November 2026
+
+The legacy software-only session API above is preserved unchanged. The new `/api/patients/{pid}/assessments` module adds actual SATURN-derived research tasks, distinct consent, evidence and deterministic scoring with clinical review. Its adaptation and clinical-use limits are documented in `assessment-selection-and-implementation.md`. The historical unavailable-state descriptions above predate this module. Qualified clinical approval and validation remain outstanding.
