@@ -55,4 +55,4 @@ The isolated browser runner needs installed Playwright Chromium (or `PLAYWRIGHT_
 
 For the multi-patient fixture, use a dedicated `DATABASE_URL=sqlite:///./data/workspace-browser-<unique>.db`, run `uv run python -m scripts.seed_workspace_browser`, start that API, then run `node scripts/workspace_browser_check.cjs` with its base URL. This script intentionally revokes synthetic family grants; use a new isolated fixture when repeating it.
 
-Formatting, Ruff and JavaScript checks passed. Screenshots were inspected for the new patient and limited-access surfaces. Production identity/enrollment, trained clinical models, licensed assessments, real-device/speech validation, background delivery, calling, IoT/camera workflows and operational deployment gates remain outstanding.
+Formatting, Ruff and JavaScript checks passed. Screenshots were inspected for the new patient and limited-access surfaces. Production identity/enrollment, trained clinical models, licensed assessments, real-device/speech validation, background delivery, calling, /camera workflows and operational deployment gates remain outstanding.

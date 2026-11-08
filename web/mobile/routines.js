@@ -8,7 +8,7 @@ async function updateRoutineData() {
   return true;
 }
 function routineTime(value, zone) {
-  return new Intl.DateTimeFormat("en", {
+  return new Intl.DateTimeFormat(ntLocale() === "ar" ? "ar-AE" : "en", {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: zone,
@@ -26,17 +26,17 @@ function renderDailyActivities(limit = null) {
     ? data.occurrences.filter((o) => notices.some((n) => n.occurrence_id === o.id))
     : data.occurrences.filter(activeOccurrence).slice(0, 4);
   const occurrences = limit ? selectedOccurrences.slice(0, limit) : selectedOccurrences;
-  return `${S.offlineActions?.length ? `<section class="card offline-actions" role="status"><h2>${S.offlineActions.length} response(s) saved on this device</h2><p>They are not confirmed by the server yet.</p>${S.offlineActions.map((x) => `<p>${x.conflict ? "Needs review: the activity or your access changed." : "Waiting to reconnect."} <button data-discard-offline="${x.id}">Discard queued response</button></p>`).join("")}</section>` : ""}${occurrences
+  return `${S.offlineActions?.length ? ntUi`<section class="card offline-actions" role="status"><h2>${S.offlineActions.length} response(s) saved on this device</h2><p>They are not confirmed by the server yet.</p>${S.offlineActions.map((x) => ntUi`<p>${x.conflict ? ntTr("Needs review: the activity or your access changed.") : ntTr("Waiting to reconnect.")} <button data-discard-offline="${x.id}">Discard queued response</button></p>`).join("")}</section>` : ""}${occurrences
     .map((o) => {
       const r = data.routines.find((r) => r.id === o.routine_id),
         ns = notices.filter((n) => n.occurrence_id === o.id);
-      return `<section class="card routine-activity ${ns.length ? "hero" : ""}"><div class="eyebrow">${family ? "FAMILY FOLLOW-UP" : "DATED ACTIVITY"} · ${esc(o.local_date)}</div><h2>${esc(o.task.title)}</h2><p>${esc(routineTime(o.scheduled_at, r.payload.timezone))}<br><span class="muted">${esc(r.payload.timezone)}</span></p><p>${family ? "The activity has not been confirmed. This does not prove it was missed." : o.status === "snoozed" ? "Remind again at " + esc(routineTime(o.reminder_at, r.payload.timezone)) : "Not yet confirmed by you."}</p>${o.resolution === "shifted_to_valid_minute" ? '<p class="muted">Adjusted to the first valid local minute because the clock changed.</p>' : ""}${!family && S.data.scopes.includes("respond") ? `<div class="actions"><button class="primary" data-routine-response="completed" data-occurrence="${o.id}">Done</button><button data-routine-response="snooze" data-occurrence="${o.id}">Remind me in 15 minutes</button><button data-routine-help="${o.id}">Ask for help</button></div>` : ""}${ns.map((n) => `<div class="reminder-evidence"><p class="muted">Reminder: ${esc(n.state.replaceAll("_", " "))}${n.device_states.length ? " · Browser: " + esc(n.device_states.join(", ")) : ""}</p><button data-ack-reminder="${n.id}">I have seen this reminder</button><p class="muted">Acknowledging does not complete the activity.</p></div>`).join("")}${o.help_status ? `<p class="muted">Help request: ${esc(o.help_status)}${o.help_status === "requested" ? " · no responsibility accepted yet" : ""}</p>` : ""}${family ? '<button data-tab="support">Review and accept the help request</button>' : ""}</section>`;
+      return ntUi`<section class="card routine-activity ${ns.length ? "hero" : ""}"><div class="eyebrow">${family ? ntTr("FAMILY FOLLOW-UP") : ntTr("DATED ACTIVITY")} · ${esc(o.local_date)}</div><h2>${esc(o.task.title)}</h2><p>${esc(routineTime(o.scheduled_at, r.payload.timezone))}<br><span class="muted">${esc(r.payload.timezone)}</span></p><p>${family ? ntTr("The activity has not been confirmed. This does not prove it was missed.") : o.status === "snoozed" ? "Remind again at " + esc(routineTime(o.reminder_at, r.payload.timezone)) : ntTr("Not yet confirmed by you.")}</p>${o.resolution === "shifted_to_valid_minute" ? ntUi('<p class="muted">Adjusted to the first valid local minute because the clock changed.</p>') : ""}${!family && S.data.scopes.includes("respond") ? ntUi`<div class="actions"><button class="primary" data-routine-response="completed" data-occurrence="${o.id}">Done</button><button data-routine-response="snooze" data-occurrence="${o.id}">Remind me in 15 minutes</button><button data-routine-help="${o.id}">Ask for help</button></div>` : ""}${ns.map((n) => ntUi`<div class="reminder-evidence"><p class="muted">Reminder: ${esc(n.state.replaceAll("_", " "))}${n.device_states.length ? " · Browser: " + esc(n.device_states.join(", ")) : ""}</p><button data-ack-reminder="${n.id}">I have seen this reminder</button><p class="muted">Acknowledging does not complete the activity.</p></div>`).join("")}${o.help_status ? ntUi`<p class="muted">Help request: ${esc(o.help_status)}${o.help_status === "requested" ? " · no responsibility accepted yet" : ""}</p>` : ""}${family ? ntUi('<button data-tab="support">Review and accept the help request</button>') : ""}</section>`;
     })
     .join("")}${S.helpOccurrence ? renderRoutineHelp() : ""}`;
 }
 function renderRoutineHelp() {
   const family = S.contacts.filter((c) => c.role === "family");
-  return `<section class="card"><h2>Who would you like help from?</h2><form id="routineHelp"><label>Family contact<select name="recipient_id" required>${family.map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("")}</select></label><button class="primary" ${family.length ? "" : "disabled"}>Confirm and ask for help</button><button type="button" id="cancelRoutineHelp">Cancel</button></form>${family.length ? "" : "<p>No authorized family contact is available. Ask your care team to review sharing.</p>"}</section>`;
+  return ntUi`<section class="card"><h2>Who would you like help from?</h2><form id="routineHelp"><label>Family contact<select name="recipient_id" required>${family.map((c) => ntUi`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("")}</select></label><button class="primary" ${family.length ? "" : "disabled"}>Confirm and ask for help</button><button type="button" id="cancelRoutineHelp">Cancel</button></form>${family.length ? "" : ntUi("<p>No authorized family contact is available. Ask your care team to review sharing.</p>")}</section>`;
 }
 function scheduleFields(value = {}) {
   const zone = value.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Dubai";
@@ -48,7 +48,7 @@ function scheduleFields(value = {}) {
   }).format(new Date());
   const end = new Date();
   end.setDate(end.getDate() + 30);
-  return `<label>Time zone<input name="timezone" value="${esc(zone)}" list="timezones" required><datalist id="timezones"><option>Asia/Dubai</option><option>Asia/Riyadh</option><option>Asia/Colombo</option></datalist></label><label>Local reminder time<input name="local_time" type="time" value="${esc(value.local_time || "09:00")}" required></label><div class="schedule-dates"><label>Start date<input name="start_date" type="date" value="${esc(value.start_date || date)}" required></label><label>End date<input name="end_date" type="date" value="${esc(value.end_date || end.toISOString().slice(0, 10))}" required></label></div><fieldset><legend>Days</legend><div class="weekday-options">${["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d, i) => `<label><input type="checkbox" name="weekdays" value="${i}" ${(value.weekdays || [0, 1, 2, 3, 4, 5, 6]).includes(i) ? "checked" : ""}>${d}</label>`).join("")}</div></fieldset>`;
+  return ntUi`<label>Time zone<input name="timezone" value="${esc(zone)}" list="timezones" required><datalist id="timezones"><option>Asia/Dubai</option><option>Asia/Riyadh</option><option>Asia/Colombo</option></datalist></label><label>Local reminder time<input name="local_time" type="time" value="${esc(value.local_time || "09:00")}" required></label><div class="schedule-dates"><label>Start date<input name="start_date" type="date" value="${esc(value.start_date || date)}" required></label><label>End date<input name="end_date" type="date" value="${esc(value.end_date || end.toISOString().slice(0, 10))}" required></label></div><fieldset><legend>Days</legend><div class="weekday-options">${["Mon", ntTr("Tue"), ntTr("Wed"), ntTr("Thu"), ntTr("Fri"), ntTr("Sat"), ntTr("Sun")].map((d, i) => ntUi`<label><input type="checkbox" name="weekdays" value="${i}" ${(value.weekdays || [0, 1, 2, 3, 4, 5, 6]).includes(i) ? "checked" : ""}>${d}</label>`).join("")}</div></fieldset>`;
 }
 function scheduleBody(form) {
   const f = new FormData(form);
@@ -73,34 +73,34 @@ function renderRoutineManager() {
             !p.payload.source_review_required,
         ),
     );
-  return `<section class="card routine-manager"><h2>Daily routines</h2><p>Use approved activities at the times you choose. Alerts here require the app to be open; the reminder worker runs on the server.</p><div class="reference-routine-filters" role="group" aria-label="Filter scheduled routines">${[
-    ["all", "All", routines.length],
+  return ntUi`<section class="card routine-manager"><h2>Daily routines</h2><p>Use approved activities at the times you choose. Alerts here require the app to be open; the reminder worker runs on the server.</p><div class="reference-routine-filters" role="group" aria-label="Filter scheduled routines">${[
+    ["all", ntTr("All"), routines.length],
     [
       "awaiting_consent",
-      "Awaiting",
+      ntTr("Awaiting"),
       routines.filter((r) => r.status === "awaiting_consent").length,
     ],
-    ["active", "Active", routines.filter((r) => r.status === "active").length],
+    ["active", ntTr("Active"), routines.filter((r) => r.status === "active").length],
   ]
     .map(
       ([state, label, count]) =>
-        `<button data-routine-filter="${state}" aria-pressed="${(S.routineFilter || "all") === state}">${label} (${count})</button>`,
+        ntUi`<button data-routine-filter="${state}" aria-pressed="${(S.routineFilter || "all") === state}">${label} (${count})</button>`,
     )
     .join(
       "",
-    )}</div><p class="routine-filter-empty" role="status" hidden>No routines match this filter.</p><div class="routine-list">${routines.map((r) => `<article class="routine-row" data-routine-state="${esc(r.status)}"><h3><span class="routine-title-icon" aria-hidden="true">${icon("plan")}</span>${esc(r.payload.title)}</h3><details class="routine-details"><summary aria-label="Routine details">•••</summary><div class="routine-popover"><small class="routine-identifier">Routine ${esc(r.id)}</small><p class="routine-sharing-note">${r.payload.family_followup ? "Family follow-up is allowed after " + r.payload.grace_minutes + " minutes without confirmation." : "Automatic family follow-up is off."}</p></div></details><p>${esc(r.payload.local_time)} · ${esc(r.payload.timezone)} <span class="routine-state" data-state="${esc(r.status)}">${esc(r.status.replaceAll("_", " "))}</span></p><p class="muted">${esc(r.payload.start_date)} to ${esc(r.payload.end_date)}</p><button data-consent-routine="${r.id}">${r.status === "awaiting_consent" ? "Review proposed routine" : "Timing, sharing and pause controls"}</button>${S.editRoutine === r.id ? renderRoutineControls(r) : ""}</article>`).join("") || "<p>No recurring routine has been set.</p>"}</div><details><summary>Set a routine for an approved activity</summary><form id="newRoutine"><label>Approved activity<select name="template_id" required>${templates
+    )}</div><p class="routine-filter-empty" role="status" hidden>No routines match this filter.</p><div class="routine-list">${routines.map((r) => ntUi`<article class="routine-row" data-routine-state="${esc(r.status)}"><h3><span class="routine-title-icon" aria-hidden="true">${icon("plan")}</span>${esc(r.payload.title)}</h3><details class="routine-details"><summary aria-label="Routine details">•••</summary><div class="routine-popover"><small class="routine-identifier">Routine ${esc(r.id)}</small><p class="routine-sharing-note">${r.payload.family_followup ? "Family follow-up is allowed after " + r.payload.grace_minutes + " minutes without confirmation." : ntTr("Automatic family follow-up is off.")}</p></div></details><p>${esc(r.payload.local_time)} · ${esc(r.payload.timezone)} <span class="routine-state" data-state="${esc(r.status)}">${esc(r.status.replaceAll("_", " "))}</span></p><p class="muted">${esc(r.payload.start_date)} to ${esc(r.payload.end_date)}</p><button data-consent-routine="${r.id}">${r.status === "awaiting_consent" ? ntTr("Review proposed routine") : ntTr("Timing, sharing and pause controls")}</button>${S.editRoutine === r.id ? renderRoutineControls(r) : ""}</article>`).join("") || ntUi("<p>No recurring routine has been set.</p>")}</div><details><summary>Set a routine for an approved activity</summary><form id="newRoutine"><label>Approved activity<select name="template_id" required>${templates
     .filter((t) => !routines.some((r) => r.template_id === t.id))
-    .map((t) => `<option value="${t.id}">${esc(t.payload.title)}</option>`)
+    .map((t) => ntUi`<option value="${t.id}">${esc(t.payload.title)}</option>`)
     .join(
       "",
     )}</select></label>${scheduleFields()}<p class="muted">Quiet hours start at 21:00 and end at 07:00 by default. Automatic follow-up stays off until you choose a family contact.</p><button class="primary" ${templates.some((t) => !routines.some((r) => r.template_id === t.id)) ? "" : "disabled"}>Confirm routine</button></form></details></section>`;
 }
 function renderRoutineControls(r) {
   const family = S.contacts.filter((c) => c.role === "family");
-  return `<form class="routine-consent" data-routine="${r.id}"><label class="check-label"><input name="active" type="checkbox" ${r.status === "active" ? "checked" : ""}> Run this routine</label><label class="check-label"><input name="family_followup" type="checkbox" ${r.payload.family_followup ? "checked" : ""}> Ask my chosen family contact to check in if this activity stays unconfirmed</label><label>Family contact<select name="recipient_id"><option value="">Choose a contact</option>${family.map((c) => `<option value="${esc(c.id)}" ${c.id === r.payload.recipient_id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></label><label>Wait this many minutes before follow-up<input type="number" name="grace_minutes" min="15" max="1440" value="${r.payload.grace_minutes}"></label><div class="schedule-dates"><label>Quiet hours start<input type="time" name="quiet_start" value="${r.payload.quiet_start}" required></label><label>Quiet hours end<input type="time" name="quiet_end" value="${r.payload.quiet_end}" required></label></div><p class="muted">Quiet hours use ${esc(r.payload.timezone)}. No emergency service is contacted. A missing response is not proof of a missed activity.</p><button class="primary">Confirm routine choices</button></form><details><summary>Change the time or date range</summary><form class="routine-schedule" data-routine="${r.id}">${scheduleFields(r.payload)}<button>Confirm timing change</button></form></details>`;
+  return ntUi`<form class="routine-consent" data-routine="${r.id}"><label class="check-label"><input name="active" type="checkbox" ${r.status === "active" ? "checked" : ""}> Run this routine</label><label class="check-label"><input name="family_followup" type="checkbox" ${r.payload.family_followup ? "checked" : ""}> Ask my chosen family contact to check in if this activity stays unconfirmed</label><label>Family contact<select name="recipient_id"><option value="">Choose a contact</option>${family.map((c) => ntUi`<option value="${esc(c.id)}" ${c.id === r.payload.recipient_id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></label><label>Wait this many minutes before follow-up<input type="number" name="grace_minutes" min="15" max="1440" value="${r.payload.grace_minutes}"></label><div class="schedule-dates"><label>Quiet hours start<input type="time" name="quiet_start" value="${r.payload.quiet_start}" required></label><label>Quiet hours end<input type="time" name="quiet_end" value="${r.payload.quiet_end}" required></label></div><p class="muted">Quiet hours use ${esc(r.payload.timezone)}. No emergency service is contacted. A missing response is not proof of a missed activity.</p><button class="primary">Confirm routine choices</button></form><details><summary>Change the time or date range</summary><form class="routine-schedule" data-routine="${r.id}">${scheduleFields(r.payload)}<button>Confirm timing change</button></form></details>`;
 }
 function renderNotificationSettings() {
-  return `<section class="card"><h2>Device notifications</h2><p>In-app reminders work without browser permission. You can also request generic device alerts while this app is open and visible. No background push, SMS or emergency delivery is connected.</p><button id="enableRoutineNotifications">Enable notifications on this device</button><button id="disableRoutineNotifications">Turn device alerts off</button><p class="muted">${window.Notification ? "Browser permission: " + esc(Notification.permission) : "This browser does not support notifications."} Device alerts contain no activity title or patient name.</p></section>`;
+  return ntUi`<section class="card"><h2>Device notifications</h2><p>In-app reminders work without browser permission. You can also request generic device alerts while this app is open and visible. No background push, SMS or emergency delivery is connected.</p><button id="enableRoutineNotifications">Enable notifications on this device</button><button id="disableRoutineNotifications">Turn device alerts off</button><p class="muted">${window.Notification ? "Browser permission: " + esc(Notification.permission) : ntTr("This browser does not support notifications.")} Device alerts contain no activity title or patient name.</p></section>`;
 }
 async function queueDatabase() {
   if (!window.indexedDB)
@@ -159,7 +159,9 @@ async function submitRoutineResponse(oid, response, recipient = null) {
   await loadOfflineActions();
   if (S.offlineActions.some((x) => x.occurrence_id === oid)) {
     note(
-      "A response for this activity is already waiting on this device. Review it before adding another.",
+      ntTr(
+        "A response for this activity is already waiting on this device. Review it before adding another.",
+      ),
     );
     return;
   }
@@ -193,18 +195,18 @@ async function submitRoutineResponse(oid, response, recipient = null) {
     o.task.status = response === "snooze" ? "deferred" : response;
     S.helpOccurrence = null;
     await refresh();
-    note("Your response was confirmed by the server.");
+    note(ntTr("Your response was confirmed by the server."));
   } catch (e) {
     if (committed) {
       render();
-      note("Your response was saved. Reconnect to refresh the remaining details.");
+      note(ntTr("Your response was saved. Reconnect to refresh the remaining details."));
       return;
     }
     if (e instanceof TypeError || !navigator.onLine || e.status >= 500) {
       await queueOperation("put", packet);
       await loadOfflineActions();
       render();
-      note("Saved on this device. It is not yet confirmed by the server.");
+      note(ntTr("Saved on this device. It is not yet confirmed by the server."));
     } else throw e;
   } finally {
     S.routineSending = false;
@@ -253,18 +255,18 @@ async function deviceId() {
 }
 async function enableRoutineNotifications() {
   if (!window.Notification || !navigator.serviceWorker || !window.isSecureContext) {
-    note("Device notifications are unavailable here. In-app reminders still work.");
+    note(ntTr("Device notifications are unavailable here. In-app reminders still work."));
     return;
   }
   const permission = await Notification.requestPermission();
   if (permission !== "granted" || Notification.permission !== "granted") {
-    note("Notifications were not enabled. In-app reminders still work.");
+    note(ntTr("Notifications were not enabled. In-app reminders still work."));
     return;
   }
   await navigator.serviceWorker.register("/mobile/notification-worker.js", { scope: "/mobile/" });
   await navigator.serviceWorker.ready;
   localStorage.setItem("nt-notify:" + S.user.id, "on");
-  note("Device alerts are enabled while this app is open.");
+  note(ntTr("Device alerts are enabled while this app is open."));
   await pollRoutineNotifications();
 }
 async function closeDeviceNotifications() {
@@ -306,7 +308,7 @@ async function pollRoutineNotifications() {
       if (!claimed.claimed) continue;
       try {
         await reg.showNotification("NeuroTwin reminder", {
-          body: "Open NeuroTwin to review an activity or a support request.",
+          body: ntTr("Open NeuroTwin to review an activity or a support request."),
           tag: "nt-" + n.id + "-" + n.version,
           data: { path: "/mobile/" },
           silent: true,
@@ -367,7 +369,7 @@ function bindRoutines() {
             action: "acknowledge",
           });
           await refresh();
-          note("Reminder acknowledged. Activity completion has not changed.");
+          note(ntTr("Reminder acknowledged. Activity completion has not changed."));
         })),
   );
   document.querySelectorAll("[data-consent-routine]").forEach(
@@ -390,7 +392,7 @@ function bindRoutines() {
           template_version: task.version,
         });
         await refresh();
-        note("Routine confirmed. The server worker will create dated activities.");
+        note(ntTr("Routine confirmed. The server worker will create dated activities."));
       });
     };
   document.querySelectorAll(".routine-consent").forEach(
@@ -410,7 +412,7 @@ function bindRoutines() {
             quiet_end: f.get("quiet_end"),
           });
           await refresh();
-          note("Your routine and follow-up choices were saved.");
+          note(ntTr("Your routine and follow-up choices were saved."));
         });
       }),
   );
@@ -425,7 +427,7 @@ function bindRoutines() {
             expected_version: r.version,
           });
           await refresh();
-          note("Routine timing updated. Old pending reminders were cancelled.");
+          note(ntTr("Routine timing updated. Old pending reminders were cancelled."));
         });
       }),
   );
@@ -445,7 +447,7 @@ function bindRoutines() {
       guard(async () => {
         localStorage.removeItem("nt-notify:" + S.user.id);
         await closeDeviceNotifications();
-        note("Device alerts turned off for this account.");
+        note(ntTr("Device alerts turned off for this account."));
       });
 }
 let routinesPolling = false;

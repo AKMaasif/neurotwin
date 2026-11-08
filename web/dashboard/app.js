@@ -31,7 +31,7 @@ async function api(path, method = "GET", body) {
       (d.detail.startsWith("Session account changed") || d.detail === "Invalid CSRF token")
     )
       careSessionChanged();
-    const error = new Error(typeof d.detail === "string" ? d.detail : "Request failed");
+    const error = new Error(typeof d.detail === "string" ? d.detail : ntTr("Request failed"));
     error.status = r.status;
     throw error;
   }
@@ -39,7 +39,7 @@ async function api(path, method = "GET", body) {
   return d;
 }
 function note(t) {
-  $("#notice").textContent = t;
+  $("#notice").textContent = ntTr(t);
   $("#notice").style.display = "block";
   clearTimeout(note.timer);
   note.timer = setTimeout(() => ($("#notice").style.display = "none"), 6000);
@@ -80,7 +80,7 @@ async function refresh() {
 
 function login() {
   $("#app").innerHTML =
-    `<div class="login"><div class="eyebrow">NEUROTWIN CLINICAL</div><h1>Your review workspace</h1><p>Sign in with an assigned professional account.</p><form id="login"><label>Account<input name="username" value="clinician" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="primary">Sign in</button><p class="muted">Synthetic development accounts. Use your current password; the initial password is set in the server .env file.</p><p id="error" role="alert"></p></form></div>`;
+    ntUi`<div class="login"><div class="eyebrow">NEUROTWIN CLINICAL</div><h1>Your review workspace</h1><p>Sign in with an assigned professional account.</p><form id="login"><label>Account<input name="username" value="clinician" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="primary">Sign in</button><p class="muted">Synthetic development accounts. Use your current password; the initial password is set in the server .env file.</p><p id="error" role="alert"></p></form></div>`;
   $("#login").onsubmit = (e) => {
     e.preventDefault();
     guard(async () => {
@@ -99,47 +99,47 @@ function render() {
   const cases = rows("case");
   if (S.tab === "overview") content = renderClinicalOverview();
   if (S.tab === "account")
-    content = `<h1>Account security</h1><section class="card"><h2>${esc(S.user.name)}</h2>${renderAccountSessions()}</section>`;
+    content = ntUi`<h1>Account security</h1><section class="card"><h2>${esc(S.user.name)}</h2>${renderAccountSessions()}</section>`;
   if (S.tab === "queue") content = renderClinicalQueue();
   if (S.tab === "patient") content = renderClinicalPatient();
   if (S.tab === "sources") content = renderSourcePage();
   if (S.tab === "routines") content = renderClinicalRoutines();
   if (S.tab === "support")
-    content = `<h1>Family support requests</h1><p>Granted contacts and actual in-app ownership states.</p>${
+    content = ntUi`<h1>Family support requests</h1><p>Granted contacts and actual in-app ownership states.</p>${
       rows("help")
         .map(
           (h) =>
-            `<section class="card"><span class="badge">${esc(h.status)}</span><h2>${esc(h.payload.text)}</h2><p>From ${esc(h.payload.sender_id)} to ${esc(h.payload.recipient_id)}</p><p class="muted">In-app record saved. External messaging unavailable.</p></section>`,
+            ntUi`<section class="card"><span class="badge">${esc(h.status)}</span><h2>${esc(h.payload.text)}</h2><p>From ${esc(h.payload.sender_id)} to ${esc(h.payload.recipient_id)}</p><p class="muted">In-app record saved. External messaging unavailable.</p></section>`,
         )
-        .join("") || '<section class="card">No help requests.</section>'
+        .join("") || ntUi('<section class="card">No help requests.</section>')
     }`;
   if (S.tab === "messages") content = renderCareMessages();
   if (S.tab === "report") content = renderWeeklyReports();
   if (S.tab === "providers")
-    content = `<h1>Model connections</h1><section class="card"><h2>Verify account catalog</h2><p>Lists accessible models without running inference. Keys remain on the server.</p><button id="catalog">Check configured providers</button><pre id="catalogResult" class="source"></pre></section><section class="card"><h2>Routing boundaries</h2><p>Gemini Flash: structured app requests. Muse Spark standard: bounded drafting adapter. Pro: selected review tasks. Numerical results and permissions remain deterministic. No live provider inference has been certified by this interface.</p></section>`;
+    content = ntUi`<h1>Model connections</h1><section class="card"><h2>Verify account catalog</h2><p>Lists accessible models without running inference. Keys remain on the server.</p><button id="catalog">Check configured providers</button><pre id="catalogResult" class="source"></pre></section><section class="card"><h2>Routing boundaries</h2><p>Gemini Flash: structured app requests. Muse Spark standard: bounded drafting adapter. Pro: selected review tasks. Numerical results and permissions remain deterministic. No live provider inference has been certified by this interface.</p></section>`;
   if (S.tab === "audit")
-    content = `<h1>Access and action audit</h1><section class="card"><button id="loadAudit">Load current audit</button><div id="auditRows"></div></section>`;
+    content = ntUi`<h1>Access and action audit</h1><section class="card"><button id="loadAudit">Load current audit</button><div id="auditRows"></div></section>`;
   if (S.tab === "case") content = renderClinicalCase();
   if (S.tab === "case" && cases.some((c) => c.id === S.caseId && !c.payload.urgent_reported))
     content += renderEvidenceDrafts(S.caseId);
   $("#app").innerHTML =
-    `<a class="skip-link" href="#clinical-content">Skip to content</a><aside id="clinical-navigation" class="sidebar ${S.navOpen ? "nav-open" : ""}"><div class="brand">NeuroTwin<div class="eyebrow">CLINICAL MONITORING</div></div><span class="eyebrow">MONITOR</span>${[
-      ["overview", "Overview"],
-      ["queue", "Work queue"],
-      ["patient", "Patient workspace"],
-      ["sources", "Source verification"],
-      ["routines", "Daily routines"],
-      ["support", "Family support"],
-      ["messages", "Care messages"],
-      ["report", "Activity report"],
-      ["providers", "Model connections"],
-      ["audit", "Audit"],
-      ["account", "Account security"],
+    ntUi`<a class="skip-link" href="#clinical-content">Skip to content</a><aside id="clinical-navigation" class="sidebar ${S.navOpen ? "nav-open" : ""}"><div class="brand">NeuroTwin<div class="eyebrow">CLINICAL MONITORING</div></div><span class="eyebrow">MONITOR</span>${[
+      ["overview", ntTr("Overview")],
+      ["queue", ntTr("Work queue")],
+      ["patient", ntTr("Patient workspace")],
+      ["sources", ntTr("Source verification")],
+      ["routines", ntTr("Daily routines")],
+      ["support", ntTr("Family support")],
+      ["messages", ntTr("Care messages")],
+      ["report", ntTr("Activity report")],
+      ["providers", ntTr("Model connections")],
+      ["audit", ntTr("Audit")],
+      ["account", ntTr("Account security")],
     ]
       .filter(([key]) => clinicalTabAllowed(key))
       .map(
         ([k, n]) =>
-          `<button data-tab="${k}" class="${S.tab === k ? "active" : ""}" aria-current="${S.tab === k ? "page" : "false"}">${n}</button>`,
+          ntUi`<button data-tab="${k}" class="${S.tab === k ? "active" : ""}" aria-current="${S.tab === k ? "page" : "false"}">${n}</button>`,
       )
       .join(
         "",
@@ -153,10 +153,10 @@ function bind() {
     region.setAttribute("aria-label", "Scrollable evidence table");
   });
   bindWorkspacePicker();
+  bindModelBenchmark();
   bindAssessments();
   bindResearchSessions();
   bindAccountSessions();
-  bindIotSimulation();
   bindCareMessages();
   bindWeeklyReports();
   bindClinicalRoutines();
@@ -242,7 +242,7 @@ function bind() {
         await api(`/patients/${S.pid}/plans`, "POST", body);
         S.dirty = false;
         await refresh();
-        note("Draft saved. It is not active until reviewed and approved.");
+        note(ntTr("Draft saved. It is not active until reviewed and approved."));
       });
     };
   document.querySelectorAll("[data-approve]").forEach(
@@ -251,7 +251,7 @@ function bind() {
         const p = rows("plan").find((p) => p.id === b.dataset.approve);
         if (
           confirm(
-            `Approve revision ${p.version} of “${p.payload.title}”? This supersedes the previous plan. External dispatch is not connected.`,
+            ntText`Approve revision ${p.version} of “${p.payload.title}”? This supersedes the previous plan. External dispatch is not connected.`,
           )
         )
           guard(async () => {
@@ -261,7 +261,9 @@ function bind() {
             });
             await refresh();
             note(
-              "Approved revision saved. Mobile can refresh the current plan. No EHR dispatch occurred.",
+              ntTr(
+                "Approved revision saved. Mobile can refresh the current plan. No EHR dispatch occurred.",
+              ),
             );
           });
       }),
@@ -279,7 +281,7 @@ function bind() {
         });
         S.dirty = false;
         await refresh();
-        note("Decision recorded with your authenticated identity.");
+        note(ntTr("Decision recorded with your authenticated identity."));
       });
     };
   if ($("#catalog"))
@@ -294,7 +296,7 @@ function bind() {
         $("#auditRows").innerHTML = events
           .map(
             (a) =>
-              `<div class="stage"><strong>${esc(a.action)}</strong><span>${esc(a.actor)} · ${esc(new Date(a.created_at).toLocaleString())}</span></div>`,
+              ntUi`<div class="stage"><strong>${esc(a.action)}</strong><span>${esc(a.actor)} · ${esc(new Date(a.created_at).toLocaleString(ntIntlLocale()))}</span></div>`,
           )
           .join("");
       });
@@ -364,7 +366,7 @@ setInterval(async () => {
       S.reportId = null;
       S.reportEpoch = (S.reportEpoch || 0) + 1;
       login();
-      note("Access expired or changed. Sign in again.");
+      note(ntTr("Access expired or changed. Sign in again."));
     }
   } finally {
     syncing = false;

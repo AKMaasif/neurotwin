@@ -115,7 +115,8 @@ async function loadCareMessages() {
   }
 }
 const careRole = (role) =>
-  ({ participant: "Patient", family: "Family", clinician: "Clinician" })[role] || role;
+  ({ participant: ntTr("Patient"), family: ntTr("Family"), clinician: ntTr("Clinician") })[role] ||
+  role;
 function renderCareMessages() {
   return renderModernCare();
 }
@@ -200,7 +201,7 @@ function bindCareMessages() {
         reply_to_id: c.reply?.id || null,
       };
       if (!body.body || body.body.length > 2000) {
-        note("Write a message of 1 to 2,000 characters before sending.");
+        note(ntTr("Write a message of 1 to 2,000 characters before sending."));
         return;
       }
       c.pending[target] = body;
@@ -227,7 +228,7 @@ function bindCareMessages() {
         c.forceLatest = true;
         await loadCareInbox();
         await loadCareThread();
-        note("Message saved in app.");
+        note(ntTr("Message saved in app."));
       });
     };
   }
@@ -244,7 +245,7 @@ function bindCareMessages() {
         );
         await loadCareInbox();
         await loadCareThread(c.before);
-        note("Opening acknowledgement saved.");
+        note(ntTr("Opening acknowledgement saved."));
       });
     };
   bindChatFeatures();

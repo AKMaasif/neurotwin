@@ -11,7 +11,16 @@ from contextlib import asynccontextmanager
 from typing import Literal
 from urllib.parse import urlsplit
 
-from fastapi import Depends, FastAPI, File, HTTPException, Request, Response, UploadFile
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+)
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
@@ -46,12 +55,12 @@ from .db import (
 )
 from .document_intelligence import router as intelligence_router
 from .documents import router as document_router
-from .iot_simulation import router as iot_simulation_router
 from .media_uploads import router as media_router
 from .messages import router as message_router
 from .numerics import estimate
 from .reports import router as report_router
 from .research import router as research_router
+from .research_model import router as research_model_router
 from .routines import (
     router as routine_router,
 )
@@ -93,8 +102,8 @@ app.add_middleware(
 )
 app.include_router(report_router)
 app.include_router(research_router)
+app.include_router(research_model_router)
 app.include_router(assessment_router)
-app.include_router(iot_simulation_router)
 app.include_router(camera_router)
 app.include_router(account_sessions_router)
 app.include_router(account_password_router)
@@ -1038,6 +1047,7 @@ async def catalogs(u: User = Depends(authenticated)):
 async def transcribe(
     pid: str,
     audio: UploadFile = File(),
+    locale: Literal["en", "ar"] = Form(default="en"),
     u: User = Depends(authenticated),
     db: DbSession = Depends(get_db),
 ):
@@ -1067,7 +1077,11 @@ async def transcribe(
         raise HTTPException(415, "Invalid or unsupported PCM WAV")
     db.rollback()
     try:
-        text = await gateway.transcribe(data, audio.content_type)
+        text = await (
+            gateway.transcribe_arabic(data, audio.content_type)
+            if locale == "ar"
+            else gateway.transcribe(data, audio.content_type)
+        )
     except ProviderUnavailable:
         raise HTTPException(503, "Speech provider unavailable; use text")
     db.expire_all()
@@ -1076,7 +1090,13 @@ async def transcribe(
         raise HTTPException(422, "No clear words detected. Please try again or type.")
     if len(text) > 3000:
         raise HTTPException(422, "Please record a shorter request.")
-    return {"text": text.strip(), "audio_retained": False, "source": "meta_transcribe"}
+    return {
+        "text": text.strip(),
+        "audio_retained": False,
+        "source": "gemini_arabic_transcribe" if locale == "ar" else "meta_transcribe",
+        "requested_language": locale,
+        "recognition_language": "provider_auto",
+    }
 
 
 @app.get("/")

@@ -1,6 +1,6 @@
 # Research dataset preflight
 
-The user confirmed that no clinician-approved assessment instrument has been selected. Formal My Check administration/scoring remains gated. This offline tool checks the existing research scalar data contract before future model work; it does not approve an instrument, verify permission documents, train a model or produce patient results.
+The adapted mobile instrument has no qualified clinical sign-off. SATURN-derived research activities are available in synthetic workspaces; clinical use remains gated. This offline tool checks the existing research scalar data contract before future model work; it does not approve an instrument, verify permission documents, train a model or produce patient results.
 
 ## Run
 
@@ -40,3 +40,6 @@ This tool is not an authenticated upload/export endpoint and cannot pull private
 Tests were written first and reproduced the missing module. Dataset validation and related capture/numerical contract tests exercise split leakage, duplicate IDs/times, incompatible protocols/modes, non-finite/out-of-range inputs, blank provenance, unknown-field redaction, missing/poor/interrupted data, deterministic fingerprints, CLI exit codes and overwrite protection. Exact current results are recorded in DEVELOPMENT_PLAN.md and ignored `test-results/dataset-readiness-tests.xml`. The synthetic example was also executed through the actual CLI, separately from the test runner.
 
 Next clinical input: select an assessment instrument and obtain its appropriate administration/scoring and reuse requirements with qualified clinical review. Next model input: permitted longitudinal records with reviewed outcome labels and a versioned preprocessing contract. The validator prepares those engineering checks without implying that either dependency is already satisfied.
+
+
+The newer original-source benchmark has its own feature/label contract and trained artifacts: see [Source-study ML benchmark](ml-source-study-benchmark.md). Its 0–30 source scores must not be silently forced into this older −10 to 10 scalar contract. This preflight remains an independent engineering validator; its `ready_for_training=false` field does not describe the separate, explicitly exploratory source-study training run.

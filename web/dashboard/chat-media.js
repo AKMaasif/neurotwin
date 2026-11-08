@@ -19,9 +19,9 @@ function audioPlayer(url, metadata = {}, key = "preview", messageId = null) {
   const seconds = Number(metadata.duration_ms) / 1000;
   const peaks = metadata.waveform;
   const envelope = Array.isArray(peaks)
-    ? `<span class="chat-wave" aria-hidden="true">${peaks.map((p) => `<i style="height:${Math.max(1, Math.min(30, Number(p) * 150))}px"></i>`).join("")}</span>`
-    : '<span class="chat-wave-neutral" aria-hidden="true"></span>';
-  return `<div class="chat-audio" data-player="${esc(key)}" data-message="${esc(messageId || "")}" data-duration="${Number.isFinite(seconds) ? seconds : 0}"><audio preload="none" src="${esc(url)}"></audio><button type="button" class="audio-play" aria-label="Play voice note">▶</button><div class="audio-middle">${envelope}<input type="range" class="audio-seek" min="0" max="${seconds > 0 ? seconds : 1}" step="0.1" value="0" aria-label="Seek audio" ${seconds > 0 ? "" : "disabled"}><span class="audio-clock"><span class="audio-position">0:00</span> / <span class="audio-total">${seconds > 0 ? timeLabel(seconds) : "Load audio"}</span></span></div><label class="audio-speed-label"><span class="sr-only">Playback speed</span><select class="audio-speed" aria-label="Playback speed"><option value="1">1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label><span class="audio-feedback" role="status"></span><button type="button" class="audio-reload" hidden>Retry audio</button></div>`;
+    ? ntUi`<span class="chat-wave" aria-hidden="true">${peaks.map((p) => ntUi`<i style="height:${Math.max(1, Math.min(30, Number(p) * 150))}px"></i>`).join("")}</span>`
+    : ntUi('<span class="chat-wave-neutral" aria-hidden="true"></span>');
+  return ntUi`<div class="chat-audio" data-player="${esc(key)}" data-message="${esc(messageId || "")}" data-duration="${Number.isFinite(seconds) ? seconds : 0}"><audio preload="none" src="${esc(url)}"></audio><button type="button" class="audio-play" aria-label="Play voice note">▶</button><div class="audio-middle">${envelope}<input type="range" class="audio-seek" min="0" max="${seconds > 0 ? seconds : 1}" step="0.1" value="0" aria-label="Seek audio" ${seconds > 0 ? "" : "disabled"}><span class="audio-clock"><span class="audio-position">0:00</span> / <span class="audio-total">${seconds > 0 ? timeLabel(seconds) : ntTr("Load audio")}</span></span></div><label class="audio-speed-label"><span class="sr-only">Playback speed</span><select class="audio-speed" aria-label="Playback speed"><option value="1">1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label><span class="audio-feedback" role="status"></span><button type="button" class="audio-reload" hidden>Retry audio</button></div>`;
 }
 function wavEnvelope(blob) {
   return blob.arrayBuffer().then((buffer) => {
@@ -44,17 +44,18 @@ function renderAttachment(item) {
   const url = item.url;
   const download = url + (url.includes("?") ? "&" : "?") + "download=true";
   const info = `${esc(item.filename)} · ${bytesLabel(item.size)}`;
-  if (item.status !== "committed") return '<div class="chat-file">Attachment unavailable</div>';
+  if (item.status !== "committed")
+    return ntUi('<div class="chat-file">Attachment unavailable</div>');
   if (item.kind === "image")
-    return `<div class="chat-image"><button type="button" class="chat-open-image" data-image-url="${esc(url)}" data-image-label="${esc(item.filename)}"><img loading="lazy" src="${esc(url)}?thumbnail=true" alt="${esc(item.filename)}"></button><small>${info}</small><a href="${esc(download)}" download>Download image</a></div>`;
+    return ntUi`<div class="chat-image"><button type="button" class="chat-open-image" data-image-url="${esc(url)}" data-image-label="${esc(item.filename)}"><img loading="lazy" src="${esc(url)}?thumbnail=true" alt="${esc(item.filename)}"></button><small>${info}</small><a href="${esc(download)}" download>Download image</a></div>`;
   if (item.kind === "video")
-    return `<div class="chat-video"><video controls preload="none" ${item.thumbnail ? `poster="${esc(url)}?thumbnail=true"` : ""} src="${esc(url)}" aria-label="${esc(item.filename)}"></video><small>${info} · ${timeLabel(item.duration_ms / 1000)}</small><a href="${esc(download)}" download>Download video</a><span class="media-error" role="status"></span></div>`;
+    return ntUi`<div class="chat-video"><video controls preload="none" ${item.thumbnail ? `poster="${esc(url)}?thumbnail=true"` : ""} src="${esc(url)}" aria-label="${esc(item.filename)}"></video><small>${info} · ${timeLabel(item.duration_ms / 1000)}</small><a href="${esc(download)}" download>Download video</a><span class="media-error" role="status"></span></div>`;
   if (["voice", "audio"].includes(item.kind))
     return (
       audioPlayer(url, item, item.id, item.message_id) +
-      `<small>${info}</small><a href="${esc(download)}" download>Download audio</a>`
+      ntUi`<small>${info}</small><a href="${esc(download)}" download>Download audio</a>`
     );
-  return `<div class="chat-file"><span class="file-icon" aria-hidden="true">${item.content_type === "application/pdf" ? "PDF" : "FILE"}</span><div><strong>${esc(item.filename)}</strong><small>${bytesLabel(item.size)} · ${esc(item.content_type || "Document")}${item.pages ? ` · ${item.pages} pages` : ""}</small>${item.reconstruction ? "<small>Safety-processed copy. Formatting, formulas and digital signatures may change.</small>" : ""}<div class="actions">${item.thumbnail ? `<button type="button" class="chat-open-image" data-image-url="${esc(url)}?thumbnail=true" data-image-label="${esc(item.filename)}">Preview safe first page</button>` : ""}<a href="${esc(download)}" download>Download</a></div></div></div>`;
+  return ntUi`<div class="chat-file"><span class="file-icon" aria-hidden="true">${item.content_type === "application/pdf" ? "PDF" : "FILE"}</span><div><strong>${esc(item.filename)}</strong><small>${bytesLabel(item.size)} · ${esc(item.content_type || ntTr("Document"))}${item.pages ? ` · ${item.pages} pages` : ""}</small>${item.reconstruction ? ntUi("<small>Safety-processed copy. Formatting, formulas and digital signatures may change.</small>") : ""}<div class="actions">${item.thumbnail ? ntUi`<button type="button" class="chat-open-image" data-image-url="${esc(url)}?thumbnail=true" data-image-label="${esc(item.filename)}">Preview safe first page</button>` : ""}<a href="${esc(download)}" download>Download</a></div></div></div>`;
 }
 function chatMessageMedia(message) {
   if (message.withdrawn_at) return "";
@@ -68,13 +69,13 @@ function renderFileDrafts() {
   const c = S.care,
     b = c.batch;
   const menu = c.attachMenu
-    ? `<div class="attachment-menu"><button type="button" data-pick="image">Photos / gallery</button>${window.matchMedia("(pointer:coarse)").matches && "capture" in document.createElement("input") ? '<button type="button" data-pick="camera">Camera</button>' : ""}<button type="button" data-pick="video">Video</button><button type="button" data-pick="document">Document / PDF</button><button type="button" data-pick="audio">Audio file</button></div>`
+    ? ntUi`<div class="attachment-menu"><button type="button" data-pick="image">Photos / gallery</button>${window.matchMedia("(pointer:coarse)").matches && "capture" in document.createElement("input") ? ntUi('<button type="button" data-pick="camera">Camera</button>') : ""}<button type="button" data-pick="video">Video</button><button type="button" data-pick="document">Document / PDF</button><button type="button" data-pick="audio">Audio file</button></div>`
     : "";
-  const inputs = `<input type="file" id="care-file-picker" hidden multiple><input type="file" id="care-camera-picker" accept="image/jpeg,image/png" capture="environment" hidden>`;
+  const inputs = ntUi`<input type="file" id="care-file-picker" hidden multiple><input type="file" id="care-camera-picker" accept="image/jpeg,image/png" capture="environment" hidden>`;
   if (!b) return menu + inputs;
   const active = ["preparing", "uploading", "verifying", "sending"].includes(b.phase);
-  const error = b.error ? `<p class="error" role="alert">${esc(b.error)}</p>` : "";
-  return `${menu}${inputs}<section class="chat-prepared" aria-label="Attachments ready for review"><strong>${b.files.length} selected · ${esc(b.phase)}</strong>${b.files.map((f, i) => `<div class="prepared-file">${f.kind === "image" ? `<img src="${esc(f.url)}" alt="Selected ${esc(f.file.name)}">` : f.kind === "video" ? `<video controls preload="metadata" src="${esc(f.url)}"></video>` : '<span class="file-icon" aria-hidden="true">FILE</span>'}<div><strong>${esc(f.file.name)}</strong><small>${bytesLabel(f.file.size)} · ${esc(f.kind)} · limit ${bytesLabel(c.policy?.limits[f.kind] || 0)}</small><span id="file-phase-${f.id}">${esc(f.status || "Preview")}</span><progress id="file-progress-${f.id}" max="${f.file.size}" value="${f.offset || 0}" aria-label="Upload progress for ${esc(f.file.name)}"></progress></div><button type="button" data-remove-file="${i}" ${active ? "disabled" : ""} aria-label="Remove ${esc(f.file.name)}">Remove</button></div>`).join("")}${error}<div class="actions">${active ? '<button type="button" id="care-pause-files">Pause upload</button>' : b.approved ? '<button type="button" class="primary" id="care-resume-files">Resume send</button>' : ""}<button type="button" id="care-cancel-files">Cancel attachments</button></div><p class="muted">Files upload only after Send. ${c.policy?.scanner_configured ? "Antivirus verification configured." : "Development: antivirus unavailable; permitted synthetic files receive structural validation."}</p></section>`;
+  const error = b.error ? ntUi`<p class="error" role="alert">${esc(b.error)}</p>` : "";
+  return ntUi`${menu}${inputs}<section class="chat-prepared" aria-label="Attachments ready for review"><strong>${b.files.length} selected · ${esc(b.phase)}</strong>${b.files.map((f, i) => ntUi`<div class="prepared-file">${f.kind === "image" ? ntUi`<img src="${esc(f.url)}" alt="Selected ${esc(f.file.name)}">` : f.kind === "video" ? ntUi`<video controls preload="metadata" src="${esc(f.url)}"></video>` : ntUi('<span class="file-icon" aria-hidden="true">FILE</span>')}<div><strong>${esc(f.file.name)}</strong><small>${bytesLabel(f.file.size)} · ${esc(f.kind)} · limit ${bytesLabel(c.policy?.limits[f.kind] || 0)}</small><span id="file-phase-${f.id}">${esc(f.status || ntTr("Preview"))}</span><progress id="file-progress-${f.id}" max="${f.file.size}" value="${f.offset || 0}" aria-label="Upload progress for ${esc(f.file.name)}"></progress></div><button type="button" data-remove-file="${i}" ${active ? "disabled" : ""} aria-label="Remove ${esc(f.file.name)}">Remove</button></div>`).join("")}${error}<div class="actions">${active ? ntUi('<button type="button" id="care-pause-files">Pause upload</button>') : b.approved ? ntUi('<button type="button" class="primary" id="care-resume-files">Resume send</button>') : ""}<button type="button" id="care-cancel-files">Cancel attachments</button></div><p class="muted">Files upload only after Send. ${c.policy?.scanner_configured ? ntTr("Antivirus verification configured.") : ntTr("Development: antivirus unavailable; permitted synthetic files receive structural validation.")}</p></section>`;
 }
 function discardFileDrafts() {
   const b = S.care?.batch;
@@ -92,7 +93,7 @@ async function pickChatFiles(files) {
   if (!files.length) return;
   if (c.voice && !changeCareVoiceContact()) return;
   if (c.batch?.approved) {
-    note("Finish or cancel the current send before choosing more files.");
+    note(ntTr("Finish or cancel the current send before choosing more files."));
     return;
   }
   const additions = [];
@@ -112,7 +113,7 @@ async function pickChatFiles(files) {
         kind,
         url: URL.createObjectURL(file),
         offset: 0,
-        status: "Preview",
+        status: ntTr("Preview"),
       });
     }
     if ([...selected, ...additions].reduce((n, f) => n + f.file.size, 0) > c.policy.total_bytes) {
@@ -176,7 +177,9 @@ async function mediaRequest(path, method = "GET", body, signal) {
         result.detail === "Invalid CSRF token")
     )
       careSessionChanged();
-    const e = new Error(typeof result.detail === "string" ? result.detail : "Media request failed");
+    const e = new Error(
+      typeof result.detail === "string" ? result.detail : ntTr("Media request failed"),
+    );
     e.status = r.status;
     e.retryAfter = Number(r.headers.get("retry-after")) || 0;
     throw e;
@@ -240,7 +243,7 @@ function uploadChunk(path, blob, offset, progress, signal) {
       if (xhr.status >= 200 && xhr.status < 300) resolve(result);
       else {
         const e = new Error(
-          typeof result.detail === "string" ? result.detail : "Upload chunk failed",
+          typeof result.detail === "string" ? result.detail : ntTr("Upload chunk failed"),
         );
         e.status = xhr.status;
         reject(e);
@@ -338,8 +341,10 @@ async function uploadChatFile(file, operation, update) {
     if (["rejected", "quarantined", "cancelled", "expired"].includes(status.status)) {
       const error = new Error(
         status.status === "quarantined"
-          ? "File is quarantined and cannot be sent. Ask the care team to review scanning availability or choose another file."
-          : "File was rejected by validation. Remove it or choose a supported file.",
+          ? ntTr(
+              "File is quarantined and cannot be sent. Ask the care team to review scanning availability or choose another file.",
+            )
+          : ntTr("File was rejected by validation. Remove it or choose a supported file."),
       );
       error.status = 415;
       throw error;
@@ -370,7 +375,9 @@ async function sendFileBatch() {
   if (!b.approved) {
     if (b.recoveryIds?.some((id) => !b.files.some((f) => f.upload_id === id))) {
       note(
-        "Reselect every original file before sending this recovered message, or cancel the unfinished uploads.",
+        ntTr(
+          "Reselect every original file before sending this recovered message, or cancel the unfinished uploads.",
+        ),
       );
       return;
     }
@@ -426,7 +433,7 @@ async function sendFileBatch() {
     await loadCareInbox();
     await loadCareThread();
     render();
-    note("Message saved in app.");
+    note(ntTr("Message saved in app."));
   } catch (error) {
     if (S.care !== c || b.cancelled) return;
     b.phase =
@@ -452,14 +459,16 @@ async function cancelFileBatch() {
       `/patients/${b.patient}/messages/threads/${b.peer}/command/${b.command_id}`,
     );
     if (existing.message)
-      note("This message was already saved. You can withdraw it from the timeline.");
+      note(ntTr("This message was already saved. You can withdraw it from the timeline."));
     else
       for (const f of b.files)
         if (f.upload_id)
           await mediaRequest(`/patients/${b.patient}/messages/uploads/${f.upload_id}`, "DELETE");
   } catch {
     note(
-      "Local upload stopped. Uncommitted server uploads expire; a saved message remains in history.",
+      ntTr(
+        "Local upload stopped. Uncommitted server uploads expire; a saved message remains in history.",
+      ),
     );
   }
   if (S.care === c) {
@@ -507,7 +516,9 @@ function bindFileComposer() {
               "DELETE",
             );
           } catch {
-            note("This file is already committed or access changed. Refresh the conversation.");
+            note(
+              ntTr("This file is already committed or access changed. Refresh the conversation."),
+            );
             return;
           }
         }
@@ -523,7 +534,7 @@ function bindFileComposer() {
                   "DELETE",
                 );
               } catch {
-                note("An unfinished upload will expire automatically.");
+                note(ntTr("An unfinished upload will expire automatically."));
               }
             }
           }
@@ -553,7 +564,7 @@ function bindFileComposer() {
       (b.onclick = () => {
         const dialog = document.createElement("dialog");
         dialog.className = "chat-viewer";
-        dialog.innerHTML = `<button type="button" aria-label="Close media viewer">Close</button><p>${esc(b.dataset.imageLabel)}</p><img src="${esc(b.dataset.imageUrl)}" alt="${esc(b.dataset.imageLabel)}">`;
+        dialog.innerHTML = ntUi`<button type="button" aria-label="Close media viewer">Close</button><p>${esc(b.dataset.imageLabel)}</p><img src="${esc(b.dataset.imageUrl)}" alt="${esc(b.dataset.imageLabel)}">`;
         dialog.querySelector("button").onclick = () => dialog.close();
         dialog.onclose = () => dialog.remove();
         document.body.append(dialog);
@@ -707,19 +718,19 @@ function renderVoiceDraft(v) {
   if (!v) return "";
   const capture = ["permission", "recording", "paused", "processing"].includes(v.phase);
   const status = {
-    permission: "Waiting for microphone permission…",
-    recording: 'Recording · <span id="care-voice-time">0</span> seconds',
+    permission: ntTr("Waiting for microphone permission…"),
+    recording: ntUi('Recording · <span id="care-voice-time">0</span> seconds'),
     paused:
-      'Recording paused · <span id="care-voice-time">' +
+      ntUi('Recording paused · <span id="care-voice-time">') +
       Math.floor((v.activeMs || 0) / 1000) +
-      "</span> seconds",
-    processing: "Preparing the completed recording…",
-    preview: "Preview ready. Nothing has been sent.",
-    sending: "Uploading and saving…",
-    unconfirmed: "Saving unconfirmed. Retry keeps the same note ID.",
+      ntUi("</span> seconds"),
+    processing: ntTr("Preparing the completed recording…"),
+    preview: ntTr("Preview ready. Nothing has been sent."),
+    sending: ntTr("Uploading and saving…"),
+    unconfirmed: ntTr("Saving unconfirmed. Retry keeps the same note ID."),
   }[v.phase];
   const metadata = { duration_ms: v.blob ? (v.blob.size - 44) / 48 : 0, waveform: v.waveform };
-  return `<section id="care-voice" class="care-voice"><h3>Your voice note</h3><p role="status" aria-live="polite">${status || "Microphone off"}</p>${v.error ? `<p class="error" role="alert">${esc(v.error)}</p>` : ""}${capture ? `${v.levelAnalyser ? '<label>Audio level<progress id="care-record-level" max="1" value="0"></progress></label>' : ""}<div class="actions">${["recording", "paused"].includes(v.phase) ? `<button type="button" class="primary" id="care-voice-finish">Finish recording</button><button type="button" id="care-record-pause">${v.phase === "paused" ? "Resume recording" : "Pause recording"}</button>` : ""}<button type="button" id="care-voice-discard">Cancel recording</button></div>` : `${audioPlayer(v.url, metadata, "draft-" + v.command_id)}<form id="care-voice-form"><label>Optional text for your contact<textarea name="caption" maxlength="2000" rows="2" ${["sending", "unconfirmed"].includes(v.phase) ? "disabled" : ""}>${esc(v.caption || "")}</textarea></label><div class="actions"><button class="primary" ${v.phase === "sending" ? "disabled" : ""}>${v.phase === "unconfirmed" ? "Retry saving voice note" : "Send voice note"}</button>${v.phase === "sending" ? '<button type="button" id="care-voice-upload-pause">Pause upload</button>' : `<button type="button" id="care-voice-discard">Discard voice note</button>`}</div></form>${v.phase === "sending" || v.uploadFile ? `<progress id="voice-upload-progress" max="${v.uploadFile?.file.size || 1}" value="${v.uploaded || 0}"></progress><span id="voice-upload-status">${esc(v.uploadStage || "Preparing")}</span>` : ""}`}<small>Record up to 20 seconds. Preview and Send are separate actions. Sent notes are stored privately; no speech or AI provider receives them.</small></section>`;
+  return ntUi`<section id="care-voice" class="care-voice"><h3>Your voice note</h3><p role="status" aria-live="polite">${status || ntTr("Microphone off")}</p>${v.error ? ntUi`<p class="error" role="alert">${esc(v.error)}</p>` : ""}${capture ? ntUi`${v.levelAnalyser ? ntUi('<label>Audio level<progress id="care-record-level" max="1" value="0"></progress></label>') : ""}<div class="actions">${["recording", "paused"].includes(v.phase) ? ntUi`<button type="button" class="primary" id="care-voice-finish">Finish recording</button><button type="button" id="care-record-pause">${v.phase === "paused" ? ntTr("Resume recording") : ntTr("Pause recording")}</button>` : ""}<button type="button" id="care-voice-discard">Cancel recording</button></div>` : ntUi`${audioPlayer(v.url, metadata, "draft-" + v.command_id)}<form id="care-voice-form"><label>Optional text for your contact<textarea name="caption" maxlength="2000" rows="2" ${["sending", "unconfirmed"].includes(v.phase) ? "disabled" : ""}>${esc(v.caption || "")}</textarea></label><div class="actions"><button class="primary" ${v.phase === "sending" ? "disabled" : ""}>${v.phase === "unconfirmed" ? ntTr("Retry saving voice note") : ntTr("Send voice note")}</button>${v.phase === "sending" ? ntUi('<button type="button" id="care-voice-upload-pause">Pause upload</button>') : ntUi`<button type="button" id="care-voice-discard">Discard voice note</button>`}</div></form>${v.phase === "sending" || v.uploadFile ? ntUi`<progress id="voice-upload-progress" max="${v.uploadFile?.file.size || 1}" value="${v.uploaded || 0}"></progress><span id="voice-upload-status">${esc(v.uploadStage || ntTr("Preparing"))}</span>` : ""}`}<small>Record up to 20 seconds. Preview and Send are separate actions. Sent notes are stored privately; no speech or AI provider receives them.</small></section>`;
 }
 function pauseFileSend() {
   const batch = S.care?.batch;

@@ -1,39 +1,41 @@
 function companionStatus() {
   const labels = {
-    idle: "Ready when you are. Nothing is listening in the background.",
-    permission: "Waiting for microphone permission…",
-    listening: "Listening. Select Finish recording when you are ready.",
-    transcribing: "Checking your recording…",
-    transcript_ready: "Please check the words below, then select Send.",
-    thinking: "Working on your request…",
-    speaking: "Reading aloud. You can stop at any time.",
-    stopped: "Stopped. No new action was confirmed.",
-    error: S.voiceError || "Something interrupted this request. You can type instead.",
+    idle: ntTr("Ready when you are. Nothing is listening in the background."),
+    permission: ntTr("Waiting for microphone permission…"),
+    listening: ntTr("Listening. Select Finish recording when you are ready."),
+    transcribing: ntTr("Checking your recording…"),
+    transcript_ready: ntTr("Please check the words below, then select Send."),
+    thinking: ntTr("Working on your request…"),
+    speaking: ntTr("Reading aloud. You can stop at any time."),
+    stopped: ntTr("Stopped. No new action was confirmed."),
+    error: S.voiceError || ntTr("Something interrupted this request. You can type instead."),
   };
   return labels[S.voiceState] || labels.idle;
 }
 function renderCompanion() {
   const pending = S.pendingAction,
     guide = S.guide;
-  return `<h1>Your companion</h1>${companionFigure()}<div class="voice-status ${S.voiceState === "error" ? "error" : ""}" role="status" aria-live="polite" aria-atomic="true"><span class="status-dot ${S.recording ? "listening" : ""}" aria-hidden="true"></span><span id="voiceStatusText">${esc(companionStatus())}</span></div><form id="chat"><label>How can I help?<input name="text" id="chatInput" placeholder="Open settings" maxlength="3000" required value="${esc(S.draftText || "")}"></label><div class="actions"><button class="primary" ${S.busy || S.recording ? "disabled" : ""}>Send</button><button type="button" id="voice" ${S.busy ? "disabled" : ""}>${S.recording ? "Finish recording" : "Speak"}</button><button type="button" id="stop">Stop</button>${S.retryText ? '<button type="button" id="retryCompanion">Retry request</button>' : ""}</div></form><div class="companion-shortcuts"><button data-say="what should I do">Guide my next activity</button><button data-say="read my plan">Read my plan</button><button data-say="help request status">Check family help</button></div>${S.chat
+  return ntUi`<h1>Your companion</h1>${ntLocale() === "ar" ? ntUi`<p class="voice-provider-notice">Arabic recordings use Gemini transcription after you finish recording. Review the transcript before sending. No recording is saved in the app.</p><p>Arabic speech recognition is experimental. Check every word before sending; type instead if anything is wrong.</p>` : ""}${companionFigure()}<div class="voice-status ${S.voiceState === "error" ? "error" : ""}" role="status" aria-live="polite" aria-atomic="true"><span class="status-dot ${S.recording ? "listening" : ""}" aria-hidden="true"></span><span id="voiceStatusText">${esc(companionStatus())}</span></div><form id="chat"><label>How can I help?<input name="text" id="chatInput" placeholder="Open settings" maxlength="3000" required value="${esc(S.draftText || "")}"></label><div class="actions"><button class="primary" ${S.busy || S.recording ? "disabled" : ""}>Send</button><button type="button" id="voice" ${S.busy ? "disabled" : ""}>${S.recording ? ntTr("Finish recording") : ntTr("Speak")}</button><button type="button" id="stop">Stop</button>${S.retryText ? ntUi('<button type="button" id="retryCompanion">Retry request</button>') : ""}</div></form><div class="companion-shortcuts"><button data-say="what should I do">Guide my next activity</button><button data-say="read my plan">Read my plan</button><button data-say="help request status">Check family help</button></div>${S.chat
     .slice(-2)
-    .map((c) => `<div class="chat ${c.role === "user" ? "user" : ""}">${esc(c.text)}</div>`)
+    .map((c) => ntUi`<div class="chat ${c.role === "user" ? "user" : ""}">${esc(c.text)}</div>`)
     .join("")}${
     S.chat.length > 2
-      ? `<details class="chat-history"><summary>Earlier messages</summary>${S.chat
+      ? ntUi`<details class="chat-history"><summary>Earlier messages</summary>${S.chat
           .slice(0, -2)
-          .map((c) => `<div class="chat ${c.role === "user" ? "user" : ""}">${esc(c.text)}</div>`)
+          .map(
+            (c) => ntUi`<div class="chat ${c.role === "user" ? "user" : ""}">${esc(c.text)}</div>`,
+          )
           .join("")}</details>`
       : ""
-  }${guide ? `<section class="card step-guide"><span class="eyebrow">APPROVED ACTIVITY · STEP ${guide.step_index + 1} OF ${guide.steps.length}</span><h2>${esc(guide.task.title)}</h2><p>${esc(guide.steps[guide.step_index])}</p><div class="actions"><button data-say="repeat this step">Read again</button>${guide.step_index + 1 < guide.steps.length ? '<button class="primary" data-say="next step">Next step</button>' : '<button class="primary" data-say="I finished">I finished</button>'}<button data-say="do this later">Do this later</button></div></section>` : ""}${pending ? `<section class="card confirmation" aria-label="Confirm proposed change"><h2>Confirm this change</h2><p>${esc(pending.explanation)}</p><div class="actions"><button class="primary" id="confirmCompanion">Confirm</button><button id="cancelCompanion">Cancel change</button></div></section>` : ""}<p class="muted">A recording goes to the configured speech provider after you finish it. Review the transcript before sending. Companion recordings are not saved in the app.</p>${S.user.role === "participant" ? `<p class="memory-caption">${S.memory?.enabled ? "Memory on · up to 6 recent turns for 7 days" : "Memory off · this conversation is not saved between sessions"}. <button class="plain" data-tab="settings">Memory settings</button></p>` : ""}${renderCameraAssistance()}`;
+  }${guide ? ntUi`<section class="card step-guide"><span class="eyebrow">APPROVED ACTIVITY · STEP ${guide.step_index + 1} OF ${guide.steps.length}</span><h2>${esc(guide.task.title)}</h2><p>${esc(guide.steps[guide.step_index])}</p><div class="actions"><button data-say="repeat this step">Read again</button>${guide.step_index + 1 < guide.steps.length ? ntUi('<button class="primary" data-say="next step">Next step</button>') : ntUi('<button class="primary" data-say="I finished">I finished</button>')}<button data-say="do this later">Do this later</button></div></section>` : ""}${pending ? ntUi`<section class="card confirmation" aria-label="Confirm proposed change"><h2>Confirm this change</h2><p>${esc(pending.explanation)}</p><div class="actions"><button class="primary" id="confirmCompanion">Confirm</button><button id="cancelCompanion">Cancel change</button></div></section>` : ""}<p class="muted">A recording goes to the configured speech provider after you finish it. Review the transcript before sending. Companion recordings are not saved in the app.</p>${S.user.role === "participant" ? ntUi`<p class="memory-caption">${S.memory?.enabled ? ntTr("Memory on · up to 6 recent turns for 7 days") : ntTr("Memory off · this conversation is not saved between sessions")}. <button class="plain" data-tab="settings">Memory settings</button></p>` : ""}${renderCameraAssistance()}`;
 }
 function renderMemorySettings() {
   if (!S.memory) return "";
-  return `<section class="card"><h2>Companion memory</h2><p>Choose what to remember. Family and clinician accounts cannot read this conversation memory.</p><form id="memorySettings"><label class="check-label"><input type="checkbox" name="enabled" ${S.memory.enabled ? "checked" : ""}> Remember my preferences and recent conversations</label><label>Name you prefer<input name="preferred_name" maxlength="60" value="${esc(S.memory.preferred_name)}"></label><label>Speaking pace<select name="speech_rate"><option value="normal">Comfortable</option><option value="slow" ${S.memory.speech_rate === "slow" ? "selected" : ""}>Slower</option></select></label><label class="check-label"><input type="checkbox" name="share_with_ai" ${S.memory.share_with_ai ? "checked" : ""}> Allow AI to use remembered messages to understand future requests</label><p class="muted">Off by default. At most 6 text exchanges are kept for 7 days; expired entries are removed when memory is next accessed. Raw audio is not saved. Current requests may use the configured AI even when memory is off.</p><button class="primary">Save memory choices</button></form><div class="actions"><button id="exportMemory">Download my companion memory</button><button id="forgetMemory">Forget conversations and preferences</button></div><p class="muted">The download contains retained companion text and preferences only. It may contain private information. Forgetting clears app memory, not previously downloaded files, care messages, audit records or provider retention.</p></section>`;
+  return ntUi`<section class="card"><h2>Companion memory</h2><p>Choose what to remember. Family and clinician accounts cannot read this conversation memory.</p><form id="memorySettings"><label class="check-label"><input type="checkbox" name="enabled" ${S.memory.enabled ? "checked" : ""}> Remember my preferences and recent conversations</label><label>Name you prefer<input name="preferred_name" maxlength="60" value="${esc(S.memory.preferred_name)}"></label><label>Speaking pace<select name="speech_rate"><option value="normal">Comfortable</option><option value="slow" ${S.memory.speech_rate === "slow" ? "selected" : ""}>Slower</option></select></label><label class="check-label"><input type="checkbox" name="share_with_ai" ${S.memory.share_with_ai ? "checked" : ""}> Allow AI to use remembered messages to understand future requests</label><p class="muted">Off by default. At most 6 text exchanges are kept for 7 days; expired entries are removed when memory is next accessed. Raw audio is not saved. Current requests may use the configured AI even when memory is off.</p><button class="primary">Save memory choices</button></form><div class="actions"><button id="exportMemory">Download my companion memory</button><button id="forgetMemory">Forget conversations and preferences</button></div><p class="muted">The download contains retained companion text and preferences only. It may contain private information. Forgetting clears app memory, not previously downloaded files, care messages, audit records or provider retention.</p></section>`;
 }
 function setVoiceState(state, error = "") {
   S.voiceState = state;
-  S.voiceError = error;
+  S.voiceError = ntTr(error);
   const el = $("#voiceStatusText");
   if (el) el.textContent = companionStatus();
 }
@@ -60,6 +62,26 @@ function speakReply(text, rate = "normal") {
   const epoch = S.voiceEpoch;
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
+  const arabic = ntLocale() === "ar";
+  if (arabic) {
+    const voice = window.speechSynthesis.getVoices().find((v) => /^ar(?:-|$)/i.test(v.lang));
+    if (!voice) {
+      setVoiceState(
+        "error",
+        ntTr("Arabic voice is unavailable on this device. You can read the text or type instead."),
+      );
+      return;
+    }
+    if (!/[\u0600-\u06ff]/.test(text)) {
+      setVoiceState(
+        "error",
+        ntTr("Original-language care text is shown without automatic translation."),
+      );
+      return;
+    }
+    utterance.lang = "ar-SA";
+    utterance.voice = voice;
+  } else utterance.lang = "en";
   utterance.rate = rate === "slow" ? 0.75 : 0.9;
   utterance.onstart = () => {
     if (epoch === S.voiceEpoch) setVoiceState("speaking");
@@ -93,6 +115,7 @@ async function send(text, task = null) {
     const guide = task || S.guide?.task;
     const body = {
       text,
+      locale: ntLocale(),
       ...(guide
         ? { task_id: guide.id, task_version: guide.version, step_index: S.guide?.step_index || 0 }
         : {}),
@@ -132,7 +155,7 @@ async function send(text, task = null) {
     setVoiceState(
       "error",
       e.name === "AbortError"
-        ? "The request took too long. Retry or type a shorter request."
+        ? ntTr("The request took too long. Retry or type a shorter request.")
         : e.message,
     );
     S.busy = false;
@@ -163,7 +186,7 @@ async function confirmCompanion() {
     S.guide = null;
     S.busy = false;
     await refresh();
-    note("Your confirmed change was saved.");
+    note(ntTr("Your confirmed change was saved."));
   } catch (e) {
     S.busy = false;
     setVoiceState("error", e.message);
@@ -228,6 +251,7 @@ async function recordVoice() {
         if (epoch !== S.voiceEpoch) return;
         const form = new FormData();
         form.append("audio", wav, "recording.wav");
+        form.append("locale", ntLocale());
         const response = await fetch(`/api/patients/${S.pid}/voice/transcribe`, {
           method: "POST",
           headers: { "X-CSRF-Token": S.csrf },
@@ -239,7 +263,7 @@ async function recordVoice() {
           throw Error(
             typeof d.detail === "string"
               ? d.detail
-              : "Voice unavailable. Please type your request.",
+              : ntTr("Voice unavailable. Please type your request."),
           );
         if (epoch !== S.voiceEpoch) return;
         S.draftText = d.text;
@@ -249,9 +273,9 @@ async function recordVoice() {
           setVoiceState(
             "error",
             e.name === "AbortError"
-              ? "Voice processing took too long. Please try again or type."
+              ? ntTr("Voice processing took too long. Please try again or type.")
               : e instanceof TypeError
-                ? "Connection interrupted. Please retry when you are connected."
+                ? ntTr("Connection interrupted. Please retry when you are connected.")
                 : e.message,
           );
       } finally {
@@ -311,7 +335,7 @@ function bindCompanion() {
       e.preventDefault();
       const f = new FormData(e.target);
       if (f.has("share_with_ai") && !f.has("enabled")) {
-        note("Turn on memory before sharing remembered context.");
+        note(ntTr("Turn on memory before sharing remembered context."));
         return;
       }
       guard(async () => {
@@ -324,7 +348,7 @@ function bindCompanion() {
         });
         if (!S.memory.enabled) S.chat = [];
         render();
-        note("Your memory choices were saved.");
+        note(ntTr("Your memory choices were saved."));
       });
     };
   if ($("#exportMemory"))
@@ -347,7 +371,7 @@ function bindCompanion() {
         link.click();
         link.remove();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
-        note("Companion memory download prepared. Keep the file private.");
+        note(ntTr("Companion memory download prepared. Keep the file private."));
       });
   if ($("#forgetMemory"))
     $("#forgetMemory").onclick = () =>
@@ -359,7 +383,7 @@ function bindCompanion() {
         S.pendingAction = null;
         S.guide = null;
         render();
-        note("Conversation memory and preferences were cleared.");
+        note(ntTr("Conversation memory and preferences were cleared."));
       });
 }
 window.addEventListener("pagehide", () => stopCompanion(false));

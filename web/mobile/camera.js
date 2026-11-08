@@ -10,7 +10,7 @@ function renderCameraAssistance() {
     !S.data.scopes.includes("assessment")
   )
     return "";
-  return `<details class="card camera-panel"><summary>Camera assistance · synthetic samples only</summary><p>Choose or capture one sample image, preview it, then decide whether to send. No background camera runs. Photos and results clear when this screen refreshes or you leave it.</p><p>Use only synthetic everyday-object samples without people, personal information or medical material.</p><button type="button" data-camera-options>Check camera availability</button><p data-camera-provider></p><label>Choose or capture a sample image<input type="file" data-camera-file accept="image/jpeg,image/png,image/webp" capture="environment"></label><p>JPEG, PNG or WebP · up to 1 MB · 160 pixels per side to 4 megapixels.</p><img data-camera-preview hidden alt="Your selected sample, not yet sent"><form data-camera-form><label class="camera-consent"><input type="checkbox" data-camera-consent required disabled><span data-camera-consent-text>Read the provider and consent details before sending.</span></label><button type="submit" data-camera-send disabled>Send this sample for object suggestions</button></form><button type="button" data-camera-clear>Clear photo / stop showing result</button><p data-camera-status role="status" aria-live="polite"></p><p data-camera-result></p><p>Suggestions may be wrong. Do not use them for navigation, medication or medical decisions. Clearing a sent request cannot recall data already sent to the provider.</p></details>`;
+  return ntUi`<details class="card camera-panel"><summary>Camera assistance · synthetic samples only</summary><p>Choose or capture one sample image, preview it, then decide whether to send. No background camera runs. Photos and results clear when this screen refreshes or you leave it.</p><p>Use only synthetic everyday-object samples without people, personal information or medical material.</p><button type="button" data-camera-options>Check camera availability</button><p data-camera-provider></p><label>Choose or capture a sample image<input type="file" data-camera-file accept="image/jpeg,image/png,image/webp" capture="environment"></label><p>JPEG, PNG or WebP · up to 1 MB · 160 pixels per side to 4 megapixels.</p><img data-camera-preview hidden alt="Your selected sample, not yet sent"><form data-camera-form><label class="camera-consent"><input type="checkbox" data-camera-consent required disabled><span data-camera-consent-text>Read the provider and consent details before sending.</span></label><button type="submit" data-camera-send disabled>Send this sample for object suggestions</button></form><button type="button" data-camera-clear>Clear photo / stop showing result</button><p data-camera-status role="status" aria-live="polite"></p><p data-camera-result></p><p>Suggestions may be wrong. Do not use them for navigation, medication or medical decisions. Clearing a sent request cannot recall data already sent to the provider.</p></details>`;
 }
 function bindCameraAssistance() {
   const panel = document.querySelector(".camera-panel");
@@ -62,7 +62,9 @@ function bindCameraAssistance() {
       panel.querySelector("[data-camera-consent-text]").textContent = options.consent_text;
       panel.querySelector("[data-camera-provider]").textContent = options.provider_ready
         ? `Provider: ${options.provider} · ${options.model}. A request is sent only after your explicit choice below.`
-        : "The image provider is not enabled or configured. You can preview locally, but sending is unavailable.";
+        : ntTr(
+            "The image provider is not enabled or configured. You can preview locally, but sending is unavailable.",
+          );
       update();
     } catch (error) {
       if (current()) {
@@ -152,14 +154,14 @@ function bindCameraAssistance() {
         )
           careSessionChanged();
         throw new Error(
-          typeof body.detail === "string" ? body.detail : "The image could not be checked",
+          typeof body.detail === "string" ? body.detail : ntTr("The image could not be checked"),
         );
       }
       result.textContent = body.text;
       status.textContent =
         body.status === "tentative"
-          ? "Tentative object suggestions. No medical assessment was made."
-          : "No useful object suggestion. Try another sample or ask someone you trust.";
+          ? ntTr("Tentative object suggestions. No medical assessment was made.")
+          : ntTr("No useful object suggestion. Try another sample or ask someone you trust.");
     } catch (error) {
       if (current() && ticket === generation && error.name !== "AbortError")
         status.textContent = error.message;

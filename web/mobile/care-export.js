@@ -5,7 +5,7 @@ function renderCareExport() {
     !S.data.scopes.includes("summary")
   )
     return "";
-  return `<section class="card care-export"><h2>Download your care summary</h2><p>Save approved plans, linked tasks, help requests involving you and your text-size preference, within your current permissions.</p><p>Messages, attachments, documents, companion memory and private clinical records are excluded. The file lists its exact scope. Keep downloaded information private and share it deliberately.</p><button type="button" data-care-export>Download care summary (JSON)</button><p data-care-export-status role="status" aria-live="polite"></p></section>`;
+  return ntUi`<section class="card care-export"><h2>Download your care summary</h2><p>Save approved plans, linked tasks, help requests involving you and your text-size preference, within your current permissions.</p><p>Messages, attachments, documents, companion memory and private clinical records are excluded. The file lists its exact scope. Keep downloaded information private and share it deliberately.</p><button type="button" data-care-export>Download care summary (JSON)</button><p data-care-export-status role="status" aria-live="polite"></p></section>`;
 }
 
 function bindCareExport() {
@@ -23,7 +23,7 @@ function bindCareExport() {
     if (busy || !current()) return;
     if (
       !confirm(
-        `Download a care summary for ${S.data.patient.name}? It may contain private information. Keep the file secure; downloaded copies cannot be recalled.`,
+        ntText`Download a care summary for ${S.data.patient.name}? It may contain private information. Keep the file secure; downloaded copies cannot be recalled.`,
       )
     )
       return;

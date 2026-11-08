@@ -1,0 +1,114 @@
+.application-language {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-block: 0.75rem;
+  min-width: 0;
+}
+.application-language label {
+  font-size: 0.9rem;
+}
+.application-language select {
+  width: auto;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 0.5rem;
+  font: inherit;
+  border: 1px solid #ccc4df;
+  border-radius: 10px;
+  background: white;
+  color: #242035;
+}
+.localization-review-note {
+  flex-basis: 100%;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+html[lang="ar"] body {
+  font-family: Tahoma, Arial, sans-serif;
+}
+html[dir="rtl"] :is(input, textarea) {
+  text-align: start;
+}
+html[dir="rtl"] input:is([type="password"], [type="email"], [type="url"]),
+html[dir="rtl"] pre {
+  direction: ltr;
+  text-align: left;
+}
+html[dir="rtl"] :is(.chat, .care-message-text, .source, .source-text) {
+  unicode-bidi: plaintext;
+}
+html[dir="rtl"] .sidebar {
+  left: auto;
+  right: 0;
+}
+html[dir="rtl"] .main {
+  margin-left: 0;
+  margin-right: 0;
+}
+html[dir="rtl"] :is(.adaptive-brand, .mobile-brand) {
+  text-align: start;
+}
+html[dir="rtl"] .adaptive-navigation {
+  border-right: 0;
+  border-inline-end: 1px solid #e9e4f2;
+}
+html[dir="rtl"] :is(.care-person-initial, .patient-initial) {
+  flex-shrink: 0;
+}
+html[dir="rtl"] :is(.assessment-choices, .assessment-word, [data-activity-controls]) {
+  direction: ltr;
+}
+html[dir="rtl"] .assessment-panel {
+  text-align: start;
+}
+html[dir="rtl"]
+  :is(
+    .adaptive-content,
+    .plan-primary,
+    .plan-content,
+    .plan-page-heading,
+    .reference-page-heading
+  ) {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+html[dir="rtl"] .reference-illustration {
+  right: auto;
+  left: 0;
+}
+html[dir="rtl"] .day-introduction > svg {
+  left: 0;
+  width: 100%;
+}
+html[dir="rtl"] .hero-brain {
+  right: auto;
+  left: -0.6rem;
+}
+html[dir="rtl"] .day-introduction h2 {
+  margin-inline-start: 0;
+  margin-inline-end: auto;
+  max-width: 65%;
+}
+html[dir="rtl"] .day-introduction p:not(.eyebrow) {
+  margin-inline-start: 0;
+  margin-inline-end: auto;
+}
+html[dir="rtl"] :is(button, label, p, h1, h2, h3, h4) {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 900px) {
+  html[dir="rtl"] .main {
+    margin-right: 0;
+  }
+}
+@media (max-width: 420px) {
+  .application-language {
+    max-width: 100%;
+  }
+  .application-language label {
+    flex-basis: 100%;
+  }
+}

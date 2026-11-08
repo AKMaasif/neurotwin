@@ -28,7 +28,7 @@ DEFAULT_CHECKS = [
     "family_reports_design_check",
     "research_browser_check",
     "assessment_browser_check",
-    "iot_browser_check",
+    "arabic_browser_check",
     "camera_browser_check",
     "account_sessions_browser_check",
     "password_browser_check",
@@ -119,6 +119,8 @@ def main():
                     env=env,
                     capture_output=True,
                     text=True,
+                    encoding="utf-8",
+                    errors="replace",
                     timeout=240,
                     check=False,
                 )

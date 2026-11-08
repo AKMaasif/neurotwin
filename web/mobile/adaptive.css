@@ -118,15 +118,15 @@
 .login {
   padding-block: clamp(2rem, 10vh, 7rem);
 }
-nav[aria-label="Main navigation"] {
+nav[data-primary-navigation] {
   bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
-nav[aria-label="Main navigation"] button {
+nav[data-primary-navigation] button {
   min-height: 3rem;
   font-size: 0.74rem;
 }
 @media (max-width: 370px) {
-  nav[aria-label="Main navigation"] button {
+  nav[data-primary-navigation] button {
     font-size: 0.65rem;
   }
 }
@@ -289,7 +289,7 @@ nav[aria-label="Main navigation"] button {
   .adaptive-nav-slot {
     display: block;
   }
-  nav[aria-label="Main navigation"] {
+  nav[data-primary-navigation] {
     position: static;
     transform: none;
     width: 100%;
@@ -301,7 +301,7 @@ nav[aria-label="Main navigation"] button {
     border-radius: 0;
     box-shadow: none;
   }
-  nav[aria-label="Main navigation"] button {
+  nav[data-primary-navigation] button {
     flex: none;
     width: 100%;
     min-height: 4rem;
@@ -311,7 +311,7 @@ nav[aria-label="Main navigation"] button {
     background: transparent;
     gap: 0.4rem;
   }
-  nav[aria-label="Main navigation"] button.active {
+  nav[data-primary-navigation] button.active {
     background: #fff;
     color: #174bb7;
     box-shadow: 0 2px 8px #333b6d0a;
@@ -433,7 +433,7 @@ nav[aria-label="Main navigation"] button {
     min-width: 2.75rem;
     padding: 0.25rem;
   }
-  nav[aria-label="Main navigation"] button {
+  nav[data-primary-navigation] button {
     flex-direction: row;
     justify-content: flex-start;
     gap: 0.85rem;
@@ -476,7 +476,7 @@ nav[aria-label="Main navigation"] button {
   .nav-compact #nav-density {
     margin-left: 0;
   }
-  .nav-compact nav[aria-label="Main navigation"] button,
+  .nav-compact nav[data-primary-navigation] button,
   .nav-compact .adaptive-nav-context > button {
     flex-direction: column;
     justify-content: center;

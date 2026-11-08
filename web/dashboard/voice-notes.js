@@ -49,8 +49,10 @@ function changeCareVoiceContact() {
   if (
     !confirm(
       v.phase === "unconfirmed"
-        ? "Saving is unconfirmed and the note may already be saved. Discard this local copy before changing contact?"
-        : "Discard this unsent voice note before changing contact?",
+        ? ntTr(
+            "Saving is unconfirmed and the note may already be saved. Discard this local copy before changing contact?",
+          )
+        : ntTr("Discard this unsent voice note before changing contact?"),
     )
   )
     return false;
@@ -59,7 +61,7 @@ function changeCareVoiceContact() {
 }
 function voiceMessage(m) {
   return m.message_type === "voice"
-    ? `<div class="voice-message"><p>Voice note · ${(m.voice.duration_ms / 1000).toFixed(1)} seconds</p><audio controls preload="none" src="${esc(m.voice.url)}" aria-label="Play voice note"></audio><p class="voice-playback-error" role="status"></p></div>`
+    ? ntUi`<div class="voice-message"><p>Voice note · ${(m.voice.duration_ms / 1000).toFixed(1)} seconds</p><audio controls preload="none" src="${esc(m.voice.url)}" aria-label="Play voice note"></audio><p class="voice-playback-error" role="status"></p></div>`
     : "";
 }
 function renderCareVoice() {
@@ -255,14 +257,14 @@ async function sendCareVoice() {
       throw new Error(
         typeof result.detail === "string"
           ? result.detail
-          : "Saving is unconfirmed. Check the conversation or retry.",
+          : ntTr("Saving is unconfirmed. Check the conversation or retry."),
       );
     }
     disposeCareVoice();
     c.forceLatest = true;
     await loadCareInbox();
     await loadCareThread();
-    note("Voice note saved in app.");
+    note(ntTr("Voice note saved in app."));
   } catch (error) {
     if (S.care === c && c.voice === v && !v.cancelled) {
       if (v.phase === "sending")
@@ -339,7 +341,9 @@ function bindCareVoice() {
           );
         } catch {
           note(
-            "A saved note remains in the conversation; unfinished uploads expire automatically.",
+            ntTr(
+              "A saved note remains in the conversation; unfinished uploads expire automatically.",
+            ),
           );
         }
       }

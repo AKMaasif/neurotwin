@@ -1,0 +1,12 @@
+{
+  "version": "ar-interface-1",
+  "locale": "ar-AE",
+  "strings": 1350,
+  "catalog_sha256_canonical": "5e4e9fa358e21e042ab2d2c3fe62ce23bb96cea39477d3eb2d580dd85b023608",
+  "engineering_review": "completed with automated catalog/safety/RTL/command checks",
+  "qualified_linguistic_review": "pending",
+  "qualified_clinical_review": "pending",
+  "real_older_adult_speech_validation": false,
+  "live_arabic_asr_release_approved": false,
+  "assessment_language": "English only; no Arabic clinical adaptation approved"
+}

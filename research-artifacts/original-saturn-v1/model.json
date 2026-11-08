@@ -1,0 +1,33 @@
+{
+  "calibration_coefficient": 1.1413944340569437,
+  "calibration_intercept": -1.0059654714604327,
+  "clinical_use": false,
+  "coefficients": [
+    -1.355035998857925,
+    0.401970493078295,
+    0.4007068906242957
+  ],
+  "features": [
+    "TOTAL_TABLET_PLANNED_ANALYSIS",
+    "AGE",
+    "YR_EDU"
+  ],
+  "imputation": [
+    27.0,
+    66.0,
+    16.0
+  ],
+  "intercept": -0.7842884824638141,
+  "mean": [
+    25.066666666666666,
+    68.6,
+    16.446666666666665
+  ],
+  "runtime_patient_inference": false,
+  "scale": [
+    6.444291185917105,
+    8.64715752911518,
+    2.483241609044293
+  ],
+  "version": "original-saturn-phase3-research-1"
+}

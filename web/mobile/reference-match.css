@@ -337,14 +337,14 @@ body {
   order: 6;
 }
 /* Reference navigation, retaining the existing role-specific destinations. */
-nav[aria-label="Main navigation"] {
+nav[data-primary-navigation] {
   border: 0;
   border-radius: 1.35rem;
   padding: 0.35rem 0.3rem;
   background: #fffffff7;
   box-shadow: 0 -4px 18px #7961ae0b;
 }
-nav[aria-label="Main navigation"] button {
+nav[data-primary-navigation] button {
   min-height: 3.6rem;
   padding: 0.4rem 0.1rem;
   font-size: 0.65rem;
@@ -353,11 +353,11 @@ nav[aria-label="Main navigation"] button {
   border-radius: 1rem;
   color: #11172c;
 }
-nav[aria-label="Main navigation"] button.active {
+nav[data-primary-navigation] button.active {
   color: #6f28ed;
   background: #f0eaff;
 }
-nav[aria-label="Main navigation"] button.active svg {
+nav[data-primary-navigation] button.active svg {
   color: white;
   background: linear-gradient(#a87aff, #712bed);
   border-radius: 50%;
@@ -735,19 +735,19 @@ nav[aria-label="Main navigation"] button.active svg {
     height: 11rem;
     right: 1rem;
   }
-  nav[aria-label="Main navigation"] {
+  nav[data-primary-navigation] {
     background: transparent;
     box-shadow: none;
     border-radius: 0;
     padding: 0;
   }
-  nav[aria-label="Main navigation"] button {
+  nav[data-primary-navigation] button {
     font-size: 0.75rem;
     min-height: 4rem;
   }
 }
 @media (min-width: 75rem) {
-  nav[aria-label="Main navigation"] button {
+  nav[data-primary-navigation] button {
     font-size: 0.9rem;
     min-height: 3.5rem;
   }
@@ -823,11 +823,11 @@ nav[aria-label="Main navigation"] button.active svg {
   background: #111;
   color: white;
 }
-.high-contrast nav[aria-label="Main navigation"] button.active {
+.high-contrast nav[data-primary-navigation] button.active {
   color: white;
   background: #111;
 }
-.high-contrast nav[aria-label="Main navigation"] button.active svg {
+.high-contrast nav[data-primary-navigation] button.active svg {
   background: #111;
 }
 @media (prefers-reduced-motion: reduce) {

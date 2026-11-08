@@ -70,7 +70,6 @@ function workspaceWritesBusy() {
     S.routineSending ||
     S.researchBusy ||
     S.assessmentBusy ||
-    S.iotBusy ||
     S.cameraBusy ||
     S.careExportBusy ||
     S.busy ||
@@ -79,13 +78,13 @@ function workspaceWritesBusy() {
 }
 function renderWorkspacePicker() {
   if ((S.workspaces || []).length < 2) return "";
-  return `<label class="workspace-picker">Patient workspace<select id="active-workspace" ${workspaceWritesBusy() ? "disabled" : ""}><option value="" ${!S.pid ? "selected" : ""}>Choose a patient</option>${S.workspaces.map((patient) => `<option value="${esc(patient.id)}" ${patient.id === S.pid ? "selected" : ""}>${esc(patient.name)} · ${esc(patient.region)}</option>`).join("")}</select></label>`;
+  return ntUi`<label class="workspace-picker">Patient workspace<select id="active-workspace" ${workspaceWritesBusy() ? "disabled" : ""}><option value="" ${!S.pid ? "selected" : ""}>Choose a patient</option>${S.workspaces.map((patient) => ntUi`<option value="${esc(patient.id)}" ${patient.id === S.pid ? "selected" : ""}>${esc(patient.name)} · ${esc(patient.region)}</option>`).join("")}</select></label>`;
 }
 function workspaceState(message = "Choose the patient you want to work with.", loading = false) {
   document.body.classList.remove("care-chat-page");
   const hasPatients = !!S.workspaces?.length;
   $("#app").innerHTML =
-    `<main class="workspace-state"><p class="eyebrow">NEUROTWIN · AUTHORIZED WORKSPACES</p><h1>${loading ? "Opening workspace" : hasPatients ? "Choose a patient" : "No active patient workspace"}</h1><p role="status">${esc(message)}</p>${loading ? '<progress aria-label="Loading authorized patient workspace"></progress>' : `${renderWorkspacePicker()}<div class="actions"><button id="workspace-retry">Refresh access</button><button id="workspace-signout">Sign out</button></div><p class="muted">Only currently authorized patient workspaces are listed. Switching patients never changes your account or permissions.</p>${renderAccountSessions()}`}</main>`;
+    ntUi`<main class="workspace-state"><p class="eyebrow">NEUROTWIN · AUTHORIZED WORKSPACES</p><h1>${loading ? ntTr("Opening workspace") : hasPatients ? ntTr("Choose a patient") : ntTr("No active patient workspace")}</h1><p role="status">${esc(message)}</p>${loading ? ntUi('<progress aria-label="Loading authorized patient workspace"></progress>') : ntUi`${renderWorkspacePicker()}<div class="actions"><button id="workspace-retry">Refresh access</button><button id="workspace-signout">Sign out</button></div><p class="muted">Only currently authorized patient workspaces are listed. Switching patients never changes your account or permissions.</p>${renderAccountSessions()}`}</main>`;
   bindWorkspacePicker();
   bindAccountSessions();
   if ($("#workspace-retry"))
@@ -186,7 +185,7 @@ async function activateWorkspace(patientId, initial = false) {
     }
     S.workspaceChanging = false;
     workspaceState(
-      error.message || "The workspace could not be loaded. Refresh access and try again.",
+      error.message || ntTr("The workspace could not be loaded. Refresh access and try again."),
     );
     return;
   } finally {

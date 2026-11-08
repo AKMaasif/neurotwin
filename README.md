@@ -186,3 +186,14 @@ Authorized patient switching, clinician plan/case review and participant privacy
 
 
 [SATURN-derived research activities](docs/assessment-selection-and-implementation.md) now connect clinician assignment, explicit participant consent, 20 scored activity groups, response/timing capture, deterministic provisional scoring and independent clinician review. This is a separately labelled unvalidated English adaptation, restricted server-side to synthetic workspaces. It is not an approved mobile SATURN instrument or a diagnosis. Clinical authorization, population/device validation and real-patient enrollment remain external.
+
+
+## Current research and Arabic delivery
+
+The application is software-only. The retired device feature, routes, controls and scripts have been removed from the current source tree; historical Git/audit records are retained.
+
+- [Original-source ML benchmark](docs/ml-source-study-benchmark.md): permitted CC0 data acquisition, phase/label review, dyad-separated training/calibration/testing, reproducible JSON artifacts and a read-only clinician report. The test set has seven participants and weak negative-label evidence; calibration worsened Brier score. Patient inference and clinical release remain blocked. The older longitudinal estimator stays separately illustrative.
+- [Arabic interface and voice](docs/arabic-localization.md): 1,350 static strings, English/Arabic language selection, semantic RTL, preserved original-language care content, Arabic command proposals and explicit Arabic transcription routing. The catalog is an engineering-reviewed draft. Native clinical/linguistic review and real-user speech quality remain outstanding; a live synthetic speech probe had errors/provider failure. Transcript review and typing remain available.
+- [Delivery checklist](docs/ml-arabic-delivery-checklist.md): implementation, executed verification and external release requirements.
+
+After sign-in, choose Arabic in Mobile → Settings or the clinician header. Dashboard → Patient workspace → Source-study ML benchmark shows source-cohort evaluation only; it does not analyze the selected patient. Research assessment stimuli/consent remain English and require English comprehension.

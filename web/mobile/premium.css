@@ -670,20 +670,20 @@ textarea:focus-visible {
 .care-chat-page .care-notice {
   border-radius: 0.6rem;
 }
-nav[aria-label="Main navigation"] {
+nav[data-primary-navigation] {
   border: 1px solid #e6e4ee;
   border-radius: 1.2rem;
   box-shadow: 0 4px 20px #2321450b;
   background: #fff;
 }
-nav[aria-label="Main navigation"] button {
+nav[data-primary-navigation] button {
   border-radius: 0.9rem;
   font-weight: 500;
   transition:
     background-color 140ms,
     color 140ms;
 }
-nav[aria-label="Main navigation"] button.active {
+nav[data-primary-navigation] button.active {
   background: #eeebfa;
   color: #4b3cc5;
   box-shadow: none;
@@ -723,7 +723,7 @@ nav[aria-label="Main navigation"] button.active {
   background: #111;
   color: #fff;
 }
-.high-contrast nav[aria-label="Main navigation"] button.active {
+.high-contrast nav[data-primary-navigation] button.active {
   background: #111;
   color: #fff;
 }
@@ -755,13 +755,13 @@ nav[aria-label="Main navigation"] button.active {
   }
 }
 @media (min-width: 48rem) {
-  nav[aria-label="Main navigation"] {
+  nav[data-primary-navigation] {
     border: 0;
     border-radius: 0;
     background: transparent;
     box-shadow: none;
   }
-  nav[aria-label="Main navigation"] button.active {
+  nav[data-primary-navigation] button.active {
     background: #fff;
     color: #4b3cc5;
   }

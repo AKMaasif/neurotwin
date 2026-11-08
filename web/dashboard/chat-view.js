@@ -1,13 +1,14 @@
 // Presentation and live reconciliation on top of the compatible care-message controller.
 const careRoleLabel = (role) =>
-  ({ participant: "Patient", family: "Family", clinician: "Clinician" })[role] || role;
+  ({ participant: ntTr("Patient"), family: ntTr("Family"), clinician: ntTr("Clinician") })[role] ||
+  role;
 function chatReceiptLabel(m) {
-  if (m.withdrawn_at) return "Withdrawn";
-  if (m.receipt?.playback_completed_at) return "Playback ended · client reported";
-  if (m.receipt?.playback_started_at) return "Playback started · client reported";
-  if (m.opened_at) return "Opened in app";
-  if (m.receipt?.delivered_at) return "Delivered to recipient session";
-  return "Sent · saved in app";
+  if (m.withdrawn_at) return ntTr("Withdrawn");
+  if (m.receipt?.playback_completed_at) return ntTr("Playback ended · client reported");
+  if (m.receipt?.playback_started_at) return ntTr("Playback started · client reported");
+  if (m.opened_at) return ntTr("Opened in app");
+  if (m.receipt?.delivered_at) return ntTr("Delivered to recipient session");
+  return ntTr("Sent · saved in app");
 }
 function chatText(text) {
   return String(text)
@@ -17,7 +18,7 @@ function chatText(text) {
       try {
         const url = new URL(p);
         return ["http:", "https:"].includes(url.protocol)
-          ? `<a href="${esc(url.href)}" target="_blank" rel="noopener noreferrer">${esc(p)}</a>`
+          ? ntUi`<a href="${esc(url.href)}" target="_blank" rel="noopener noreferrer">${esc(p)}</a>`
           : esc(p);
       } catch {
         return esc(p);
@@ -31,21 +32,23 @@ function chatTimeline(rows, contact) {
   return rows
     .map((m) => {
       const day = new Date(m.created_at).toLocaleDateString(undefined, { dateStyle: "medium" }),
-        separator = day !== date ? `<li class="chat-date"><span>${esc(day)}</span></li>` : "";
+        separator = day !== date ? ntUi`<li class="chat-date"><span>${esc(day)}</span></li>` : "";
       date = day;
       const fresh = !divider && m.recipient_id === S.user.id && !m.opened_at && !m.withdrawn_at;
       if (fresh) divider = true;
       const own = m.sender_id === S.user.id,
         withdraw =
           own && !m.withdrawn_at && Date.now() - new Date(m.created_at).getTime() < 86400000;
-      return `${separator}${fresh ? '<li class="chat-unread">Not opened</li>' : ""}<li class="care-message ${own ? "outgoing" : "incoming"} ${m.withdrawn_at ? "withdrawn" : ""}" data-message-id="${esc(m.id)}"><strong class="message-author">${esc(own ? "You" : contact.name)}</strong>${m.reply_to ? `<blockquote class="chat-quote"><span>Reply</span>${esc(m.reply_to.body)}</blockquote>` : ""}${m.body ? `<p class="care-body">${chatText(m.body)}</p>` : ""}${chatMessageMedia(m)}<div class="message-footer"><time title="${esc(new Date(m.created_at).toLocaleString())}">${esc(new Date(m.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }))}</time><small>${esc(chatReceiptLabel(m))}</small></div>${!m.withdrawn_at ? `<details class="message-actions"><summary aria-label="Message actions">•••</summary><button type="button" data-reply="${esc(m.id)}">Reply</button>${m.body ? `<button type="button" data-copy="${esc(m.id)}">Copy text</button>` : ""}${withdraw ? `<button type="button" data-withdraw="${esc(m.id)}">Withdraw</button>` : ""}</details>` : ""}</li>`;
+      return ntUi`${separator}${fresh ? ntUi('<li class="chat-unread">Not opened</li>') : ""}<li class="care-message ${own ? "outgoing" : "incoming"} ${m.withdrawn_at ? "withdrawn" : ""}" data-message-id="${esc(m.id)}"><strong class="message-author">${esc(own ? ntTr("You") : contact.name)}</strong>${m.reply_to ? ntUi`<blockquote class="chat-quote"><span>Reply</span>${esc(m.reply_to.body)}</blockquote>` : ""}${m.body ? ntUi`<p class="care-body">${chatText(m.body)}</p>` : ""}${chatMessageMedia(m)}<div class="message-footer"><time title="${esc(new Date(m.created_at).toLocaleString(ntIntlLocale()))}">${esc(new Date(m.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }))}</time><small>${esc(chatReceiptLabel(m))}</small></div>${!m.withdrawn_at ? ntUi`<details class="message-actions"><summary aria-label="Message actions">•••</summary><button type="button" data-reply="${esc(m.id)}">Reply</button>${m.body ? ntUi`<button type="button" data-copy="${esc(m.id)}">Copy text</button>` : ""}${withdraw ? ntUi`<button type="button" data-withdraw="${esc(m.id)}">Withdraw</button>` : ""}</details>` : ""}</li>`;
     })
     .join("");
 }
 function renderModernCare() {
   const c = S.care;
   if (!c)
-    return '<h1>Care-circle messages</h1><section class="card">Loading your care circle…</section>';
+    return ntUi(
+      '<h1>Care-circle messages</h1><section class="card">Loading your care circle…</section>',
+    );
   const history = document.querySelector(".care-history");
   if (
     !c.forceLatest &&
@@ -66,7 +69,7 @@ function renderModernCare() {
       (m) => m.recipient_id === S.user.id && !m.opened_at && !m.withdrawn_at,
     ),
     batch = c.batch && !c.batch.approved;
-  return `<h1>Care-circle messages</h1><p class="care-intro">Private conversations for ${esc(S.data.patient.name)}.</p><p class="care-notice">Unmonitored inbox. For urgent help, use your locally approved assistance route.</p>${c.error ? `<p class="error" role="alert">${esc(c.error)}</p>` : ""}<div class="care-layout ${contact ? "care-selected" : ""}"><section class="card care-contacts"><div class="chat-list-heading"><h2>Your contacts</h2><button type="button" id="care-refresh">Refresh inbox</button></div>${c.inbox?.contacts.map((p) => `<button class="care-contact ${p.id === c.peer ? "selected" : ""}" data-care-contact="${esc(p.id)}" aria-pressed="${p.id === c.peer}"><span class="contact-initial" aria-hidden="true">${esc(p.name.slice(0, 1))}</span><span class="contact-details"><strong>${esc(p.name)} <small>${esc(careRoleLabel(p.role))}</small></strong><span class="contact-preview">${esc(p.last_message?.preview || "Start a conversation")}</span>${p.last_message ? `<small>${esc(new Date(p.last_message.created_at).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" }))}${p.last_message.outgoing ? ` · ${p.last_message.opened ? "Opened" : "Sent"}` : ""}</small>` : ""}</span>${p.unopened ? `<span class="unopened-count" aria-label="${p.unopened} not opened">${p.unopened}</span>` : ""}</button>`).join("") || "<p>No messaging contacts are currently available.</p>"}</section><section class="card care-conversation">${contact ? `<div class="chat-header"><button type="button" id="care-back" class="care-back">All contacts</button><div><h2>${esc(contact.name)}</h2><small>${esc(careRoleLabel(contact.role))} · ${esc(S.data.patient.name)}</small></div><span class="chat-connection" id="care-connection">${esc(c.connection || "Connecting")}</span></div><form id="care-search" class="chat-search"><label><span class="sr-only">Search conversation</span><input name="q" value="${esc(c.query || "")}" placeholder="Search conversation" maxlength="120"></label><label><span class="sr-only">Message type</span><select name="kind"><option value="">All types</option>${["text", "voice", "audio", "image", "video", "document"].map((t) => `<option value="${t}" ${c.kind === t ? "selected" : ""}>${t[0].toUpperCase() + t.slice(1)}</option>`).join("")}</select></label><button>Search</button><button type="button" id="care-latest">Latest messages</button></form><div class="chat-history-controls">${c.thread?.next_before ? '<button type="button" id="care-older">Older messages</button>' : ""}<button type="button" id="care-new-updates" ${c.needsLatest ? "" : "hidden"}>New messages · show latest</button>${c.before ? "<small>Older page</small>" : ""}</div><ol class="care-history" data-peer="${esc(c.peer)}" data-page="${esc(c.before || "")}" aria-label="Conversation history" tabindex="0">${chatTimeline(rows, contact) || '<li class="chat-empty"><strong>A little connection starts here.</strong><p>Write a message, attach a file, or record a voice note.</p></li>'}</ol>${unopened.length ? `<div class="chat-open-bar"><button type="button" id="care-opened">Confirm messages opened (${unopened.length})</button><small>Explicit acknowledgement, not evidence of understanding or action.</small></div>` : ""}${pending ? `<div class="chat-pending" role="status"><span>${esc(pending.body)}</span><small>${c.busy ? "Sending…" : "Saving unconfirmed · retry uses the same message ID"}</small></div>` : ""}${c.reply ? `<div class="composer-reply">Reply: ${esc(c.reply.body || "Attachment")}<button type="button" id="care-clear-reply">Cancel reply</button></div>` : ""}<div class="chat-composer"><form id="care-compose"><label class="composer-text"><span class="sr-only">Your message</span><textarea name="body" maxlength="2000" rows="1" ${!batch ? "required" : ""} ${pending || c.busy ? "disabled" : ""} placeholder="Write a message">${esc(draft)}</textarea></label><div class="composer-buttons"><button type="button" id="care-attach" aria-label="Attach a file" ${c.voice ? "disabled" : ""}>＋ Attach</button><button class="primary" id="care-send" ${c.busy ? "disabled" : ""} ${!draft.trim() && !batch && !pending ? "hidden" : ""}>${pending ? "Retry saving this message" : batch ? "Send attachments" : "Send message"}</button>${!c.voice ? `<button type="button" id="care-voice-record" ${c.busy || pending || c.batch ? "disabled" : ""} ${draft.trim() || c.batch ? "hidden" : ""}>Record voice note</button>` : ""}</div></form>${renderFileDrafts()}${renderCareVoice()}${!c.batch && c.recoverable?.length ? `<details class="chat-recovery"><summary>${c.recoverable.length} unfinished server uploads</summary><p>Reselect matching files to resume. Local file data and draft captions are not retained after refresh.</p>${[...new Set(c.recoverable.map((r) => r.client_message_id))].map((key) => `<button type="button" data-recover-command="${esc(key)}">Resume ${esc(c.recoverable.find((r) => r.client_message_id === key).filename)}</button>`).join("")}</details>` : ""}<small class="composer-policy">Session-only drafts. No offline/background delivery. Messages do not change the approved care plan. No SMS, email, call or push notification is sent.</small></div>` : '<div class="chat-empty"><h2>Choose a contact</h2><p>Your direct conversation is visible only to its two authorized participants.</p></div>'}</section></div>`;
+  return ntUi`<h1>Care-circle messages</h1><p class="care-intro">Private conversations for ${esc(S.data.patient.name)}.</p><p class="care-notice">Unmonitored inbox. For urgent help, use your locally approved assistance route.</p>${c.error ? ntUi`<p class="error" role="alert">${esc(c.error)}</p>` : ""}<div class="care-layout ${contact ? "care-selected" : ""}"><section class="card care-contacts"><div class="chat-list-heading"><h2>Your contacts</h2><button type="button" id="care-refresh">Refresh inbox</button></div>${c.inbox?.contacts.map((p) => ntUi`<button class="care-contact ${p.id === c.peer ? "selected" : ""}" data-care-contact="${esc(p.id)}" aria-pressed="${p.id === c.peer}"><span class="contact-initial" aria-hidden="true">${esc(p.name.slice(0, 1))}</span><span class="contact-details"><strong>${esc(p.name)} <small>${esc(careRoleLabel(p.role))}</small></strong><span class="contact-preview">${esc(p.last_message?.preview || ntTr("Start a conversation"))}</span>${p.last_message ? ntUi`<small>${esc(new Date(p.last_message.created_at).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" }))}${p.last_message.outgoing ? ` · ${p.last_message.opened ? ntTr("Opened") : ntTr("Sent")}` : ""}</small>` : ""}</span>${p.unopened ? ntUi`<span class="unopened-count" aria-label="${p.unopened} not opened">${p.unopened}</span>` : ""}</button>`).join("") || ntUi("<p>No messaging contacts are currently available.</p>")}</section><section class="card care-conversation">${contact ? ntUi`<div class="chat-header"><button type="button" id="care-back" class="care-back">All contacts</button><div><h2>${esc(contact.name)}</h2><small>${esc(careRoleLabel(contact.role))} · ${esc(S.data.patient.name)}</small></div><span class="chat-connection" id="care-connection">${esc(c.connection || ntTr("Connecting"))}</span></div><form id="care-search" class="chat-search"><label><span class="sr-only">Search conversation</span><input name="q" value="${esc(c.query || "")}" placeholder="Search conversation" maxlength="120"></label><label><span class="sr-only">Message type</span><select name="kind"><option value="">All types</option>${["text", "voice", "audio", "image", "video", "document"].map((t) => ntUi`<option value="${t}" ${c.kind === t ? "selected" : ""}>${t[0].toUpperCase() + t.slice(1)}</option>`).join("")}</select></label><button>Search</button><button type="button" id="care-latest">Latest messages</button></form><div class="chat-history-controls">${c.thread?.next_before ? ntUi('<button type="button" id="care-older">Older messages</button>') : ""}<button type="button" id="care-new-updates" ${c.needsLatest ? "" : "hidden"}>New messages · show latest</button>${c.before ? ntUi("<small>Older page</small>") : ""}</div><ol class="care-history" data-peer="${esc(c.peer)}" data-page="${esc(c.before || "")}" aria-label="Conversation history" tabindex="0">${chatTimeline(rows, contact) || ntUi('<li class="chat-empty"><strong>A little connection starts here.</strong><p>Write a message, attach a file, or record a voice note.</p></li>')}</ol>${unopened.length ? ntUi`<div class="chat-open-bar"><button type="button" id="care-opened">Confirm messages opened (${unopened.length})</button><small>Explicit acknowledgement, not evidence of understanding or action.</small></div>` : ""}${pending ? ntUi`<div class="chat-pending" role="status"><span>${esc(pending.body)}</span><small>${c.busy ? "Sending…" : ntTr("Saving unconfirmed · retry uses the same message ID")}</small></div>` : ""}${c.reply ? ntUi`<div class="composer-reply">Reply: ${esc(c.reply.body || ntTr("Attachment"))}<button type="button" id="care-clear-reply">Cancel reply</button></div>` : ""}<div class="chat-composer"><form id="care-compose"><label class="composer-text"><span class="sr-only">Your message</span><textarea name="body" maxlength="2000" rows="1" ${!batch ? "required" : ""} ${pending || c.busy ? "disabled" : ""} placeholder="Write a message">${esc(draft)}</textarea></label><div class="composer-buttons"><button type="button" id="care-attach" aria-label="Attach a file" ${c.voice ? "disabled" : ""}>＋ Attach</button><button class="primary" id="care-send" ${c.busy ? "disabled" : ""} ${!draft.trim() && !batch && !pending ? "hidden" : ""}>${pending ? ntTr("Retry saving this message") : batch ? ntTr("Send attachments") : ntTr("Send message")}</button>${!c.voice ? ntUi`<button type="button" id="care-voice-record" ${c.busy || pending || c.batch ? "disabled" : ""} ${draft.trim() || c.batch ? "hidden" : ""}>Record voice note</button>` : ""}</div></form>${renderFileDrafts()}${renderCareVoice()}${!c.batch && c.recoverable?.length ? ntUi`<details class="chat-recovery"><summary>${c.recoverable.length} unfinished server uploads</summary><p>Reselect matching files to resume. Local file data and draft captions are not retained after refresh.</p>${[...new Set(c.recoverable.map((r) => r.client_message_id))].map((key) => ntUi`<button type="button" data-recover-command="${esc(key)}">Resume ${esc(c.recoverable.find((r) => r.client_message_id === key).filename)}</button>`).join("")}</details>` : ""}<small class="composer-policy">Session-only drafts. No offline/background delivery. Messages do not change the approved care plan. No SMS, email, call or push notification is sent.</small></div>` : ntUi('<div class="chat-empty"><h2>Choose a contact</h2><p>Your direct conversation is visible only to its two authorized participants.</p></div>')}</section></div>`;
 }
 function closeCareFeed() {
   S.care?.source?.close();
@@ -94,7 +97,7 @@ function startCareFeed(sequence) {
     label("Live connection");
     flushCareReceipts();
   };
-  source.onerror = () => label(navigator.onLine ? "Reconnecting" : "Offline");
+  source.onerror = () => label(navigator.onLine ? ntTr("Reconnecting") : ntTr("Offline"));
   source.addEventListener("care", (event) => {
     if (S.care !== c || c.source !== source || !careActive()) return;
     let data;
@@ -209,9 +212,9 @@ function bindChatFeatures() {
           await navigator.clipboard.writeText(
             c.thread.messages.find((m) => m.id === b.dataset.copy).body,
           );
-          note("Text copied.");
+          note(ntTr("Text copied."));
         } catch {
-          note("Copy is unavailable on this device.");
+          note(ntTr("Copy is unavailable on this device."));
         }
       }),
   );
@@ -284,7 +287,7 @@ function bindChatFeatures() {
         c.resumeCommand = button.dataset.recoverCommand;
         c.attachMenu = true;
         render();
-        note("Select the same files to resume this send.");
+        note(ntTr("Select the same files to resume this send."));
       }),
   );
 }
@@ -337,7 +340,9 @@ async function recoverCareVoice(row) {
     };
     render();
     note(
-      "Recording recovered for review. Choose Send explicitly; the earlier caption was not retained.",
+      ntTr(
+        "Recording recovered for review. Choose Send explicitly; the earlier caption was not retained.",
+      ),
     );
   } catch (error) {
     note(error.message);

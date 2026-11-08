@@ -9,6 +9,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy.orm import Session
 
 from .ai import ProviderUnavailable, gateway, local_intent
+from .arabic import command as language_command
+from .arabic import localize as localize_result
 from .db import Audit, Grant, Record, User, get_db, now
 from .security import authenticated, authorize
 
@@ -25,6 +27,7 @@ DEFAULT_MEMORY = {
 class Turn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     text: str = Field(min_length=1, max_length=3000)
+    locale: Literal["en", "ar"] = "en"
     task_id: str | None = Field(default=None, max_length=60)
     task_version: int | None = Field(default=None, ge=1)
     step_index: int = Field(default=0, ge=0, le=20)
@@ -230,7 +233,7 @@ def current_task(db, pid, body):
 
 
 def local_result(db, u, pid, body):
-    text = body.text.casefold().strip().rstrip(".!?")
+    text = language_command(body.text).casefold().strip().rstrip(".!?")
     if any(
         x in text
         for x in ["sudden confusion", "chest pain", "cannot breathe", "can't breathe"]
@@ -357,7 +360,7 @@ async def companion(
     memory_version = row.version if row else 0
     result = local_result(db, u, pid, body)
     if result is None:
-        proposal = local_intent(body.text)
+        proposal = local_intent(language_command(body.text))
         source = "local_parser"
         if proposal is None:
             if not p.synthetic:
@@ -436,6 +439,7 @@ async def companion(
                 )
     result.setdefault("source", "local_parser")
     result.setdefault("action_status", "proposal_only")
+    result = localize_result(result, body.locale)
     result["speech_rate"] = memory["speech_rate"] if memory["enabled"] else "normal"
     if row and memory["enabled"]:
         row.payload = memory | {

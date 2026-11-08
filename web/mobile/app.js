@@ -46,7 +46,7 @@ async function api(path, method = "GET", body, signal) {
       (e.detail.startsWith("Session account changed") || e.detail === "Invalid CSRF token")
     )
       careSessionChanged();
-    const error = new Error(typeof e.detail === "string" ? e.detail : "Request unavailable");
+    const error = new Error(typeof e.detail === "string" ? e.detail : ntTr("Request unavailable"));
     error.status = r.status;
     throw error;
   }
@@ -59,7 +59,7 @@ async function api(path, method = "GET", body, signal) {
   return result;
 }
 function note(t) {
-  $("#notice").textContent = t;
+  $("#notice").textContent = ntTr(t);
   $("#notice").style.display = "block";
   clearTimeout(note.timer);
   note.timer = setTimeout(() => ($("#notice").style.display = "none"), 6000);
@@ -110,21 +110,22 @@ async function refresh() {
 }
 function icon(k) {
   const paths = {
-    messages: "M4 4h16v13H9l-5 4z M8 8h8m-8 4h6",
-    weekly: "M5 3h14v18H5z M8 8h8m-8 5h8m-8 5h5",
-    settings:
+    messages: ntTr("M4 4h16v13H9l-5 4z M8 8h8m-8 4h6"),
+    weekly: ntTr("M5 3h14v18H5z M8 8h8m-8 5h8m-8 5h5"),
+    settings: ntTr(
       "M12 3v3m0 12v3M3 12h3m12 0h3M6 6l2 2m8 8 2 2M6 18l2-2m8-8 2-2 M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0",
-    home: "M3 10 12 3l9 7v11H3z M9 21v-8h6v8",
-    check: "M9 3h6v3h5v15H4V6h5z M8 13l3 3 5-6",
-    companion: "M5 5h14v12H9l-4 4z M8 10h1m6 0h1",
-    plan: "M5 3h14v18H5z M8 8h8m-8 5h8m-8 5h5",
-    support: "M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M2 21v-3a6 6 0 0 1 12 0v3m4-12v8m-4-4h8",
+    ),
+    home: ntTr("M3 10 12 3l9 7v11H3z M9 21v-8h6v8"),
+    check: ntTr("M9 3h6v3h5v15H4V6h5z M8 13l3 3 5-6"),
+    companion: ntTr("M5 5h14v12H9l-4 4z M8 10h1m6 0h1"),
+    plan: ntTr("M5 3h14v18H5z M8 8h8m-8 5h8m-8 5h5"),
+    support: ntTr("M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M2 21v-3a6 6 0 0 1 12 0v3m4-12v8m-4-4h8"),
   };
-  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="${paths[k] || paths.home}"/></svg>`;
+  return ntUi`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="${paths[k] || paths.home}"/></svg>`;
 }
 function login() {
   $("#app").innerHTML =
-    `<main class="login"><div class="eyebrow">NEUROTWIN</div><h1>A little support for your day</h1><p>Sign in to your own workspace.</p><form id="login"><label>Account<select name="username"><option value="participant">Participant (synthetic)</option><option value="family">Family (synthetic)</option></select></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="primary">Sign in</button><p class="muted">Development accounts. Use your current password; the initial password is set in the server .env file.</p><p id="error" role="alert"></p></form></main>`;
+    ntUi`<main class="login"><div class="eyebrow">NEUROTWIN</div><h1>A little support for your day</h1><p>Sign in to your own workspace.</p><form id="login"><label>Account<select name="username"><option value="participant">Participant (synthetic)</option><option value="family">Family (synthetic)</option></select></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="primary">Sign in</button><p class="muted">Development accounts. Use your current password; the initial password is set in the server .env file.</p><p id="error" role="alert"></p></form></main>`;
   $("#login").onsubmit = async (e) => {
     e.preventDefault();
     try {
@@ -141,7 +142,7 @@ function taskCard(t, hero = false) {
   const reviewHold = records("plan").some(
     (p) => p.id === t.payload.plan_id && p.payload.source_review_required,
   );
-  return `<section class="card ${hero ? "hero" : ""}"><div class="eyebrow">${esc(t.payload.period)} · ${esc(t.payload.time)}</div><h2>${esc(t.payload.title)}</h2><p class="muted">${t.status === "completed" ? "Confirmed by participant" : esc(t.status === "pending" ? "Not yet confirmed" : t.status)}</p><div class="actions">${reviewHold ? '<p class="error">This task is waiting for source review. Please ask your care team for help.</p>' : ""}${S.data.scopes.includes("respond") && !reviewHold ? `<button class="primary" data-response="completed" data-id="${t.id}">Done</button><button data-response="deferred" data-id="${t.id}">Later</button>` : ""}<button data-coach="${t.id}">Step guide</button></div></section>`;
+  return ntUi`<section class="card ${hero ? "hero" : ""}"><div class="eyebrow">${esc(t.payload.period)} · ${esc(t.payload.time)}</div><h2>${esc(t.payload.title)}</h2><p class="muted">${t.status === "completed" ? ntTr("Confirmed by participant") : esc(t.status === "pending" ? ntTr("Not yet confirmed") : t.status)}</p><div class="actions">${reviewHold ? ntUi('<p class="error">This task is waiting for source review. Please ask your care team for help.</p>') : ""}${S.data.scopes.includes("respond") && !reviewHold ? ntUi`<button class="primary" data-response="completed" data-id="${t.id}">Done</button><button data-response="deferred" data-id="${t.id}">Later</button>` : ""}<button data-coach="${t.id}">Step guide</button></div></section>`;
 }
 function render() {
   if (!S.user || !S.data) return;
@@ -155,12 +156,15 @@ function render() {
   );
   const plan = records("plan").find((p) => p.status === "approved");
   let body = "";
-  if (S.tab === "home") body = `<div class="adaptive-home">${renderMobileHome(tasks, plan)}</div>`;
+  if (S.tab === "home")
+    body = ntUi`<div class="adaptive-home">${renderMobileHome(tasks, plan)}</div>`;
   if (S.tab === "messages") body = renderCareMessages();
-  if (S.tab === "weekly") body = `<div class="mobile-report-page">${renderWeeklyReports()}</div>`;
+  if (S.tab === "weekly")
+    body = ntUi`<div class="mobile-report-page">${renderWeeklyReports()}</div>`;
   if (S.tab === "plan") body = renderMobilePlan(tasks, plan);
   if (S.tab === "check") body = renderMobileCheck();
-  if (S.tab === "companion") body = `<div class="adaptive-companion">${renderCompanion()}</div>`;
+  if (S.tab === "companion")
+    body = ntUi`<div class="adaptive-companion">${renderCompanion()}</div>`;
   if (S.tab === "support") body = renderMobileSupport();
   if (S.tab === "settings") body = renderMobileSettings();
   const followLatest =
@@ -168,17 +172,17 @@ function render() {
     !S.care?.before &&
     (S.care?.forceLatest || !S.care?.scroll || S.care.scroll.bottom);
   $("#app").innerHTML =
-    `<a class="skip-link" href="#mobile-content">Skip to content</a><div class="adaptive-shell"><aside class="adaptive-navigation"><div class="adaptive-brand"><span class="brand-mark" aria-hidden="true">${brandMark()}</span><strong>NeuroCompanion</strong><button id="nav-density" class="plain" aria-label="Toggle compact navigation" aria-expanded="${!document.documentElement.classList.contains("nav-compact")}">↔</button></div><div class="adaptive-nav-slot"></div><div class="adaptive-nav-context"><span class="patient-initial" aria-hidden="true">${esc(S.data.patient.name.slice(0, 1))}</span><strong>${esc(S.data.patient.name)}</strong><small>${esc(family ? "Authorized relative" : "Participant")} workspace</small><button data-tab="settings" aria-current="${S.tab === "settings" ? "page" : "false"}">${icon("settings")}<span>Settings</span></button></div></aside><div class="adaptive-workspace"><div class="adaptive-topbar"><header class="mobile-header"><div class="mobile-brand"><span class="brand-mark" aria-hidden="true">${brandMark()}</span><strong>NeuroCompanion</strong></div>${family ? `<button class="plain family-companion" data-tab="companion" aria-label="Companion">${icon("companion")}</button>` : ""}<button class="reference-reminders plain" data-tab="plan" aria-label="View reminders"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 16h14l-2-3V9a5 5 0 0 0-10 0v4l-2 3ZM9 20h6"/></svg>${S.routineData?.reminders.some((item) => item.state !== "acknowledged") ? '<span class="reminder-dot"></span>' : ""}</button><button class="plain reference-profile" data-tab="settings" aria-label="Settings"><span>${esc(S.user.name.slice(0, 1))}</span></button></header>${renderWorkspacePicker()}<div class="scope"><span class="patient-initial" aria-hidden="true">${esc(S.data.patient.name.slice(0, 1))}</span><span><strong>${esc(S.data.patient.name)}</strong><small>${esc(family ? "Authorized relative" : "Participant")} · Synthetic development workspace</small></span>${!navigator.onLine ? '<span class="offline-label" role="status">Offline</span>' : ""}</div></div><main id="mobile-content" class="adaptive-content" tabindex="-1">${body}</main><nav aria-label="Main navigation">${mobileNavigation(
+    ntUi`<a class="skip-link" href="#mobile-content">Skip to content</a><div class="adaptive-shell"><aside class="adaptive-navigation"><div class="adaptive-brand"><span class="brand-mark" aria-hidden="true">${brandMark()}</span><strong>NeuroCompanion</strong><button id="nav-density" class="plain" aria-label="Toggle compact navigation" aria-expanded="${!document.documentElement.classList.contains("nav-compact")}">↔</button></div><div class="adaptive-nav-slot"></div><div class="adaptive-nav-context"><span class="patient-initial" aria-hidden="true">${esc(S.data.patient.name.slice(0, 1))}</span><strong>${esc(S.data.patient.name)}</strong><small>${esc(family ? ntTr("Authorized relative") : ntTr("Participant"))} workspace</small><button data-tab="settings" aria-current="${S.tab === "settings" ? "page" : "false"}">${icon("settings")}<span>Settings</span></button></div></aside><div class="adaptive-workspace"><div class="adaptive-topbar"><header class="mobile-header"><div class="mobile-brand"><span class="brand-mark" aria-hidden="true">${brandMark()}</span><strong>NeuroCompanion</strong></div>${family ? ntUi`<button class="plain family-companion" data-tab="companion" aria-label="Companion">${icon("companion")}</button>` : ""}<button class="reference-reminders plain" data-tab="plan" aria-label="View reminders"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 16h14l-2-3V9a5 5 0 0 0-10 0v4l-2 3ZM9 20h6"/></svg>${S.routineData?.reminders.some((item) => item.state !== "acknowledged") ? ntUi('<span class="reminder-dot"></span>') : ""}</button><button class="plain reference-profile" data-tab="settings" aria-label="Settings"><span>${esc(S.user.name.slice(0, 1))}</span></button></header>${renderWorkspacePicker()}<div class="scope"><span class="patient-initial" aria-hidden="true">${esc(S.data.patient.name.slice(0, 1))}</span><span><strong>${esc(S.data.patient.name)}</strong><small>${esc(family ? ntTr("Authorized relative") : ntTr("Participant"))} · Synthetic development workspace</small></span>${!navigator.onLine ? ntUi('<span class="offline-label" role="status">Offline</span>') : ""}</div></div><main id="mobile-content" class="adaptive-content" tabindex="-1">${body}</main><nav data-primary-navigation aria-label="Main navigation">${mobileNavigation(
       family,
     )
       .map(
         ([key, label]) =>
-          `<button data-tab="${key}" aria-label="${label}" title="${label}" class="${S.tab === key ? "active" : ""}" aria-current="${S.tab === key ? "page" : "false"}">${icon(key)}<span>${label}</span></button>`,
+          ntUi`<button data-tab="${key}" aria-label="${label}" title="${label}" class="${S.tab === key ? "active" : ""}" aria-current="${S.tab === key ? "page" : "false"}">${icon(key)}<span>${label}</span></button>`,
       )
       .join("")}</nav></div></div>`;
   document
     .querySelector(".adaptive-nav-slot")
-    .append(document.querySelector('nav[aria-label="Main navigation"]'));
+    .append(document.querySelector("nav[data-primary-navigation]"));
   syncMobileDock();
   bind();
   syncMobileHistory(followLatest);
@@ -201,7 +205,7 @@ function bind() {
           if (
             !person ||
             !confirm(
-              `Remove ${person.name}'s access to this patient? Future app access will stop. Previously downloaded information cannot be recalled.`,
+              ntText`Remove ${person.name}'s access to this patient? Future app access will stop. Previously downloaded information cannot be recalled.`,
             )
           )
             return;
@@ -210,7 +214,7 @@ function bind() {
             "POST",
           );
           await refresh();
-          note("Access removed. Previously downloaded information is not recalled.");
+          note(ntTr("Access removed. Previously downloaded information is not recalled."));
         })),
   );
 
@@ -219,7 +223,6 @@ function bind() {
   bindResearchSessions();
   bindAccountSessions();
   bindCareExport();
-  bindIotSimulation();
   bindCameraAssistance();
   bindCareMessages();
   bindWeeklyReports();
@@ -257,7 +260,7 @@ function bind() {
             response: b.dataset.response,
           });
           await refresh();
-          note("Your response was saved.");
+          note(ntTr("Your response was saved."));
         })),
   );
   document.querySelectorAll("[data-coach]").forEach(
@@ -278,7 +281,7 @@ function bind() {
             expected_version: h.version,
           });
           await refresh();
-          note("Responsibility accepted.");
+          note(ntTr("Responsibility accepted."));
         })),
   );
   if ($("#help"))
@@ -288,7 +291,7 @@ function bind() {
       guard(async () => {
         await api(`/patients/${S.pid}/help`, "POST", { ...body, command_id: crypto.randomUUID() });
         await refresh();
-        note("Help request saved in app.");
+        note(ntTr("Help request saved in app."));
       });
     };
   if ($("#concern"))
@@ -304,8 +307,8 @@ function bind() {
         await refresh();
         note(
           f.has("urgent")
-            ? "Concern recorded. Do not wait for this app for urgent assistance."
-            : "Concern saved for clinician review.",
+            ? ntTr("Concern recorded. Do not wait for this app for urgent assistance.")
+            : ntTr("Concern saved for clinician review."),
         );
       });
     };
@@ -316,9 +319,11 @@ function bind() {
           S.accountTextLarge = !document.documentElement.classList.contains("large");
           document.documentElement.classList.toggle("large", S.accountTextLarge);
           const button = $("#size");
-          button.textContent = S.accountTextLarge ? "Use normal text" : "Use larger text";
+          button.textContent = S.accountTextLarge
+            ? ntTr("Use normal text")
+            : ntTr("Use larger text");
           button.setAttribute("aria-pressed", String(S.accountTextLarge));
-          note("Text size changed for this open app.");
+          note(ntTr("Text size changed for this open app."));
           return;
         }
         await api(`/patients/${S.pid}/preferences`, "POST", {
@@ -459,7 +464,7 @@ setInterval(async () => {
       S.pendingAction = null;
       S.guide = null;
       login();
-      note("Access expired or changed. Sign in again.");
+      note(ntTr("Access expired or changed. Sign in again."));
     }
   } finally {
     syncing = false;
