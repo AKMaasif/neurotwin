@@ -71,6 +71,7 @@ function workspaceWritesBusy() {
     S.researchBusy ||
     S.iotBusy ||
     S.cameraBusy ||
+    S.careExportBusy ||
     S.busy ||
     S.care?.busy
   );

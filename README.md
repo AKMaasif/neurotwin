@@ -178,3 +178,8 @@ Authorized patient switching, clinician plan/case review and participant privacy
 [Per-role contract evaluation](docs/agent-contract-evaluation.md) provides reproducible software checks for all eight registry roles. Scores are contract pass rates, not clinical accuracy. The [development ledger](DEVELOPMENT_PLAN.md) distinguishes locally verified, planned and externally gated work.
 
 [Research dataset preflight](docs/research-data-readiness.md) checks provenance references, split leakage, missing values and protocol consistency offline. Its synthetic example demonstrates the data contract only; formal assessments, model training and clinical validation remain gated.
+
+
+[Integrated verification](docs/integrated-validation.md) records the full SQLite/PostgreSQL regression and the isolated browser validation profile, including synthetic media setup and the distinction between software, clinical and production validation.
+
+[Participant care-summary export](docs/care-summary-export.md) provides a confirmed, permission-scoped JSON download of approved support records, with explicit exclusions and no clinical-record completeness claim.

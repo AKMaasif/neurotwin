@@ -217,6 +217,7 @@ function bind() {
   bindWorkspacePicker();
   bindResearchSessions();
   bindAccountSessions();
+  bindCareExport();
   bindIotSimulation();
   bindCameraAssistance();
   bindCareMessages();

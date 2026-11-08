@@ -24,16 +24,17 @@ DEFAULT_CHECKS = [
     "plan_design_browser_check",
     "clinical_design_browser_check",
     "clinical_privacy_browser_check",
-]
-SUPPORTED_CHECKS = DEFAULT_CHECKS + [
-    "password_browser_check",
-    "account_sessions_browser_check",
-    "camera_browser_check",
-    "iot_browser_check",
-    "research_browser_check",
-    "adaptive_mobile_browser_check",
     "care_pages_browser_check",
     "family_reports_design_check",
+    "research_browser_check",
+    "iot_browser_check",
+    "camera_browser_check",
+    "account_sessions_browser_check",
+    "password_browser_check",
+    "care_export_browser_check",
+]
+SUPPORTED_CHECKS = DEFAULT_CHECKS + [
+    "adaptive_mobile_browser_check",
     "premium_mobile_browser_check",
 ]
 
