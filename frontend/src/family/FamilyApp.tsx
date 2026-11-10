@@ -20,7 +20,7 @@ export default function FamilyApp({ user, onSignOut }: { user: User; onSignOut: 
         <Brand />
         <div className="who">
           <LangSwitch />
-          <button className="link" onClick={() => setAccount(!account)} aria-pressed={account}>{t("acTitle")}</button>
+          {!user.is_demo && <button className="link" onClick={() => setAccount(!account)} aria-pressed={account}>{t("acTitle")}</button>}
           <button className="link" onClick={onSignOut}>{t("signOut")}</button>
         </div>
       </header>

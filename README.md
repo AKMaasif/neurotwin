@@ -16,6 +16,8 @@ approved for clinical use. It holds synthetic demo data only; do not enter real 
   type (observed, self-reported, inferred), quality, protocol version and source, a "To check" queue and an access log.
 - **Change estimates** for clinicians: each person compared only with their own earlier results, with a 95%
   interval, abstaining when the evidence is thin.
+- **Summary drafts** for clinicians (needs a model key): a model writes from stored facts, rules check every
+  statement, and the clinician approves, edits or rejects.
 - **Password sign-in** with server-side sessions, and an Account screen for changing passwords.
 - **Evidence core**: append-only records, explicit missing data, deterministic quality rules, revocable purpose-scoped
   sharing, audit trail, logs that never contain health values.
@@ -34,18 +36,19 @@ cd D:\NeuroTwin
 ```
 
 The script creates a Python environment, installs everything, builds the web app, and starts the server.
-Open **http://127.0.0.1:8000** and sign in with a demo account.
+Open **http://127.0.0.1:8000** and choose a view. No username or password is needed in demo mode.
 
-### Demo accounts
+### Demo views
 
-| Username | Role |
+| View | Opens as |
 | --- | --- |
-| `fatima`, `yousef` | Older adult |
-| `mariam`, `omar` | Family member |
-| `dr.layla` | Clinician |
+| Older adult | Fatima (Arabic) or Yousef (English) |
+| Family member | Mariam or Omar |
+| Clinician | Dr. Layla |
 
-All start with the password **`neurotwin-demo-2026`** (set `NEUROTWIN_DEMO_PASSWORD` before the first start to
-choose another). Each person can change their own password under Account.
+One click opens a view. The demo accounts are shared by everyone using the server, so password changes and
+"sign out other devices" are switched off for them. On a server started with `NEUROTWIN_SEED_DEMO=0`, one-click
+entry is off and the front page shows a username and password form instead.
 
 If PowerShell blocks the script, run once: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 
@@ -89,10 +92,32 @@ Stop the server, delete `backend\neurotwin.db`, start it again.
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `NEUROTWIN_DATABASE_URL` | SQLite file `backend/neurotwin.db` | Any SQLAlchemy URL, e.g. PostgreSQL |
-| `NEUROTWIN_SEED_DEMO` | `1` | Load the synthetic demo accounts into an empty database |
-| `NEUROTWIN_DEMO_PASSWORD` | `neurotwin-demo-2026` | Password given to demo accounts when first created |
+| `NEUROTWIN_SEED_DEMO` | `1` | Demo mode: load the synthetic demo accounts and allow one-click entry to them |
+| `NEUROTWIN_DEMO_PASSWORD` | `neurotwin-demo-2026` | Password of the demo accounts (only needed if you sign in to them by password) |
 | `NEUROTWIN_SECURE_COOKIES` | `0` | Set to `1` when served over HTTPS (any deployment) |
 | `NEUROTWIN_SESSION_HOURS` | `8` | How long a sign-in lasts |
+
+## Model providers (optional)
+
+NeuroTwin runs fully without any AI key. To prepare for the model-assisted features, add keys for Google Gemini,
+Meta's Model API, or both:
+
+```powershell
+cd D:\NeuroTwin\backend
+copy .env.example .env      # then open .env and paste your keys
+.\.venv\Scripts\python.exe scripts\list_models.py
+```
+
+The script lists the models each key can use and never prints a key. Put the provider and model you choose in
+`.env` (`NEUROTWIN_AI_PROVIDER`, `GEMINI_MODEL` or `META_MODEL`), then check a real draft end to end:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\try_draft.py --all
+```
+
+With a provider set, the clinician's **Summary** tab can write a draft summary of a person's records. `backend/.env` is ignored by git: never commit it,
+and never send real health data to a provider. Every model-written draft must pass the output validator
+(`backend/app/validator.py`) and then a clinician's review.
 
 ## Contributing
 

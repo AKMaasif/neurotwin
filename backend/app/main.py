@@ -14,12 +14,14 @@ from sqlalchemy.orm import Session
 
 from . import change as C
 from . import config
+from . import drafts as D
+from . import llm
 from . import protocols as P
 from . import quality as Q
 from . import services as S
 from .db import Database
 from .logs import SafeRequestLog
-from .models import AccessGrant, ActivitySession, AuditEvent, Evidence, ReviewItem, User
+from .models import AccessGrant, ActivitySession, AuditEvent, Draft, Evidence, ReviewItem, User
 from .auth import router as auth_router
 from .auth import user_out
 from .security import current_user, get_db, require_evidence_access
@@ -85,6 +87,21 @@ class ResolveBatchIn(ResolveIn):
     ids: list[int] = Field(max_length=200)
 
 
+class DraftIn(BaseModel):
+    language: Lang = "en"
+
+
+class DraftStatementIn(BaseModel):
+    text: str = Field(max_length=1000)
+    cites: list[str] = Field(default_factory=list, max_length=20)
+
+
+class DraftReviewIn(BaseModel):
+    decision: Literal["approve", "reject"]
+    note: str = Field(default="", max_length=500)
+    statements: list[DraftStatementIn] | None = Field(default=None, max_length=20)
+
+
 class LanguageIn(BaseModel):
     language: Lang
 
@@ -117,6 +134,17 @@ def evidence_out(e: Evidence) -> dict:
             "quality_reasons": e.quality_reasons, "status": e.status, "supersedes_id": e.supersedes_id,
             "superseded_by_id": e.superseded_by_id, "change_reason": e.change_reason,
             "recorded_at": iso(e.recorded_at)}
+
+
+def draft_out(d: Draft) -> dict:
+    """A refused draft never shows its text: only that it was refused, and why."""
+    shown = d.status != "refused"
+    return {"id": d.id, "participant_id": d.participant_id, "language": d.language, "status": d.status,
+            "statements": d.statements if shown else [], "problems": d.problems,
+            "facts": d.facts if shown else [], "provider": d.provider, "model": d.model,
+            "validator_version": d.validator_version, "attempts": d.attempts, "created_by": d.created_by,
+            "created_at": iso(d.created_at), "reviewed_by": d.reviewed_by, "reviewed_at": iso(d.reviewed_at),
+            "review_note": d.review_note}
 
 
 def change_out(r) -> dict:
@@ -153,6 +181,7 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
             seed(db)
             ensure_demo_credentials(db, demo_password or config.DEMO_PASSWORD)
     app.state.demo = bool(config.SEED_DEMO if seed_demo is None else seed_demo)
+    app.state.get_llm = llm.get_client
     app.add_middleware(SafeRequestLog)
 
     @app.exception_handler(S.Refused)
@@ -185,6 +214,11 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
         u.language = body.language
         db.commit()
         return user_out(u, own=True)
+
+    @app.get("/api/ai/status")
+    def ai_status(_: User = Depends(current_user)):
+        """Whether a model provider is configured. Names and booleans only."""
+        return llm.status()
 
     @app.get("/api/protocols")
     def list_protocols(_: User = Depends(current_user)):
@@ -330,6 +364,33 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
         S.audit(db, user.id, "change.computed", pid, C.METHOD)
         db.commit()
         return out
+
+    # Model-written summary drafts (clinicians only) ----------------------------------------------------------
+    def _clinician_for(db: Session, user: User, pid: str) -> None:
+        if user.role != "clinician":
+            raise HTTPException(404, "Not found, or you do not have access.")
+        require_evidence_access(db, user, pid)
+
+    @app.get("/api/participants/{pid}/drafts")
+    def list_drafts(pid: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        _clinician_for(db, user, pid)
+        rows = db.scalars(select(Draft).where(Draft.participant_id == pid).order_by(Draft.id.desc()).limit(20))
+        return [draft_out(d) for d in rows]
+
+    @app.post("/api/participants/{pid}/drafts")
+    def create_draft(pid: str, body: DraftIn, request: Request, user: User = Depends(current_user),
+                     db: Session = Depends(get_db)):
+        _clinician_for(db, user, pid)
+        return draft_out(D.generate(db, user, pid, body.language, request.app.state.get_llm()))
+
+    @app.post("/api/drafts/{did}/review")
+    def review_draft(did: int, body: DraftReviewIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        d = db.get(Draft, did)
+        if d is None:
+            raise HTTPException(404, "Not found, or you do not have access.")
+        _clinician_for(db, user, d.participant_id)
+        statements = [x.model_dump() for x in body.statements] if body.statements is not None else None
+        return draft_out(D.review(db, user, d, body.decision, body.note, statements))
 
     @app.get("/api/participants/{pid}/audit")
     def list_audit(pid: str, user: User = Depends(current_user), db: Session = Depends(get_db)):

@@ -5,6 +5,9 @@ NEUROTWIN_SEED_DEMO     "1" (default) loads the synthetic demo accounts on an em
 NEUROTWIN_DEMO_PASSWORD Password given to every demo account when they are first created. Demo only.
 NEUROTWIN_SECURE_COOKIES "1" marks the sign-in cookie Secure (HTTPS only). Set it in any deployment.
 NEUROTWIN_SESSION_HOURS How long a sign-in lasts. Default 8.
+
+Model providers (optional; see .env.example). Keys are read from the environment or from backend/.env, which is
+never committed. Real environment variables win over the file.
 """
 from __future__ import annotations
 
@@ -13,6 +16,21 @@ from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 PROJECT_DIR = BACKEND_DIR.parent
+ENV_FILE = BACKEND_DIR / ".env"
+
+
+def load_env(path: Path = ENV_FILE) -> None:
+    """Read KEY=value lines from backend/.env into the environment. Values already set are kept."""
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        key, sep, value = line.partition("=")
+        key = key.strip()
+        if sep and key and not key.startswith("#"):
+            os.environ.setdefault(key, value.strip().strip('"').strip("'"))
+
+
+load_env()
 
 DATABASE_URL = os.environ.get("NEUROTWIN_DATABASE_URL") or f"sqlite:///{BACKEND_DIR / 'neurotwin.db'}"
 SEED_DEMO = os.environ.get("NEUROTWIN_SEED_DEMO", "1") == "1"
