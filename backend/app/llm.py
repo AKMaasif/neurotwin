@@ -23,7 +23,7 @@ import httpx
 
 GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
 META_BASE_DEFAULT = "https://api.meta.ai/v1"
-TIMEOUT_S = 60.0
+TIMEOUT_S = 120.0
 
 
 class ModelError(RuntimeError):
