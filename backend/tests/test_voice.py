@@ -104,33 +104,21 @@ def test_gemini_transcribe_request_shape():
     assert r.text == "مرحبا"
     parts = seen["body"]["contents"][0]["parts"]
     assert parts[1]["inline_data"] == {"mime_type": "audio/webm", "data": base64.b64encode(b"abc").decode()}
-    assert "Arabic" in parts[0]["text"]
+    assert "Arabic" in parts[0]["text"] and "Never translate" in parts[0]["text"]
 
 
-def test_stt_provider_selection():
-    env = {"NEUROTWIN_AI_PROVIDER": "gemini", "GEMINI_API_KEY": "k", "GEMINI_MODEL": "g",
-           "META_API_KEY": "m", "META_STT_MODEL": "muse-voice"}
-    assert llm.get_stt_client(env).provider == "gemini"
-    assert llm.get_stt_client({**env, "NEUROTWIN_STT_PROVIDER": "meta"}).model == "muse-voice"
-    assert llm.get_stt_client({**env, "NEUROTWIN_STT_PROVIDER": "meta", "META_STT_MODEL": ""}) is None
-    assert llm.get_stt_client({"NEUROTWIN_AI_PROVIDER": "gemini"}) is None
+def test_stt_uses_gemini_only():
+    env = {"NEUROTWIN_AI_PROVIDER": "meta", "GEMINI_API_KEY": "k", "GEMINI_MODEL": "g", "META_API_KEY": "m"}
+    assert llm.get_stt_client(env).provider == "gemini"          # even when Meta writes the text drafts
+    assert llm.get_stt_client({**env, "GEMINI_MODEL": ""}) is None
+    assert llm.get_stt_client({"META_API_KEY": "m"}) is None
 
 
-def test_meta_transcribe_request_shape():
+def test_gemini_prompt_never_asks_for_translation():
     seen = {}
 
     def handler(request):
-        seen["url"], seen["auth"], seen["body"] = str(request.url), request.headers["authorization"], request.content
-        return httpx.Response(200, json={"sessionId": "s", "transcript": " hello ", "turns": []})
-    c = llm.MetaClient("KEY", "muse-voice-transcribe-1.0", transport=httpx.MockTransport(handler))
-    r = c.transcribe(b"RIFFdata", "audio/wav", "ar")
-    assert r.text == "hello"
-    assert seen["url"].endswith("/v1/asr/transcribe") and seen["auth"] == "Bearer KEY"
-    assert b'"model": "muse-voice-transcribe-1.0"' in seen["body"] and b'"Arabic"' in seen["body"]
-    assert b'name="audio"' in seen["body"] and b"RIFFdata" in seen["body"]
-
-
-def test_meta_refuses_non_wav_without_calling_out():
-    c = llm.MetaClient("KEY", "m", transport=httpx.MockTransport(lambda r: pytest.fail("should not be called")))
-    with pytest.raises(llm.ModelError):
-        c.transcribe(b"x", "audio/webm", "en")
+        seen["prompt"] = json.loads(request.content)["contents"][0]["parts"][0]["text"]
+        return httpx.Response(200, json={"candidates": [{"content": {"parts": [{"text": "hi"}]}}]})
+    llm.GeminiClient("k", "m", transport=httpx.MockTransport(handler)).transcribe(b"a", "audio/wav", "ar")
+    assert "Never translate" in seen["prompt"] and "in Arabic" not in seen["prompt"]
