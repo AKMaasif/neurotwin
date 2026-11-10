@@ -138,6 +138,27 @@ class ReviewItem(Base):
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class Draft(Base):
+    """A model-written summary and what became of it. The facts it was given are kept with it."""
+    __tablename__ = "drafts"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    participant_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    created_by: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    language: Mapped[str] = mapped_column(String(5))
+    status: Mapped[str] = mapped_column(String(20))   # pending_review | approved | rejected | refused
+    statements: Mapped[list] = mapped_column(JSON, default=list)
+    problems: Mapped[list] = mapped_column(JSON, default=list)
+    facts: Mapped[list] = mapped_column(JSON, default=list)
+    provider: Mapped[str] = mapped_column(String(20))
+    model: Mapped[str] = mapped_column(String(80))
+    validator_version: Mapped[str] = mapped_column(String(40))
+    attempts: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    reviewed_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    review_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
 class AuditEvent(Base):
     """Who did what to which record. Never holds health values or free text from participants."""
     __tablename__ = "audit_events"

@@ -2,6 +2,20 @@
 
 All notable changes, newest first. Versions follow `0.x` while NeuroTwin is a research prototype.
 
+## Unreleased
+
+### Added
+- Clinician summary drafts: a model writes from stored facts, the output validator checks every statement, and the
+  clinician approves, edits or rejects. Drafts keep their facts, model and validator version. Daily call cap.
+- Output validator for model-written drafts: citations, numbers and wording are checked by rules before any person
+  sees a draft.
+- Provider clients for Google Gemini and Meta's Model API behind one interface, keys read from `backend/.env`, and
+  `scripts/list_models.py` to see which models a key can use. No model feature is switched on yet.
+
+### Changed
+- In demo mode the front page opens any demo view in one click, with no username or password. The password form
+  appears only when demo mode is off. Shared demo accounts cannot change their password or sign out other devices.
+
 ## 0.2.0 — 10 Nov 2026
 
 ### Added

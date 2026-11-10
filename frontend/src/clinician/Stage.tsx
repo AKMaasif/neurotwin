@@ -87,7 +87,7 @@ export default function Stage({ user, person, data, sel, onSelect, onSignOut, on
                 <div className="sep" />
                 <small>{t("cScopeNote")}</small>
                 <small>{t("wsKeys")}</small>
-                <button role="menuitem" onClick={() => { setAccount(true); setMenu(false); }}>{t("acLink")}</button>
+                {!user.is_demo && <button role="menuitem" onClick={() => { setAccount(true); setMenu(false); }}>{t("acLink")}</button>}
                 <div className="sep" />
                 <button role="menuitem" onClick={onSignOut}>{t("signOut")}</button>
               </div>
