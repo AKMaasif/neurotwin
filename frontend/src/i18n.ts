@@ -319,6 +319,22 @@ const en = {
   repNoneOpen: "None.",
   repRules: "Quality rules version",
   repFirstLast: "First – last",
+  chTitle: "Change estimates",
+  chLede: "Each person compared only with themselves: earliest usable sessions against the latest ones, for one activity version.",
+  chStatus_insufficient: "Not enough usable sessions ({n} of {need})",
+  chStatus_no_variation: "Values do not vary, so variation cannot be estimated",
+  chStatus_within: "Within this person's usual variation",
+  chStatus_outside: "Outside this person's usual variation",
+  chDir_higher: "higher",
+  chDir_lower: "lower",
+  chDiff: "Difference {d}{unit} · 95% interval {lo} to {hi}",
+  chWindows: "Earliest {nb} vs latest {nr} usable sessions",
+  chExcluded: "Not counted: {doubtful} doubtful, {unusable} unusable, {withdrawn} withdrawn, {missing} missing",
+  chMethod: "Research estimate ({method}). Not a diagnosis or prediction. Window sizes and interval level await statistical and clinical review.",
+  chIncludeDoubtful: "Count doubtful sessions",
+  chDoubtfulCounted: "Doubtful sessions are counted in this estimate.",
+  chBaseline: "baseline",
+  chRecent: "recent",
 };
 
 export type Key = keyof typeof en;
@@ -627,6 +643,22 @@ const ar: Record<Key, string> = {
   repNoneOpen: "لا يوجد.",
   repRules: "إصدار قواعد الجودة",
   repFirstLast: "الأول – الأخير",
+  chTitle: "تقديرات التغيّر",
+  chLede: "يُقارَن كل شخص بنفسه فقط: أقدم الجلسات الصالحة مقابل أحدثها، لإصدار واحد من النشاط.",
+  chStatus_insufficient: "لا توجد جلسات صالحة كافية ({n} من {need})",
+  chStatus_no_variation: "القيم لا تتغيّر، لذا لا يمكن تقدير التباين",
+  chStatus_within: "ضمن التباين المعتاد لهذا الشخص",
+  chStatus_outside: "خارج التباين المعتاد لهذا الشخص",
+  chDir_higher: "أعلى",
+  chDir_lower: "أقل",
+  chDiff: "الفرق {d}{unit} · فاصل ٩٥٪ من {lo} إلى {hi}",
+  chWindows: "أقدم {nb} مقابل أحدث {nr} جلسات صالحة",
+  chExcluded: "غير محتسبة: {doubtful} مشكوك فيها، {unusable} غير صالحة، {withdrawn} مسحوبة، {missing} مفقودة",
+  chMethod: "تقدير بحثي ({method}). ليس تشخيصًا ولا تنبؤًا. أحجام النوافذ ومستوى الفاصل بانتظار مراجعة إحصائية وسريرية.",
+  chIncludeDoubtful: "احتساب الجلسات المشكوك فيها",
+  chDoubtfulCounted: "الجلسات المشكوك فيها محتسبة في هذا التقدير.",
+  chBaseline: "الأساس",
+  chRecent: "الأحدث",
 };
 
 // Labels for codes that come from the server.
@@ -650,7 +682,7 @@ const codes: Record<Lang, Record<string, string>> = {
     "session.completed": "Activity completed", "session.interrupted": "Activity interrupted",
     "session.abandoned": "Activity stopped early", "evidence.viewed": "Evidence viewed",
     "evidence.amended": "Answer corrected", "evidence.withdrawn": "Record withdrawn",
-    "review.resolved": "Item reviewed", "review.keep": "Reviewed: kept", "review.exclude": "Reviewed: excluded", "report.generated": "Report generated", "family.viewed": "Family update viewed", "evidence.inferred": "Inferred record",
+    "review.resolved": "Item reviewed", "review.keep": "Reviewed: kept", "review.exclude": "Reviewed: excluded", "report.generated": "Report generated", "change.computed": "Change estimates viewed", "family.viewed": "Family update viewed", "evidence.inferred": "Inferred record",
   },
   ar: {
     daily_checkin: "الاطمئنان اليومي", reaction_time: "نشاط سرعة الاستجابة",
@@ -671,7 +703,7 @@ const codes: Record<Lang, Record<string, string>> = {
     "session.completed": "اكتمال نشاط", "session.interrupted": "انقطاع نشاط",
     "session.abandoned": "توقف نشاط مبكرًا", "evidence.viewed": "عرض الأدلة",
     "evidence.amended": "تصحيح إجابة", "evidence.withdrawn": "سحب سجل",
-    "review.resolved": "مراجعة عنصر", "review.keep": "مراجعة: إبقاء", "review.exclude": "مراجعة: استبعاد", "report.generated": "إنشاء تقرير", "family.viewed": "عرض تحديث العائلة", "evidence.inferred": "سجل مُستنتَج",
+    "review.resolved": "مراجعة عنصر", "review.keep": "مراجعة: إبقاء", "review.exclude": "مراجعة: استبعاد", "report.generated": "إنشاء تقرير", "change.computed": "عرض تقديرات التغيّر", "family.viewed": "عرض تحديث العائلة", "evidence.inferred": "سجل مُستنتَج",
   },
 };
 
