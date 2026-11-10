@@ -7,17 +7,21 @@ provenance and quality.
 **Independent research prototype. Not a medical device. It does not diagnose, score or predict, and it is not
 approved for clinical use. It holds synthetic demo data only; do not enter real health information.**
 
-## What is in this version (0.1)
+## What is in this version (0.2)
 
 - **Personal app** for older adults: consent, a daily check-in, a reaction activity, sharing controls, own records
   with corrections. Large type, one task per screen, English and Arabic (right-to-left).
 - **Family view**: who shares with them and which activities were done. Never answers or results.
 - **Clinician dashboard**: people who shared with the clinician, a within-person chart, every record with its
   type (observed, self-reported, inferred), quality, protocol version and source, a "To check" queue and an access log.
+- **Change estimates** for clinicians: each person compared only with their own earlier results, with a 95%
+  interval, abstaining when the evidence is thin.
+- **Password sign-in** with server-side sessions, and an Account screen for changing passwords.
 - **Evidence core**: append-only records, explicit missing data, deterministic quality rules, revocable purpose-scoped
   sharing, audit trail, logs that never contain health values.
 
 What is verified, experimental, planned and awaiting approval is listed in [docs/STATUS.md](docs/STATUS.md).
+Changes by version: [CHANGELOG.md](CHANGELOG.md).
 How it fits together: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Run it on Windows
