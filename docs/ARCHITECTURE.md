@@ -13,6 +13,9 @@
                 │  deterministic     │   services.py  every state change + audit
                 │  core, no models   │   quality.py   evidence-quality rules
                 │                    │   protocols.py versioned activities
+                │                    │   change.py    within-person change
+                │  model-assisted,   │   llm.py       Gemini / Meta clients
+                │  always gated      │   validator.py output validator
                 └─────────┬──────────┘
                           │ SQLAlchemy
                     SQLite (dev) / PostgreSQL
@@ -80,6 +83,9 @@ Interactive API docs: http://127.0.0.1:8000/docs while the server runs.
 
 - **Change engine**: reads current, usable-or-doubtful evidence of one version; writes `inferred` records through
   `services.record_inferred`, which already enforces sources and producer type.
-- **Model-assisted drafting**: receives evidence ids, never raw tables; its output goes through a validator, then
-  into a clinician review queue. No model output reaches a participant or family without approval.
+- **Model-assisted drafting**: the drafter is given a list of facts (id, text, numbers) built from stored records.
+  It returns statements that each cite fact ids. `validator.check` refuses the draft unless every statement is
+  cited, every number is in its cited facts and no clinical, advisory, normative or reassuring wording appears.
+  A passing draft goes to the clinician to approve, edit or reject. No model output reaches a participant or
+  family without that approval. Providers sit behind `llm.get_client()`; with no key the feature is simply off.
 - **Imaging research module**: a separate service and store, linked by participant id and consent scope only.

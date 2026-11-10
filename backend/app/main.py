@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from . import change as C
 from . import config
+from . import llm
 from . import protocols as P
 from . import quality as Q
 from . import services as S
@@ -185,6 +186,11 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
         u.language = body.language
         db.commit()
         return user_out(u, own=True)
+
+    @app.get("/api/ai/status")
+    def ai_status(_: User = Depends(current_user)):
+        """Whether a model provider is configured. Names and booleans only."""
+        return llm.status()
 
     @app.get("/api/protocols")
     def list_protocols(_: User = Depends(current_user)):
