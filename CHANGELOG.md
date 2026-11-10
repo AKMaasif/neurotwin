@@ -4,7 +4,14 @@ All notable changes, newest first. Versions follow `0.x` while NeuroTwin is a re
 
 ## Unreleased
 
+### Changed
+- Arabic drafts are written fully in Arabic (glossary and Arabic month names); model timeout 120 s; demo dates are
+  fixed for the whole day.
+
 ### Added
+- Family messages: write, preview, then send. Authorised relatives only; the person can read and remove from view.
+- Care plan and reminders: clinicians write routines for a person; the person sees today's routines in English or
+  Arabic and can answer Done or Not today. No answer is never counted as missed. Demo plan seeded for Fatima.
 - Clinician summary drafts: a model writes from stored facts, the output validator checks every statement, and the
   clinician approves, edits or rejects. Drafts keep their facts, model and validator version. Daily call cap.
 - Output validator for model-written drafts: citations, numbers and wording are checked by rules before any person
