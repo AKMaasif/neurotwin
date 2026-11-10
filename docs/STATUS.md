@@ -5,12 +5,13 @@ here has been tried with real older adults, families or clinicians yet.
 
 ## Implemented and verified
 
-Verified by the 119 automated backend tests (`backend/tests/`), a clean type-check and production build of the web
+Verified by the 130 automated backend tests (`backend/tests/`), a clean type-check and production build of the web
 app, and a scripted click-through of every screen in Chromium, at phone width (420 px) and desktop width (1360 px),
 in English and Arabic.
 
 | Area | What works | How it was checked |
 | --- | --- | --- |
+| Care plan and reminders | A clinician with a clinical-review grant writes routines (English, Arabic or both; time of day; weekdays). The person sees today's routines in their language, marked as from their clinician, and may answer Done or Not today. Unanswered is never stored or shown as missed. Stopping keeps the history. | `tests/test_careplan.py` (10 tests: access, validation, latest-answer-counts, silence not stored, stop, weekday filter, audit holds no text, 12-routine limit); click-through in Chromium in Arabic (right-to-left) and English. Not yet tested on a real phone or with users. |
 | Consent | Give, withdraw, give again; history kept; no session starts or completes without consent; withdrawing keeps earlier records | Tests: `test_consent_and_sharing.py` |
 | Sharing | Purpose-scoped grants (`clinical_review` for clinicians, `participation_updates` for family); revoke stops access at once and deletes nothing; family never reaches evidence | Tests, 13 cases |
 | Evidence record | Observed / self-reported / inferred kept apart; producer, protocol version and session conditions on every record; missing values need a reason and are never stored as a value | Tests: `test_evidence_and_quality.py` |
@@ -56,8 +57,8 @@ in English and Arabic.
 - Encryption at rest; PostgreSQL deployment inside the UAE; a shared rate-limit store when running more than one process.
 - Activities chosen and reviewed with clinicians, each versioned with its instructions and scoring.
 - A clinician assistant panel (questions about the stored records), behind the same validator.
-- Approved-plan coaching messages; speech-to-text with visible recording and transcript preview.
-- Family messages with preview and Send; appointment reminders.
+- Model-assisted wording of reminders (not started; routines are clinician-written text today); speech-to-text with visible recording and transcript preview.
+- Family messages with preview and Send; appointment reminders (the care plan covers routines only).
 - Deletion requests handled by the research team (separate from withdrawal).
 - Optional imaging research module (clinician-directed, research only), after the core is validated.
 
