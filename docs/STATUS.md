@@ -5,12 +5,14 @@ here has been tried with real older adults, families or clinicians yet.
 
 ## Implemented and verified
 
-Verified by the 119 automated backend tests (`backend/tests/`), a clean type-check and production build of the web
+Verified by the 139 automated backend tests (`backend/tests/`), a clean type-check and production build of the web
 app, and a scripted click-through of every screen in Chromium, at phone width (420 px) and desktop width (1360 px),
 in English and Arabic.
 
 | Area | What works | How it was checked |
 | --- | --- | --- |
+| Care plan and reminders | A clinician with a clinical-review grant writes routines (English, Arabic or both; time of day; weekdays). The person sees today's routines in their language, marked as from their clinician, and may answer Done or Not today. Unanswered is never stored or shown as missed. Stopping keeps the history. | `tests/test_careplan.py` (10 tests: access, validation, latest-answer-counts, silence not stored, stop, weekday filter, audit holds no text, 12-routine limit); click-through in Chromium in Arabic (right-to-left) and English. Not yet tested on a real phone or with users. |
+| Family messages | A family member with an active sharing grant writes a short message (300 characters, no web addresses), sees a preview of exactly what will be sent, and only then presses Send. Drafts reach nobody; a newer draft replaces an older one; the grant is checked again at Send; 5 messages a day per person. The person reads messages, can remove them from their own view (kept in the record), and is never asked to reply. Clinicians have no route to them and no model sees them. | `tests/test_messages.py` (9 tests); Chromium click-through at phone width in Arabic. Not yet tested on a real phone or with families. |
 | Consent | Give, withdraw, give again; history kept; no session starts or completes without consent; withdrawing keeps earlier records | Tests: `test_consent_and_sharing.py` |
 | Sharing | Purpose-scoped grants (`clinical_review` for clinicians, `participation_updates` for family); revoke stops access at once and deletes nothing; family never reaches evidence | Tests, 13 cases |
 | Evidence record | Observed / self-reported / inferred kept apart; producer, protocol version and session conditions on every record; missing values need a reason and are never stored as a value | Tests: `test_evidence_and_quality.py` |
@@ -56,8 +58,8 @@ in English and Arabic.
 - Encryption at rest; PostgreSQL deployment inside the UAE; a shared rate-limit store when running more than one process.
 - Activities chosen and reviewed with clinicians, each versioned with its instructions and scoring.
 - A clinician assistant panel (questions about the stored records), behind the same validator.
-- Approved-plan coaching messages; speech-to-text with visible recording and transcript preview.
-- Family messages with preview and Send; appointment reminders.
+- Model-assisted wording of reminders (not started; routines are clinician-written text today); speech-to-text with visible recording and transcript preview.
+
 - Deletion requests handled by the research team (separate from withdrawal).
 - Optional imaging research module (clinician-directed, research only), after the core is validated.
 
