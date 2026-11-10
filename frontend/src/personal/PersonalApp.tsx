@@ -125,7 +125,8 @@ function Home({ user, sessions, participating, go }: {
 
       <div className="p-list">
         {([["sharing", "sharingTitle", "sharingMeta"], ["records", "recordsTitle", "recordsMeta"],
-          ["consent", "consentTitle", "consentMeta"], ["account", "acTitle", "acLink"]] as const).map(([s, title, meta]) => (
+          ["consent", "consentTitle", "consentMeta"], ["account", "acTitle", "acLink"]] as const)
+          .filter(([s]) => s !== "account" || !user.is_demo).map(([s, title, meta]) => (
           <button key={s} className="p-row" onClick={() => go(s)}>
             <span className="t"><b>{t(title)}</b><span>{t(meta)}</span></span>
             <span className="chev" aria-hidden="true">›</span>
