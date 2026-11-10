@@ -71,6 +71,15 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .signin-form input:focus { border-color: var(--navy); }
 .signin-form .pw { display: flex; gap: 8px; }
 .signin-form .btn { min-height: 48px; }
+.views { display: grid; gap: 12px; }
+.view-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: grid; gap: 14px; }
+.view-head { display: flex; gap: 14px; align-items: flex-start; }
+.view-head .ico { width: 44px; height: 44px; border-radius: 10px; background: var(--navy-soft); color: var(--navy); display: grid; place-items: center; flex: none; }
+.view-head h2 { margin: 0; font-size: 19px; color: var(--ink); font-weight: 600; }
+.view-head p { margin: 2px 0 0; color: var(--muted); }
+.view-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.view-actions .btn { min-height: 52px; font-size: 17px; flex: 1 1 200px; justify-content: space-between; padding: 0 18px; }
+[dir="rtl"] .flip { transform: scaleX(-1); }
 .form-error { margin: 0; color: var(--fail); font-weight: 500; }
 .account { display: grid; gap: 18px; }
 .account.large .signin-form input { min-height: 56px; font-size: 19px; }

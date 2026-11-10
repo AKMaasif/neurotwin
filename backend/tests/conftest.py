@@ -28,6 +28,19 @@ def client(app):
     return TestClient(app)
 
 
+REAL_PASSWORD = "a real account phrase 1"
+
+
+def make_user(app, user_id: str, username: str, role: str = "participant", password: str = REAL_PASSWORD) -> None:
+    """A non-demo account, for testing what demo accounts are not allowed to do."""
+    from app.models import User
+    from app.security import hash_password
+    with app.state.db.SessionLocal() as db:
+        db.add(User(id=user_id, display_name=username.title(), role=role, language="en", is_demo=False,
+                    username=username, password_hash=hash_password(password)))
+        db.commit()
+
+
 def sign_in(client, username: str, password: str = DEMO_PASSWORD) -> dict:
     """Sign in and return the headers that act as that person: their session cookie and CSRF token. The client's
     own cookie jar is cleared, so tests can act as several people in turn without one session replacing another."""

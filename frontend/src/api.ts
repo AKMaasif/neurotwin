@@ -89,6 +89,7 @@ const post = <R,>(p: string, b?: unknown) => call<R>("POST", p, b ?? {});
 export const api = {
   demoAccounts: () => get<DemoAccount[]>("/api/demo-accounts"),
   login: (username: string, password: string) => post<{ user: User; csrf: string }>("/api/auth/login", { username, password }),
+  demoEnter: (username: string) => post<{ user: User; csrf: string }>("/api/auth/demo-enter", { username }),
   session: () => get<{ user: User; csrf: string; expires_at: string }>("/api/auth/session"),
   logout: () => post<{ ok: boolean }>("/api/auth/logout"),
   changePassword: (current_password: string, new_password: string) =>

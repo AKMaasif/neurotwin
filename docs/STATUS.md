@@ -5,7 +5,7 @@ here has been tried with real older adults, families or clinicians yet.
 
 ## Implemented and verified
 
-Verified by the 71 automated backend tests (`backend/tests/`), a clean type-check and production build of the web
+Verified by the 75 automated backend tests (`backend/tests/`), a clean type-check and production build of the web
 app, and a scripted click-through of every screen in Chromium, at phone width (420 px) and desktop width (1360 px),
 in English and Arabic.
 
@@ -17,7 +17,8 @@ in English and Arabic.
 | Corrections | Self-reports are corrected by a new record that supersedes the old; observed results cannot be edited, only withdrawn with a reason; both kept and visible | Tests |
 | Quality rules | Interrupted, abandoned, assisted, unwell, out-of-range, too few valid taps, early taps, unknown version: labelled, never dropped or changed; review items raised once per session for session-wide reasons | Tests, 9 parametrised cases |
 | Inferred records | Refused unless produced by a rule or model, with sources that exist, belong to the same person and are usable | Service-level test (nothing infers yet) |
-| Sign-in | Username and password; scrypt hashes; HttpOnly SameSite=Strict session cookie with server-side sessions stored as hashes; CSRF token on every change; 5 failed attempts per minute per username and address; one message for any wrong username or password; sign-out; 8-hour sessions; password change (15–300 characters, current password required) ends other sessions; sign out other devices; usernames shown only to their owner; all audited without secrets | Tests: `test_auth.py`, 12 cases + click-through |
+| Demo entry | In demo mode the front page opens any demo view in one click, with no username or password. It works only for accounts flagged as demo and only while demo mode is on; password change and "sign out other devices" are refused for these shared accounts | Tests: 4 cases in `test_auth.py` + click-through |
+| Sign-in | Username and password (shown only when demo mode is off); scrypt hashes; HttpOnly SameSite=Strict session cookie with server-side sessions stored as hashes; CSRF token on every change; 5 failed attempts per minute per username and address; one message for any wrong username or password; sign-out; 8-hour sessions; password change (15–300 characters, current password required) ends other sessions; sign out other devices; usernames shown only to their owner; all audited without secrets | Tests: `test_auth.py`, 12 cases + click-through |
 | Access and audit | Forged or expired sessions refused; people cannot read each other; every view or change by someone else is in the access log, without values | Tests |
 | Logs | Request logs hold method, masked path, status and time only | Test checks values, free text, tokens and person ids never appear |
 | Personal app | Consent, check-in (3 questions, each skippable; Continue needs an answer), reaction activity (practice + 5 taps, stop at any time, interruptions counted), sharing, records with corrections, urgent-help and about pages | Click-through, both languages |
@@ -31,6 +32,8 @@ in English and Arabic.
 
 - **Sign-in has no account recovery, two-factor sign-in or account creation yet.** Accounts exist only as demo
   accounts with a shared starting password; the rate limit is held in memory for a single server process.
+- **Demo mode is open to anyone who can reach the server.** That is intended for judging and demos with synthetic
+  data. A server holding real data must run with `NEUROTWIN_SEED_DEMO=0`.
 - **All data is synthetic.** The demo accounts and six weeks of records are invented to exercise the screens.
 - **Both activities are NeuroTwin prototypes** (`daily_checkin 0.1`, `reaction_time 0.1`). They are not published
   instruments, have no validated scoring, norms or thresholds, and none should be read into them.

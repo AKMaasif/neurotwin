@@ -21,6 +21,10 @@ class LoginIn(BaseModel):
     password: str = Field(min_length=1, max_length=300, repr=False)
 
 
+class DemoEnterIn(BaseModel):
+    username: str = Field(min_length=1, max_length=60)
+
+
 class PasswordIn(BaseModel):
     current_password: str = Field(min_length=1, max_length=300, repr=False)
     new_password: str = Field(min_length=1, max_length=300, repr=False)
@@ -66,6 +70,31 @@ def login(body: LoginIn, request: Request, response: Response, db: Session = Dep
     return {"user": user_out(user, own=True), "csrf": row.csrf}
 
 
+@router.post("/api/auth/demo-enter")
+def demo_enter(body: DemoEnterIn, request: Request, response: Response, db: Session = Depends(get_db)):
+    """One-click entry to a synthetic demo account, with no password. Works only while the server runs in demo
+    mode and only for accounts flagged as demo, so it can never open a real account."""
+    if not request.app.state.demo:
+        raise HTTPException(404, "Demo entry is not available on this server.")
+    user = db.scalar(select(User).where(func.lower(User.username) == body.username.strip().lower()))
+    if user is None or not user.is_demo:
+        raise HTTPException(404, "No such demo account.")
+    old = session_from(request, db)
+    if old is not None:
+        db.delete(old)
+    token, row = start_session(db, user, request.app.state.settings["session_hours"])
+    S.audit(db, user.id, "auth.demo_entered", user.id if user.role == "participant" else None)
+    db.commit()
+    _set_cookie(request, response, token)
+    return {"user": user_out(user, own=True), "csrf": row.csrf}
+
+
+def _not_for_demo(user: User) -> None:
+    """Demo accounts are shared by everyone trying the app: one visitor must not lock out or sign out the others."""
+    if user.is_demo:
+        raise HTTPException(403, "Demo accounts are shared, so this is switched off for them.")
+
+
 @router.get("/api/auth/session")
 def session(request: Request, user: User = Depends(current_user)):
     """Who is signed in on this browser, and the CSRF token the page sends with every change."""
@@ -85,6 +114,7 @@ def logout(request: Request, response: Response, user: User = Depends(current_us
 @router.post("/api/account/password")
 def change_password(body: PasswordIn, request: Request, user: User = Depends(current_user),
                     db: Session = Depends(get_db)):
+    _not_for_demo(user)
     key = (_client(request), user.id)
     if password_attempts.blocked(key):
         raise HTTPException(429, "Too many attempts. Wait a minute and try again.")
@@ -115,6 +145,7 @@ def other_sessions(request: Request, user: User = Depends(current_user), db: Ses
 
 @router.post("/api/account/sessions/revoke-others")
 def revoke_others(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    _not_for_demo(user)
     ended = db.execute(delete(LoginSession).where(LoginSession.user_id == user.id,
                                                   LoginSession.token_hash != request.state.session.token_hash)).rowcount
     S.audit(db, user.id, "account.sessions_revoked", user.id if user.role == "participant" else None)
