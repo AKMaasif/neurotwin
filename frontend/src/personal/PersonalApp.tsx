@@ -7,8 +7,9 @@ import Checkin from "./Checkin";
 import Reaction from "./Reaction";
 import Sharing from "./Sharing";
 import Records from "./Records";
+import Account from "../Account";
 
-export type Screen = "home" | "consent" | "checkin" | "reaction" | "sharing" | "records" | "urgent" | "about";
+export type Screen = "home" | "consent" | "checkin" | "reaction" | "sharing" | "records" | "account" | "urgent" | "about";
 
 export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   const { t } = useT();
@@ -41,6 +42,13 @@ export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut
   else if (screen === "reaction") body = <Reaction onDone={home} />;
   else if (screen === "sharing") body = <Sharing onBack={home} />;
   else if (screen === "records") body = <Records user={user} onBack={home} />;
+  else if (screen === "account") body = (
+    <>
+      <Heading>{t("acTitle")}</Heading>
+      <Account user={user} large />
+      <button className="btn block" onClick={home}>{t("backHome")}</button>
+    </>
+  );
   else if (screen === "urgent") body = <Info title={t("urgentTitle")} lines={[t("urgentBody"), t("urgentUAE")]} onBack={home} />;
   else if (screen === "about") body = <Info title={t("aboutTitle")} lines={[t("aboutBody"), t("prototypeLong")]} onBack={home} />;
   else body = <Home user={user} sessions={sessions} participating={participating} go={go} />;
@@ -117,7 +125,7 @@ function Home({ user, sessions, participating, go }: {
 
       <div className="p-list">
         {([["sharing", "sharingTitle", "sharingMeta"], ["records", "recordsTitle", "recordsMeta"],
-          ["consent", "consentTitle", "consentMeta"]] as const).map(([s, title, meta]) => (
+          ["consent", "consentTitle", "consentMeta"], ["account", "acTitle", "acLink"]] as const).map(([s, title, meta]) => (
           <button key={s} className="p-row" onClick={() => go(s)}>
             <span className="t"><b>{t(title)}</b><span>{t(meta)}</span></span>
             <span className="chev" aria-hidden="true">›</span>
