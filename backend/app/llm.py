@@ -17,6 +17,7 @@ run with real keys, treat them as unverified: the tests here use a stand-in tran
 from __future__ import annotations
 
 import base64
+import json
 import os
 from dataclasses import dataclass
 
@@ -126,14 +127,18 @@ class MetaClient:
 
 
     def transcribe(self, audio: bytes, mime: str, language: str) -> Reply:
-        """Speech to text, OpenAI-style multipart. UNVERIFIED against Meta's live endpoint: run
-        scripts/try_voice.py with a real recording before relying on it."""
-        ext = {"audio/webm": "webm", "audio/ogg": "ogg", "audio/mp4": "m4a", "audio/mpeg": "mp3", "audio/wav": "wav"}.get(mime, "bin")
+        """Speech to text through Meta's ASR endpoint (POST /v1/asr/transcribe, per dev.meta.ai/docs/speech-to-text).
+        It accepts only WAV: mono, 16-bit PCM, 16 or 24 kHz, so the web app converts before sending."""
+        if mime != "audio/wav":
+            raise ModelError("Meta speech needs a WAV recording.")
+        settings = {"model": self.model, "mode": "PUSH_TO_TALK", "audioEncoding": "WAV",
+                    "languageBias": [{"ar": "Arabic", "en": "English"}.get(language, "English")]}
         try:
-            r = self._http.post("/audio/transcriptions", data={"model": self.model, "language": language},
-                                files={"file": (f"speech.{ext}", audio, mime)})
+            r = self._http.post("/asr/transcribe", files={
+                "request": (None, json.dumps(settings), "application/json"),
+                "audio": ("speech.wav", audio, "audio/wav")})
             r.raise_for_status()
-            return Reply((r.json().get("text") or "").strip(), self.provider, self.model)
+            return Reply((r.json().get("transcript") or "").strip(), self.provider, self.model)
         except (httpx.HTTPError, KeyError, ValueError) as e:
             _raise("Meta", e)
 

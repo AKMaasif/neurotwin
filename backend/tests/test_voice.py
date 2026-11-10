@@ -114,3 +114,23 @@ def test_stt_provider_selection():
     assert llm.get_stt_client({**env, "NEUROTWIN_STT_PROVIDER": "meta"}).model == "muse-voice"
     assert llm.get_stt_client({**env, "NEUROTWIN_STT_PROVIDER": "meta", "META_STT_MODEL": ""}) is None
     assert llm.get_stt_client({"NEUROTWIN_AI_PROVIDER": "gemini"}) is None
+
+
+def test_meta_transcribe_request_shape():
+    seen = {}
+
+    def handler(request):
+        seen["url"], seen["auth"], seen["body"] = str(request.url), request.headers["authorization"], request.content
+        return httpx.Response(200, json={"sessionId": "s", "transcript": " hello ", "turns": []})
+    c = llm.MetaClient("KEY", "muse-voice-transcribe-1.0", transport=httpx.MockTransport(handler))
+    r = c.transcribe(b"RIFFdata", "audio/wav", "ar")
+    assert r.text == "hello"
+    assert seen["url"].endswith("/v1/asr/transcribe") and seen["auth"] == "Bearer KEY"
+    assert b'"model": "muse-voice-transcribe-1.0"' in seen["body"] and b'"Arabic"' in seen["body"]
+    assert b'name="audio"' in seen["body"] and b"RIFFdata" in seen["body"]
+
+
+def test_meta_refuses_non_wav_without_calling_out():
+    c = llm.MetaClient("KEY", "m", transport=httpx.MockTransport(lambda r: pytest.fail("should not be called")))
+    with pytest.raises(llm.ModelError):
+        c.transcribe(b"x", "audio/webm", "en")

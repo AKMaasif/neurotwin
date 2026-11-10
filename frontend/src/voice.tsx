@@ -5,6 +5,27 @@ import { useT } from "./i18n";
 import { FormError } from "./ui";
 
 const MAX_SECONDS = 60;
+const RATE = 16000;
+
+/** Browsers record WebM or MP4. Speech providers want plain audio, so the clip is turned into a mono 16 kHz,
+ *  16-bit WAV here, in the browser, before it is sent. */
+async function toWav(blob: Blob): Promise<Blob> {
+  const ctx = new AudioContext();
+  const decoded = await ctx.decodeAudioData(await blob.arrayBuffer());
+  await ctx.close();
+  const off = new OfflineAudioContext(1, Math.max(1, Math.ceil(decoded.duration * RATE)), RATE);
+  const src = off.createBufferSource();
+  src.buffer = decoded; src.connect(off.destination); src.start();
+  const pcm = (await off.startRendering()).getChannelData(0);
+  const out = new DataView(new ArrayBuffer(44 + pcm.length * 2));
+  const text = (o: number, s: string) => [...s].forEach((c, i) => out.setUint8(o + i, c.charCodeAt(0)));
+  text(0, "RIFF"); out.setUint32(4, 36 + pcm.length * 2, true); text(8, "WAVE"); text(12, "fmt ");
+  out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 1, true);
+  out.setUint32(24, RATE, true); out.setUint32(28, RATE * 2, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true);
+  text(36, "data"); out.setUint32(40, pcm.length * 2, true);
+  pcm.forEach((v, i) => out.setInt16(44 + i * 2, Math.max(-1, Math.min(1, v)) * 0x7fff, true));
+  return new Blob([out], { type: "audio/wav" });
+}
 
 /** Dictation into a text box. Recording starts only when the person presses the button, a red indicator and a
  *  timer stay on screen the whole time, and the microphone is released as soon as it stops. The words come back as
@@ -52,7 +73,7 @@ export default function VoiceButton({ onText }: { onText: (text: string) => void
       setState("working");
       try {
         const blob = new Blob(chunks.current, { type: r.mimeType || "audio/webm" });
-        const out = await api.transcribe(blob, t.lang);
+        const out = await api.transcribe(await toWav(blob), t.lang);
         if (out.text) onText(out.text); else setError(new Error(t("voiceNothing")));
       } catch (e) { setError(e); }
       setState("idle");
