@@ -64,6 +64,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .acct:hover { border-color: var(--navy); }
 .acct b { font-size: 17px; }
 .acct span { color: var(--muted); font-size: 14px; }
+.signin-form { display: grid; gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+.signin-form h2 { margin: 0; font-size: 18px; }
+.signin-form label { display: grid; gap: 6px; font-weight: 600; }
+.signin-form input { min-height: 48px; border: 1px solid #c8d1d7; border-radius: 8px; padding: 0 12px; font-size: 17px; background: var(--surface); width: 100%; min-width: 0; }
+.signin-form input:focus { border-color: var(--navy); }
+.signin-form .pw { display: flex; gap: 8px; }
+.signin-form .btn { min-height: 48px; }
+.form-error { margin: 0; color: var(--fail); font-weight: 500; }
+.account { display: grid; gap: 18px; }
+.account.large .signin-form input { min-height: 56px; font-size: 19px; }
+.account h2 { margin: 0; }
+.modal-scrim { position: fixed; inset: 0; background: rgba(17,22,27,.35); z-index: 60; overflow: auto; padding: 24px; display: grid; place-items: start center; }
+.modal { width: min(520px, 100%); background: var(--surface); border-radius: 12px; padding: 24px; display: grid; gap: 16px; }
+.modal .bar { display: flex; justify-content: space-between; align-items: center; }
+.modal .bar h1 { margin: 0; font-size: 20px; }
 .topline { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 
 /* ---- Personal app: large, calm, one task at a time ----------------------------------------------------------- */

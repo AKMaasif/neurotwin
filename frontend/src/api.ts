@@ -2,7 +2,8 @@
 // closing the tab signs out, which suits a shared family tablet.
 
 export type Role = "participant" | "family" | "clinician";
-export type User = { id: string; display_name: string; role: Role; language: "en" | "ar"; is_demo: boolean };
+export type User = { id: string; display_name: string; role: Role; language: "en" | "ar"; is_demo: boolean; username?: string | null };
+export type DemoAccount = { username: string; display_name: string; role: Role; language: "en" | "ar" };
 export type Consent = { scope: string; granted: boolean; at: string | null; text_version: string | null };
 export type Grant = { id: number; owner: User; grantee: User; purpose: string; created_at: string; revoked_at: string | null; active: boolean };
 export type Session = {
@@ -43,19 +44,23 @@ export type Report = {
   participant: { id: string; display_name: string; is_demo: boolean }; generated_by: string; generated_at: string;
   period: { from: string | null; to: string | null };
   sessions: { total: number; by_status: Record<string, number>; assisted: number; unwell: number };
-  measures: ReportMeasure[]; review: { open: ReviewItem[]; resolved: ReviewItem[] }; rules_version: string;
+  measures: ReportMeasure[]; change: ChangeResult[]; review: { open: ReviewItem[]; resolved: ReviewItem[] }; rules_version: string;
+};
+export type ChangeWindow = { n: number; mean: number; ids: number[]; from: string; to: string };
+export type ChangeResult = {
+  method: string; level: number; protocol_code: string; protocol_version: string; measure: string; kind: string;
+  unit: string | null; status: "insufficient" | "no_variation" | "within" | "outside"; direction: "higher" | "lower" | null;
+  eligible_n: number; needed: { baseline: number; recent: number }; include_doubtful: boolean;
+  excluded: { doubtful: number; unusable: number; withdrawn: number; missing: number };
+  baseline: ChangeWindow | null; recent: ChangeWindow | null; difference: number | null; interval: [number, number] | null;
 };
 export type AuditRow = { id: number; actor_id: string; action: string; target: string | null; at: string };
 
-const KEY = "neurotwin.token";
-
-function readToken(): string | null {
-  try { return sessionStorage.getItem(KEY); } catch { return null; }
-}
-export function setToken(token: string | null) {
-  try { token ? sessionStorage.setItem(KEY, token) : sessionStorage.removeItem(KEY); } catch { /* storage blocked */ }
-}
-export const hasToken = () => readToken() !== null;
+// The sign-in itself lives in an HttpOnly cookie the page cannot read. The page keeps only the session's CSRF token,
+// in memory, and sends it with every change. When the server says the session has ended, the app returns to sign-in.
+let csrf: string | null = null;
+export const setCsrf = (v: string | null) => { csrf = v; };
+export const SIGNED_OUT = "neurotwin:signed-out";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); }
@@ -63,13 +68,16 @@ export class ApiError extends Error {
 
 async function call<R>(method: string, path: string, body?: unknown): Promise<R> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const token = readToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  if (method !== "GET" && csrf) headers["X-CSRF-Token"] = csrf;
+  const res = await fetch(path, { method, headers, credentials: "same-origin",
+    body: body === undefined ? undefined : JSON.stringify(body) });
   if (!res.ok) {
     let msg = res.statusText;
     try { msg = (await res.json()).detail ?? msg; } catch { /* not JSON */ }
-    if (res.status === 401) setToken(null);
+    if (res.status === 401 && !path.startsWith("/api/auth/")) {
+      csrf = null;
+      window.dispatchEvent(new Event(SIGNED_OUT));
+    }
     throw new ApiError(res.status, typeof msg === "string" ? msg : JSON.stringify(msg));
   }
   return res.json() as Promise<R>;
@@ -79,8 +87,14 @@ const get = <R,>(p: string) => call<R>("GET", p);
 const post = <R,>(p: string, b?: unknown) => call<R>("POST", p, b ?? {});
 
 export const api = {
-  demoAccounts: () => get<User[]>("/api/demo-accounts"),
-  login: (user_id: string) => post<{ token: string; user: User }>("/api/auth/demo-login", { user_id }),
+  demoAccounts: () => get<DemoAccount[]>("/api/demo-accounts"),
+  login: (username: string, password: string) => post<{ user: User; csrf: string }>("/api/auth/login", { username, password }),
+  session: () => get<{ user: User; csrf: string; expires_at: string }>("/api/auth/session"),
+  logout: () => post<{ ok: boolean }>("/api/auth/logout"),
+  changePassword: (current_password: string, new_password: string) =>
+    post<{ ok: boolean; other_sessions_ended: number }>("/api/account/password", { current_password, new_password }),
+  otherSessions: () => get<{ other_active_sessions: number; current_expires_at: string }>("/api/account/sessions"),
+  revokeOtherSessions: () => post<{ ended: number }>("/api/account/sessions/revoke-others"),
   me: () => get<User>("/api/me"),
   setLanguage: (language: "en" | "ar") => call<User>("PUT", "/api/me/language", { language }),
 
@@ -108,6 +122,8 @@ export const api = {
   resolve: (id: number, note: string, decision: Decision) => post<ReviewItem>(`/api/review-items/${id}/resolve`, { note, decision }),
   resolveBatch: (ids: number[], note: string, decision: Decision) => post<ReviewItem[]>("/api/review-items/resolve-batch", { ids, note, decision }),
   report: (pid: string) => get<Report>(`/api/participants/${encodeURIComponent(pid)}/report`),
+  change: (pid: string, includeDoubtful = false) =>
+    get<ChangeResult[]>(`/api/participants/${encodeURIComponent(pid)}/change${includeDoubtful ? "?include_doubtful=true" : ""}`),
   audit: (pid: string) => get<AuditRow[]>(`/api/participants/${encodeURIComponent(pid)}/audit`),
 
   clinicianParticipants: () => get<ClinicianParticipant[]>("/api/clinician/participants"),

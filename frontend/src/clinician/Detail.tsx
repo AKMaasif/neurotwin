@@ -5,6 +5,7 @@ import { useT } from "../i18n";
 import { ErrorNote, Status } from "../ui";
 import type { Data, Sel } from "./ClinicianApp";
 import Decide from "./Decide";
+import ChangeSummary from "./Change";
 import { valueText } from "./EvidenceTable";
 
 const SESSION_LEVEL = new Set(["interrupted_session", "abandoned_session", "missing_required", "unknown_protocol"]);
@@ -29,7 +30,7 @@ export default function Detail({ person, data, sel, onSelect, onChanged }: {
       </div>
       <div className="pane-body">
         {!person || !data ? <p className="muted">{person ? t("wsLoading") : t("cSelect")}</p>
-          : !sel ? <Empty />
+          : !sel ? <><Empty /><ChangeSummary changes={data.changes} /></>
           : tab === "record" && record ? <RecordView key={record.id} r={record} session={session} data={data} onSelect={onSelect} onChanged={onChanged} />
           : session ? <SessionView s={session} data={data} onSelect={onSelect} onChanged={onChanged} />
           : <Empty />}

@@ -51,3 +51,10 @@ export function ErrorNote({ error, onRetry }: { error: unknown; onRetry?: () => 
     </div>
   );
 }
+
+/** A plain message for a form that did not go through: the server's own words, no extra framing. */
+export function FormError({ error }: { error: unknown }) {
+  if (!error) return null;
+  const msg = error instanceof Error ? error.message : String(error);
+  return <p className="form-error" role="alert">{msg}</p>;
+}
