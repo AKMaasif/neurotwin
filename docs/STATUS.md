@@ -5,7 +5,7 @@ here has been tried with real older adults, families or clinicians yet.
 
 ## Implemented and verified
 
-Verified by the 139 automated backend tests (`backend/tests/`), a clean type-check and production build of the web
+Verified by the 148 automated backend tests (`backend/tests/`), a clean type-check and production build of the web
 app, and a scripted click-through of every screen in Chromium, at phone width (420 px) and desktop width (1360 px),
 in English and Arabic.
 
@@ -13,6 +13,7 @@ in English and Arabic.
 | --- | --- | --- |
 | Care plan and reminders | A clinician with a clinical-review grant writes routines (English, Arabic or both; time of day; weekdays). The person sees today's routines in their language, marked as from their clinician, and may answer Done or Not today. Unanswered is never stored or shown as missed. Stopping keeps the history. | `tests/test_careplan.py` (10 tests: access, validation, latest-answer-counts, silence not stored, stop, weekday filter, audit holds no text, 12-routine limit); click-through in Chromium in Arabic (right-to-left) and English. Not yet tested on a real phone or with users. |
 | Family messages | A family member with an active sharing grant writes a short message (300 characters, no web addresses), sees a preview of exactly what will be sent, and only then presses Send. Drafts reach nobody; a newer draft replaces an older one; the grant is checked again at Send; 5 messages a day per person. The person reads messages, can remove them from their own view (kept in the record), and is never asked to reply. Clinicians have no route to them and no model sees them. | `tests/test_messages.py` (9 tests); Chromium click-through at phone width in Arabic. Not yet tested on a real phone or with families. |
+| Voice typing (plumbing) | In the family message box, "Speak instead" records only after a press, shows a red indicator and timer, releases the microphone on stop, sends the clip once to the speech provider (never stored), and puts the words in the text box for the person to fix. The message still needs Preview and Send. Participants need voice-recording consent; 2.5 MB and daily caps; hidden when no provider is set. | `tests/test_voice.py` (9 tests with a stand-in provider); Chromium click-through with a fake microphone. **Live transcription quality is not measured**, and the Meta speech endpoint shape is unverified (see Experimental). |
 | Consent | Give, withdraw, give again; history kept; no session starts or completes without consent; withdrawing keeps earlier records | Tests: `test_consent_and_sharing.py` |
 | Sharing | Purpose-scoped grants (`clinical_review` for clinicians, `participation_updates` for family); revoke stops access at once and deletes nothing; family never reaches evidence | Tests, 13 cases |
 | Evidence record | Observed / self-reported / inferred kept apart; producer, protocol version and session conditions on every record; missing values need a reason and are never stored as a value | Tests: `test_evidence_and_quality.py` |
@@ -32,6 +33,10 @@ in English and Arabic.
 | Report | Server-built factual summary: sessions by status, records by measure and quality, value ranges of usable and doubtful records, open items, decisions with notes; generating it is logged | Tests + click-through |
 
 ## Experimental or simulated
+
+- **Speech to text has never run against a real provider.** Gemini is called through its audio input and Meta through
+  an OpenAI-style `/audio/transcriptions` call that is a guess until `scripts/try_voice.py` has been run with a real
+  recording. Accuracy in Gulf Arabic and with older voices is unmeasured.
 
 - **Sign-in has no account recovery, two-factor sign-in or account creation yet.** Accounts exist only as demo
   accounts with a shared starting password; the rate limit is held in memory for a single server process.
@@ -58,7 +63,7 @@ in English and Arabic.
 - Encryption at rest; PostgreSQL deployment inside the UAE; a shared rate-limit store when running more than one process.
 - Activities chosen and reviewed with clinicians, each versioned with its instructions and scoring.
 - A clinician assistant panel (questions about the stored records), behind the same validator.
-- Model-assisted wording of reminders (not started; routines are clinician-written text today); speech-to-text with visible recording and transcript preview.
+- Model-assisted wording of reminders (not started; routines are clinician-written text today); voice typing for more screens (only the family message box has it).
 
 - Deletion requests handled by the research team (separate from withdrawal).
 - Optional imaging research module (clinician-directed, research only), after the core is validated.

@@ -161,6 +161,17 @@ export const api = {
   inbox: () => get<Message[]>("/api/messages"),
   readMessage: (id: number) => post<{ ok: boolean }>(`/api/messages/${id}/read`),
   hideMessage: (id: number) => post<{ ok: boolean }>(`/api/messages/${id}/hide`),
+  voiceStatus: () => get<{ available: boolean; provider: string | null }>("/api/voice/status"),
+  transcribe: async (audio: Blob, language: string) => {
+    const res = await fetch(`/api/voice/transcribe?language=${language}`, {
+      method: "POST", credentials: "same-origin", body: audio,
+      headers: { "Content-Type": audio.type.split(";")[0] || "audio/webm", ...(csrf ? { "X-CSRF-Token": csrf } : {}) } });
+    if (!res.ok) {
+      const detail = await res.json().then((j) => j.detail).catch(() => null);
+      throw new ApiError(res.status, typeof detail === "string" ? detail : "Voice typing could not be used.");
+    }
+    return res.json() as Promise<{ text: string; provider: string; model: string }>;
+  },
   audit: (pid: string) => get<AuditRow[]>(`/api/participants/${encodeURIComponent(pid)}/audit`),
 
   clinicianParticipants: () => get<ClinicianParticipant[]>("/api/clinician/participants"),
