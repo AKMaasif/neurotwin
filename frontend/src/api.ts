@@ -2,7 +2,8 @@
 // closing the tab signs out, which suits a shared family tablet.
 
 export type Role = "participant" | "family" | "clinician";
-export type User = { id: string; display_name: string; role: Role; language: "en" | "ar"; is_demo: boolean };
+export type User = { id: string; display_name: string; role: Role; language: "en" | "ar"; is_demo: boolean; username?: string | null };
+export type DemoAccount = { username: string; display_name: string; role: Role; language: "en" | "ar" };
 export type Consent = { scope: string; granted: boolean; at: string | null; text_version: string | null };
 export type Grant = { id: number; owner: User; grantee: User; purpose: string; created_at: string; revoked_at: string | null; active: boolean };
 export type Session = {
@@ -55,15 +56,11 @@ export type ChangeResult = {
 };
 export type AuditRow = { id: number; actor_id: string; action: string; target: string | null; at: string };
 
-const KEY = "neurotwin.token";
-
-function readToken(): string | null {
-  try { return sessionStorage.getItem(KEY); } catch { return null; }
-}
-export function setToken(token: string | null) {
-  try { token ? sessionStorage.setItem(KEY, token) : sessionStorage.removeItem(KEY); } catch { /* storage blocked */ }
-}
-export const hasToken = () => readToken() !== null;
+// The sign-in itself lives in an HttpOnly cookie the page cannot read. The page keeps only the session's CSRF token,
+// in memory, and sends it with every change. When the server says the session has ended, the app returns to sign-in.
+let csrf: string | null = null;
+export const setCsrf = (v: string | null) => { csrf = v; };
+export const SIGNED_OUT = "neurotwin:signed-out";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); }
@@ -71,13 +68,16 @@ export class ApiError extends Error {
 
 async function call<R>(method: string, path: string, body?: unknown): Promise<R> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const token = readToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  if (method !== "GET" && csrf) headers["X-CSRF-Token"] = csrf;
+  const res = await fetch(path, { method, headers, credentials: "same-origin",
+    body: body === undefined ? undefined : JSON.stringify(body) });
   if (!res.ok) {
     let msg = res.statusText;
     try { msg = (await res.json()).detail ?? msg; } catch { /* not JSON */ }
-    if (res.status === 401) setToken(null);
+    if (res.status === 401 && !path.startsWith("/api/auth/")) {
+      csrf = null;
+      window.dispatchEvent(new Event(SIGNED_OUT));
+    }
     throw new ApiError(res.status, typeof msg === "string" ? msg : JSON.stringify(msg));
   }
   return res.json() as Promise<R>;
@@ -87,8 +87,14 @@ const get = <R,>(p: string) => call<R>("GET", p);
 const post = <R,>(p: string, b?: unknown) => call<R>("POST", p, b ?? {});
 
 export const api = {
-  demoAccounts: () => get<User[]>("/api/demo-accounts"),
-  login: (user_id: string) => post<{ token: string; user: User }>("/api/auth/demo-login", { user_id }),
+  demoAccounts: () => get<DemoAccount[]>("/api/demo-accounts"),
+  login: (username: string, password: string) => post<{ user: User; csrf: string }>("/api/auth/login", { username, password }),
+  session: () => get<{ user: User; csrf: string; expires_at: string }>("/api/auth/session"),
+  logout: () => post<{ ok: boolean }>("/api/auth/logout"),
+  changePassword: (current_password: string, new_password: string) =>
+    post<{ ok: boolean; other_sessions_ended: number }>("/api/account/password", { current_password, new_password }),
+  otherSessions: () => get<{ other_active_sessions: number; current_expires_at: string }>("/api/account/sessions"),
+  revokeOtherSessions: () => post<{ ended: number }>("/api/account/sessions/revoke-others"),
   me: () => get<User>("/api/me"),
   setLanguage: (language: "en" | "ar") => call<User>("PUT", "/api/me/language", { language }),
 
