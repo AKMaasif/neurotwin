@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from . import change as C
 from . import config
+from . import careplan as CP
 from . import drafts as D
 from . import llm
 from . import protocols as P
@@ -21,7 +22,7 @@ from . import quality as Q
 from . import services as S
 from .db import Database
 from .logs import SafeRequestLog
-from .models import AccessGrant, ActivitySession, AuditEvent, Draft, Evidence, ReviewItem, User
+from .models import AccessGrant, ActivitySession, AuditEvent, CarePlanItem, Draft, Evidence, ReviewItem, User
 from .auth import router as auth_router
 from .auth import user_out
 from .security import current_user, get_db, require_evidence_access
@@ -30,6 +31,22 @@ Lang = Literal["en", "ar"]
 
 
 # ---- Request bodies ------------------------------------------------------------------------------------------
+
+class CarePlanIn(BaseModel):
+    text_en: str | None = Field(default=None, max_length=300)
+    text_ar: str | None = Field(default=None, max_length=300)
+    day_part: str = "anytime"
+    weekdays: list[int] = Field(default_factory=list, max_length=7)
+
+
+class CarePlanStopIn(BaseModel):
+    note: str | None = Field(default=None, max_length=300)
+
+
+class CarePlanReplyIn(BaseModel):
+    reply: Literal["done", "not_today"]
+    day: str | None = None
+
 
 class ConsentIn(BaseModel):
     scope: str
@@ -145,6 +162,13 @@ def draft_out(d: Draft) -> dict:
             "validator_version": d.validator_version, "attempts": d.attempts, "created_by": d.created_by,
             "created_at": iso(d.created_at), "reviewed_by": d.reviewed_by, "reviewed_at": iso(d.reviewed_at),
             "review_note": d.review_note}
+
+
+def care_item_out(i: CarePlanItem, db: Session) -> dict:
+    who = db.get(User, i.created_by)
+    return {"id": i.id, "text_en": i.text_en, "text_ar": i.text_ar, "day_part": i.day_part, "weekdays": i.weekdays,
+            "status": i.status, "created_at": iso(i.created_at), "written_by": who.display_name if who else None,
+            "stopped_at": iso(i.stopped_at), "stop_note": i.stop_note}
 
 
 def change_out(r) -> dict:
@@ -391,6 +415,43 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
         _clinician_for(db, user, d.participant_id)
         statements = [x.model_dump() for x in body.statements] if body.statements is not None else None
         return draft_out(D.review(db, user, d, body.decision, body.note, statements))
+
+    # Care plan and reminders ---------------------------------------------------------------------------------
+    @app.get("/api/participants/{pid}/care-plan")
+    def clinician_care_plan(pid: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        _clinician_for(db, user, pid)
+        return [{**care_item_out(r["item"], db), "marked": r["marked"]} for r in CP.clinician_view(db, pid)]
+
+    @app.post("/api/participants/{pid}/care-plan")
+    def add_care_item(pid: str, body: CarePlanIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        _clinician_for(db, user, pid)
+        item = CP.add_item(db, user, pid, body.text_en, body.text_ar, body.day_part, body.weekdays)
+        return care_item_out(item, db)
+
+    @app.post("/api/care-plan/{item_id}/stop")
+    def stop_care_item(item_id: int, body: CarePlanStopIn, user: User = Depends(current_user),
+                       db: Session = Depends(get_db)):
+        item = db.get(CarePlanItem, item_id)
+        if item is None:
+            raise HTTPException(404, "Not found, or you do not have access.")
+        _clinician_for(db, user, item.participant_id)
+        return care_item_out(CP.stop_item(db, user, item, body.note), db)
+
+    @app.get("/api/care-plan/today")
+    def my_reminders(day: str | None = None, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        if user.role != "participant":
+            raise HTTPException(404, "Not found, or you do not have access.")
+        d = CP.person_day(day)
+        return {"day": d.isoformat(), "items": [{**care_item_out(i, db), "reply": r} for i, r in CP.todays(db, user, d)]}
+
+    @app.post("/api/care-plan/{item_id}/reply")
+    def reply_to_reminder(item_id: int, body: CarePlanReplyIn, user: User = Depends(current_user),
+                          db: Session = Depends(get_db)):
+        item = db.get(CarePlanItem, item_id)
+        if item is None or user.role != "participant":
+            raise HTTPException(404, "Not found, or you do not have access.")
+        CP.reply(db, user, item, CP.person_day(body.day), body.reply)
+        return {"ok": True}
 
     @app.get("/api/participants/{pid}/audit")
     def list_audit(pid: str, user: User = Depends(current_user), db: Session = Depends(get_db)):

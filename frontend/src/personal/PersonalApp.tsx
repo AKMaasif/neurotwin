@@ -7,9 +7,10 @@ import Checkin from "./Checkin";
 import Reaction from "./Reaction";
 import Sharing from "./Sharing";
 import Records from "./Records";
+import Reminders from "./Reminders";
 import Account from "../Account";
 
-export type Screen = "home" | "consent" | "checkin" | "reaction" | "sharing" | "records" | "account" | "urgent" | "about";
+export type Screen = "home" | "consent" | "checkin" | "reaction" | "sharing" | "reminders" | "records" | "account" | "urgent" | "about";
 
 export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   const { t } = useT();
@@ -40,6 +41,7 @@ export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut
     body = <ConsentScreen consent={consent} onChanged={home} onClose={home} />;
   else if (screen === "checkin") body = <Checkin onDone={home} />;
   else if (screen === "reaction") body = <Reaction onDone={home} />;
+  else if (screen === "reminders") body = <Reminders onBack={home} />;
   else if (screen === "sharing") body = <Sharing onBack={home} />;
   else if (screen === "records") body = <Records user={user} onBack={home} />;
   else if (screen === "account") body = (
@@ -124,7 +126,7 @@ function Home({ user, sessions, participating, go }: {
       )}
 
       <div className="p-list">
-        {([["sharing", "sharingTitle", "sharingMeta"], ["records", "recordsTitle", "recordsMeta"],
+        {([["reminders", "remTitle", "remMeta"], ["sharing", "sharingTitle", "sharingMeta"], ["records", "recordsTitle", "recordsMeta"],
           ["consent", "consentTitle", "consentMeta"], ["account", "acTitle", "acLink"]] as const)
           .filter(([s]) => s !== "account" || !user.is_demo).map(([s, title, meta]) => (
           <button key={s} className="p-row" onClick={() => go(s)}>

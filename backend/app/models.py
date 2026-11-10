@@ -168,3 +168,36 @@ class AuditEvent(Base):
     action: Mapped[str] = mapped_column(String(60))
     target: Mapped[str | None] = mapped_column(String(80), nullable=True)
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+DAY_PARTS = ("morning", "afternoon", "evening", "anytime")
+
+
+class CarePlanItem(Base):
+    """One routine in a person's care plan, written by a clinician in their own words. No model writes or edits these.
+    Stopping an item keeps it (and its history) in the record."""
+    __tablename__ = "care_plan_items"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    participant_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    created_by: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    text_en: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    text_ar: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    day_part: Mapped[str] = mapped_column(String(10), default="anytime")
+    weekdays: Mapped[list] = mapped_column(JSON, default=list)   # 0 = Monday ... 6 = Sunday; empty = every day
+    status: Mapped[str] = mapped_column(String(10), default="active")   # active | stopped
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    stopped_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    stopped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    stop_note: Mapped[str | None] = mapped_column(String(300), nullable=True)
+
+
+class CarePlanReply(Base):
+    """What the person said about a routine on one day. Self-reported; append-only, the latest reply for a day counts.
+    No reply is not a reply: silence is never stored or counted as 'missed'."""
+    __tablename__ = "care_plan_replies"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    item_id: Mapped[int] = mapped_column(ForeignKey("care_plan_items.id"), index=True)
+    participant_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    day: Mapped[str] = mapped_column(String(10))   # YYYY-MM-DD, the person's own day
+    reply: Mapped[str] = mapped_column(String(10))  # done | not_today
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
