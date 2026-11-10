@@ -335,6 +335,9 @@ def build_report(db: Session, user: User, participant_id: str) -> dict:
     for s in sessions:
         status_counts[s.status] = status_counts.get(s.status, 0) + 1
 
+    from . import change as C
+    changes = [c.as_dict() for c in C.compare_all(evidence)]
+
     audit(db, user.id, "report.generated", participant_id, None)
     db.commit()
     return {
@@ -348,6 +351,7 @@ def build_report(db: Session, user: User, participant_id: str) -> dict:
         "measures": list(measures.values()),
         "review": {"open": [i for i in items if i.status == "open"],
                    "resolved": [i for i in items if i.status != "open"]},
+        "change": changes,
         "rules_version": Q.RULES_VERSION,
     }
 

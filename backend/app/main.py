@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from . import change as C
 from . import config
 from . import protocols as P
 from . import quality as Q
@@ -122,6 +123,14 @@ def evidence_out(e: Evidence) -> dict:
             "quality_reasons": e.quality_reasons, "status": e.status, "supersedes_id": e.supersedes_id,
             "superseded_by_id": e.superseded_by_id, "change_reason": e.change_reason,
             "recorded_at": iso(e.recorded_at)}
+
+
+def change_out(r) -> dict:
+    d = r.as_dict()
+    for w in ("baseline", "recent"):
+        if d[w]:
+            d[w] = {**d[w], "from": iso(d[w]["from"]), "to": iso(d[w]["to"])}
+    return d
 
 
 def review_out(r: ReviewItem) -> dict:
@@ -304,7 +313,25 @@ def create_app(database_url: str | None = None, secret: str | None = None, seed_
             m["first"], m["last"] = iso(m["first"]), iso(m["last"])
             m["values"] = [{**v, "at": iso(v["at"])} for v in m["values"]]
         r["review"] = {k: [review_out(i) for i in v] for k, v in r["review"].items()}
+        for c in r["change"]:
+            for w in ("baseline", "recent"):
+                if c[w]:
+                    c[w] = {**c[w], "from": iso(c[w]["from"]), "to": iso(c[w]["to"])}
         return r
+
+    @app.get("/api/participants/{pid}/change")
+    def change(pid: str, include_doubtful: bool = False, user: User = Depends(current_user),
+               db: Session = Depends(get_db)):
+        """Within-person change estimates. Clinicians only: an estimate is read beside its records by a person
+        qualified to interpret it, never shown to the participant or family on its own."""
+        if user.role != "clinician":
+            raise HTTPException(404, "Not found, or you do not have access.")
+        require_evidence_access(db, user, pid)
+        rows = db.scalars(select(Evidence).where(Evidence.participant_id == pid)).all()
+        out = [change_out(r) for r in C.compare_all(rows, include_doubtful)]
+        S.audit(db, user.id, "change.computed", pid, C.METHOD)
+        db.commit()
+        return out
 
     @app.get("/api/participants/{pid}/audit")
     def list_audit(pid: str, user: User = Depends(current_user), db: Session = Depends(get_db)):

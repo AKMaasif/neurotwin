@@ -43,7 +43,15 @@ export type Report = {
   participant: { id: string; display_name: string; is_demo: boolean }; generated_by: string; generated_at: string;
   period: { from: string | null; to: string | null };
   sessions: { total: number; by_status: Record<string, number>; assisted: number; unwell: number };
-  measures: ReportMeasure[]; review: { open: ReviewItem[]; resolved: ReviewItem[] }; rules_version: string;
+  measures: ReportMeasure[]; change: ChangeResult[]; review: { open: ReviewItem[]; resolved: ReviewItem[] }; rules_version: string;
+};
+export type ChangeWindow = { n: number; mean: number; ids: number[]; from: string; to: string };
+export type ChangeResult = {
+  method: string; level: number; protocol_code: string; protocol_version: string; measure: string; kind: string;
+  unit: string | null; status: "insufficient" | "no_variation" | "within" | "outside"; direction: "higher" | "lower" | null;
+  eligible_n: number; needed: { baseline: number; recent: number }; include_doubtful: boolean;
+  excluded: { doubtful: number; unusable: number; withdrawn: number; missing: number };
+  baseline: ChangeWindow | null; recent: ChangeWindow | null; difference: number | null; interval: [number, number] | null;
 };
 export type AuditRow = { id: number; actor_id: string; action: string; target: string | null; at: string };
 
@@ -108,6 +116,8 @@ export const api = {
   resolve: (id: number, note: string, decision: Decision) => post<ReviewItem>(`/api/review-items/${id}/resolve`, { note, decision }),
   resolveBatch: (ids: number[], note: string, decision: Decision) => post<ReviewItem[]>("/api/review-items/resolve-batch", { ids, note, decision }),
   report: (pid: string) => get<Report>(`/api/participants/${encodeURIComponent(pid)}/report`),
+  change: (pid: string, includeDoubtful = false) =>
+    get<ChangeResult[]>(`/api/participants/${encodeURIComponent(pid)}/change${includeDoubtful ? "?include_doubtful=true" : ""}`),
   audit: (pid: string) => get<AuditRow[]>(`/api/participants/${encodeURIComponent(pid)}/audit`),
 
   clinicianParticipants: () => get<ClinicianParticipant[]>("/api/clinician/participants"),

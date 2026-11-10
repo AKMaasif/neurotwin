@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Evidence, Session } from "../api";
+import { ChangeResult, Evidence, Session } from "../api";
+import { changeHeadline } from "./Change";
 import { useT } from "../i18n";
 import type { Data, Sel } from "./ClinicianApp";
 
@@ -84,6 +85,7 @@ export default function Timeline({ data, sel, onSelect }: { data: Data; sel: Sel
         {lanes.map((l, i) => (
           <LaneView key={l.key} lane={l} top={laneY[i]} width={width} x={x}
             records={data.evidence.filter((e) => e.measure === l.measure && e.protocol_version === "0.1")}
+            change={data.changes.find((c) => c.measure === l.measure && c.protocol_version === "0.1")}
             selectedId={selRecord?.id ?? null} onSelect={(id) => onSelect({ kind: "record", id })} onKey={key} />
         ))}
       </svg>
@@ -102,8 +104,8 @@ export default function Timeline({ data, sel, onSelect }: { data: Data; sel: Sel
   );
 }
 
-function LaneView({ lane, top, width, x, records, selectedId, onSelect, onKey }: {
-  lane: Lane; top: number; width: number; x: (iso: string) => number; records: Evidence[]; selectedId: number | null;
+function LaneView({ lane, top, width, x, records, change, selectedId, onSelect, onKey }: {
+  lane: Lane; top: number; width: number; x: (iso: string) => number; records: Evidence[]; change?: ChangeResult; selectedId: number | null;
   onSelect: (id: number) => void; onKey: (fn: () => void) => (e: React.KeyboardEvent) => void;
 }) {
   const { t } = useT();
@@ -124,9 +126,27 @@ function LaneView({ lane, top, width, x, records, selectedId, onSelect, onKey }:
   for (let v = lo; v <= hi + 1e-9; v += step) ticks.push(v);
   const floorY = top + lane.height - 8;
 
+  const band = (w: { from: string; to: string }, fill: string, label: string) => {
+    const x0 = x(w.from) - 12, x1 = x(w.to) + 12;
+    return (
+      <g aria-hidden="true">
+        <rect x={x0} y={top} width={x1 - x0} height={lane.height - 18} fill={fill} rx={6} />
+        <text x={x0 + 6} y={top + 12} style={{ fontSize: 10.5 }}>{label}</text>
+      </g>
+    );
+  };
+  const headline = change ? changeHeadline(change, t) : "";
+
   return (
     <g>
+      {change?.baseline && band(change.baseline, "rgba(5,38,64,0.05)", t("chBaseline"))}
+      {change?.recent && band(change.recent, change.status === "outside" ? "rgba(138,86,0,0.09)" : "rgba(15,125,146,0.08)", t("chRecent"))}
       <text className="lane-label" x={12} y={top + 14}>{lane.label}</text>
+      {change && (
+        <text x={12} y={top + 32} style={{ fontSize: 11, fill: change.status === "outside" ? "var(--warn)" : "var(--muted)" }}>
+          {headline.length > 30 ? <><tspan x={12}>{headline.slice(0, headline.lastIndexOf(" ", 30))}</tspan><tspan x={12} dy={14}>{headline.slice(headline.lastIndexOf(" ", 30) + 1)}</tspan></> : headline}
+        </text>
+      )}
       {floor.length > 0 && <text x={12} y={floorY + 4}>{t("wsNotPlotted")} · {t.num(floor.length)}</text>}
       {ticks.map((v) => (
         <g key={v}>
