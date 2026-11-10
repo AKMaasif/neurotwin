@@ -5,7 +5,7 @@ here has been tried with real older adults, families or clinicians yet.
 
 ## Implemented and verified
 
-Verified by the 75 automated backend tests (`backend/tests/`), a clean type-check and production build of the web
+Verified by the 105 automated backend tests (`backend/tests/`), a clean type-check and production build of the web
 app, and a scripted click-through of every screen in Chromium, at phone width (420 px) and desktop width (1360 px),
 in English and Arabic.
 
@@ -26,6 +26,7 @@ in English and Arabic.
 | Clinician workspace | Three panes and an activity dock. Caseload: people grouped by "needs review", a Review card that leads to the work, a To check queue grouped by reason with multi-select. Timeline: one lane per measure on one time axis, sessions with their conditions (interrupted, helped, unwell, open items), doubtful points hollow, unusable and withdrawn records counted on the lane floor and never plotted; table view. Detail: the selected record or session with what it rests on, quality reasons, producer, history, and a Keep / Exclude decision with a required note. Activity: Workings (how the selected session became what is shown, from stored records only) and the access log. Export report. Keys J/K/Esc/W. One pane at a time with a bottom bar below 1100 px. | Click-through at 1440 px and 820 px, English and Arabic |
 | Review decisions | Keep (record stays, label unchanged) or Exclude (record withdrawn with the note; a session-wide reason excludes the whole session); batch decisions are all-or-nothing | Tests: `test_review_and_report.py` |
 | Change engine | Within-person comparison per measure and activity version: earliest 3 usable records against the latest 2, difference with a t-based 95% interval from the person's own variation; "within" or "outside usual variation"; abstains with too few usable records or no variation; doubtful records counted only when the clinician switches them on; never pools versions; clinicians only, logged. Shown as baseline and recent bands on the timeline, in the detail panel and in the report | Tests: `test_change.py`, 12 cases + click-through |
+| Output validator | Refuses a model-written draft when a statement cites nothing or an unknown fact, contains a number not in its cited facts, uses diagnostic, predictive, treatment, advisory, normative or reassuring wording (English and Arabic word lists, Arabic digits read as numbers), or is empty or too long. Lists every problem with its statement | Tests: `test_validator.py`, 20 cases. Rule behaviour only: miss and over-block rates are not measured |
 | Report | Server-built factual summary: sessions by status, records by measure and quality, value ranges of usable and doubtful records, open items, decisions with notes; generating it is logged | Tests + click-through |
 
 ## Experimental or simulated
@@ -35,6 +36,9 @@ in English and Arabic.
 - **Demo mode is open to anyone who can reach the server.** That is intended for judging and demos with synthetic
   data. A server holding real data must run with `NEUROTWIN_SEED_DEMO=0`.
 - **All data is synthetic.** The demo accounts and six weeks of records are invented to exercise the screens.
+- **Model provider clients (Gemini, Meta) are untested against the live services.** Their tests use a stand-in
+  transport and prove request shape, key handling and error handling only. No model-assisted feature is switched on
+  yet; `scripts/list_models.py` is the first live check, to be run with real keys.
 - **Both activities are NeuroTwin prototypes** (`daily_checkin 0.1`, `reaction_time 0.1`). They are not published
   instruments, have no validated scoring, norms or thresholds, and none should be read into them.
 - **Reaction timing in a browser** depends on the device, screen and touch latency. Timing accuracy on real
@@ -47,8 +51,9 @@ in English and Arabic.
 - Account creation and invitations, password reset by a verified route, optional two-factor sign-in, role management.
 - Encryption at rest; PostgreSQL deployment inside the UAE; a shared rate-limit store when running more than one process.
 - Activities chosen and reviewed with clinicians, each versioned with its instructions and scoring.
-- A clinician assistant panel (questions about the stored records), only after the output validator exists
-- Output validator, then a clinician summary drafter behind it (model-assisted, draft-only, clinician approval).
+- Clinician summary drafter: model-written draft from stored facts, through the output validator, then approve, edit
+  or reject by the clinician. Needs a chosen provider and model.
+- A clinician assistant panel (questions about the stored records), behind the same validator.
 - Approved-plan coaching messages; speech-to-text with visible recording and transcript preview.
 - Family messages with preview and Send; appointment reminders.
 - Deletion requests handled by the research team (separate from withdrawal).
@@ -60,6 +65,8 @@ in English and Arabic.
 | --- | --- |
 | Which activities to use, their instructions, scoring and any adaptation | Clinical reviewer |
 | Change-engine settings: 3 baseline and 2 recent records, 95% interval, doubtful excluded by default; whether a reliable-change method with published test-retest reliability should replace it once real activities are chosen | Statistician + clinical reviewer |
+| Output-validator word lists and limits, and a labelled set of drafts to measure what it misses and over-blocks | Clinical reviewer + Arabic reviewer |
+| Which model provider may process which data, and where (UAE data-residency) | Project owner + legal/ethics |
 | Quality-rule cut-offs (fewer than 3 valid taps unusable; 2+ early taps doubtful; valid ranges) — engineering defaults now | Clinical reviewer + statistician |
 | Consent text, in both languages | Ethics committee + clinical reviewer |
 | Arabic wording across the apps | Native-speaker reviewer (Gulf) |

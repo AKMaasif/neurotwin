@@ -95,6 +95,22 @@ Stop the server, delete `backend\neurotwin.db`, start it again.
 | `NEUROTWIN_SECURE_COOKIES` | `0` | Set to `1` when served over HTTPS (any deployment) |
 | `NEUROTWIN_SESSION_HOURS` | `8` | How long a sign-in lasts |
 
+## Model providers (optional)
+
+NeuroTwin runs fully without any AI key. To prepare for the model-assisted features, add keys for Google Gemini,
+Meta's Model API, or both:
+
+```powershell
+cd D:\NeuroTwin\backend
+copy .env.example .env      # then open .env and paste your keys
+.\.venv\Scripts\python.exe scripts\list_models.py
+```
+
+The script lists the models each key can use and never prints a key. Put the provider and model you choose in
+`.env` (`NEUROTWIN_AI_PROVIDER`, `GEMINI_MODEL` or `META_MODEL`). `backend/.env` is ignored by git: never commit it,
+and never send real health data to a provider. Every model-written draft must pass the output validator
+(`backend/app/validator.py`) and then a clinician's review.
+
 ## Contributing
 
 Work happens on branches and reaches `main` through `develop` and pull requests, with CI on every pull request.
