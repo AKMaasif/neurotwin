@@ -16,6 +16,27 @@ from .models import AccessGrant, ActivitySession, ConsentEvent, Evidence, User
 DEVICE = "demo-seed"
 
 
+DEMO_USERNAMES = {"demo-fatima": "fatima", "demo-yousef": "yousef", "demo-mariam": "mariam", "demo-omar": "omar",
+                  "demo-dr-layla": "dr.layla"}
+
+
+def ensure_demo_credentials(db: Session, password: str) -> None:
+    """Give demo accounts a username and the demo password if they have none (also upgrades older demo databases).
+    A password someone has since changed is left alone."""
+    from .security import hash_password
+    changed = False
+    for user_id, username in DEMO_USERNAMES.items():
+        u = db.get(User, user_id)
+        if u is None or not u.is_demo:
+            continue
+        if not u.username:
+            u.username, changed = username, True
+        if not u.password_hash:
+            u.password_hash, changed = hash_password(password), True
+    if changed:
+        db.commit()
+
+
 def seed(db: Session) -> None:
     if db.query(User).count():
         return

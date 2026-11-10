@@ -20,16 +20,14 @@ from . import services as S
 from .db import Database
 from .logs import SafeRequestLog
 from .models import AccessGrant, ActivitySession, AuditEvent, Evidence, ReviewItem, User
-from .security import current_user, get_db, make_token, require_evidence_access
+from .auth import router as auth_router
+from .auth import user_out
+from .security import current_user, get_db, require_evidence_access
 
 Lang = Literal["en", "ar"]
 
 
 # ---- Request bodies ------------------------------------------------------------------------------------------
-
-class LoginIn(BaseModel):
-    user_id: str
-
 
 class ConsentIn(BaseModel):
     scope: str
@@ -97,10 +95,6 @@ def iso(d: datetime | None) -> str | None:
     return d.isoformat() if d else None
 
 
-def user_out(u: User) -> dict:
-    return {"id": u.id, "display_name": u.display_name, "role": u.role, "language": u.language, "is_demo": u.is_demo}
-
-
 def grant_out(g: AccessGrant, db: Session) -> dict:
     return {"id": g.id, "owner": user_out(db.get(User, g.owner_id)), "grantee": user_out(db.get(User, g.grantee_id)),
             "purpose": g.purpose, "created_at": iso(g.created_at), "revoked_at": iso(g.revoked_at),
@@ -142,17 +136,23 @@ def review_out(r: ReviewItem) -> dict:
 
 # ---- App -----------------------------------------------------------------------------------------------------
 
-def create_app(database_url: str | None = None, secret: str | None = None, seed_demo: bool | None = None,
-               serve_frontend: bool = True) -> FastAPI:
+def create_app(database_url: str | None = None, seed_demo: bool | None = None, serve_frontend: bool = True,
+               demo_password: str | None = None, secure_cookies: bool | None = None,
+               session_hours: float | None = None) -> FastAPI:
     app = FastAPI(title="IFHAS-NeuroTwin API", version="0.1.0",
                   description="Research prototype. Not a medical device. Synthetic demo data only.")
     app.state.db = Database(database_url or config.DATABASE_URL)
-    app.state.secret = secret or config.SECRET
+    app.state.settings = {
+        "secure_cookies": config.SECURE_COOKIES if secure_cookies is None else secure_cookies,
+        "session_hours": session_hours or config.SESSION_HOURS,
+    }
     app.state.db.create_all()
     if config.SEED_DEMO if seed_demo is None else seed_demo:
-        from .seed import seed
+        from .seed import ensure_demo_credentials, seed
         with app.state.db.SessionLocal() as db:
             seed(db)
+            ensure_demo_credentials(db, demo_password or config.DEMO_PASSWORD)
+    app.state.demo = bool(config.SEED_DEMO if seed_demo is None else seed_demo)
     app.add_middleware(SafeRequestLog)
 
     @app.exception_handler(S.Refused)
@@ -163,30 +163,28 @@ def create_app(database_url: str | None = None, secret: str | None = None, seed_
     def health():
         return {"ok": True, "version": app.version}
 
-    # Sign-in (prototype: pick a demo account) ------------------------------------------------------------------
-    @app.get("/api/demo-accounts")
-    def demo_accounts(db: Session = Depends(get_db)):
-        return [user_out(u) for u in db.scalars(select(User).where(User.is_demo.is_(True)).order_by(User.role, User.id))]
+    # Sign-in, sign-out, account settings -----------------------------------------------------------------------
+    app.include_router(auth_router)
 
-    @app.post("/api/auth/demo-login")
-    def demo_login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
-        u = db.get(User, body.user_id)
-        if u is None or not u.is_demo:
-            raise HTTPException(404, "No such demo account.")
-        S.audit(db, u.id, "auth.signed_in", u.id if u.role == "participant" else None)
-        db.commit()
-        return {"token": make_token(u.id, request.app.state.secret), "user": user_out(u)}
+    @app.get("/api/demo-accounts")
+    def demo_accounts(request: Request, db: Session = Depends(get_db)):
+        """Demo mode only: the synthetic accounts' usernames, so testers can sign in. Never real accounts."""
+        if not request.app.state.demo:
+            return []
+        rows = db.scalars(select(User).where(User.is_demo.is_(True)).order_by(User.role, User.id))
+        return [{"username": u.username, "display_name": u.display_name, "role": u.role, "language": u.language}
+                for u in rows]
 
     @app.get("/api/me")
     def me(user: User = Depends(current_user)):
-        return user_out(user)
+        return user_out(user, own=True)
 
     @app.put("/api/me/language")
     def set_language(body: LanguageIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
         u = db.get(User, user.id)
         u.language = body.language
         db.commit()
-        return user_out(u)
+        return user_out(u, own=True)
 
     @app.get("/api/protocols")
     def list_protocols(_: User = Depends(current_user)):
