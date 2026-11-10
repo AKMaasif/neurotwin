@@ -33,7 +33,8 @@ class Database:
     def _add_missing_columns(self) -> None:
         """Columns added after a database was first made. Additive only: nothing is dropped or rewritten."""
         from sqlalchemy import inspect, text
-        added = {"review_items": {"decision": "VARCHAR(10)"}}
+        added = {"review_items": {"decision": "VARCHAR(10)"},
+                 "users": {"username": "VARCHAR(60)", "password_hash": "VARCHAR(300)"}}
         insp = inspect(self.engine)
         with self.engine.begin() as conn:
             for table, cols in added.items():
@@ -41,6 +42,7 @@ class Database:
                 for name, ddl in cols.items():
                     if name not in have:
                         conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
+            conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_username ON users (username)"))
 
     def session(self) -> Iterator[Session]:
         db = self.SessionLocal()

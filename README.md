@@ -30,7 +30,18 @@ cd D:\NeuroTwin
 ```
 
 The script creates a Python environment, installs everything, builds the web app, and starts the server.
-Open **http://127.0.0.1:8000** and choose a demo account.
+Open **http://127.0.0.1:8000** and sign in with a demo account.
+
+### Demo accounts
+
+| Username | Role |
+| --- | --- |
+| `fatima`, `yousef` | Older adult |
+| `mariam`, `omar` | Family member |
+| `dr.layla` | Clinician |
+
+All start with the password **`neurotwin-demo-2026`** (set `NEUROTWIN_DEMO_PASSWORD` before the first start to
+choose another). Each person can change their own password under Account.
 
 If PowerShell blocks the script, run once: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 
@@ -74,8 +85,10 @@ Stop the server, delete `backend\neurotwin.db`, start it again.
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `NEUROTWIN_DATABASE_URL` | SQLite file `backend/neurotwin.db` | Any SQLAlchemy URL, e.g. PostgreSQL |
-| `NEUROTWIN_SECRET` | random per start | Signs sign-in tokens. Set it so sign-ins survive a restart |
 | `NEUROTWIN_SEED_DEMO` | `1` | Load the synthetic demo accounts into an empty database |
+| `NEUROTWIN_DEMO_PASSWORD` | `neurotwin-demo-2026` | Password given to demo accounts when first created |
+| `NEUROTWIN_SECURE_COOKIES` | `0` | Set to `1` when served over HTTPS (any deployment) |
+| `NEUROTWIN_SESSION_HOURS` | `8` | How long a sign-in lasts |
 
 ## Contributing
 

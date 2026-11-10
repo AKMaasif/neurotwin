@@ -38,7 +38,19 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(20))
     language: Mapped[str] = mapped_column(String(5), default="en")
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False)
+    username: Mapped[str | None] = mapped_column(String(60), nullable=True, unique=True)
+    password_hash: Mapped[str | None] = mapped_column(String(300), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class LoginSession(Base):
+    """A signed-in browser. Only a hash of its token is stored, so a copy of the database cannot be used to sign in."""
+    __tablename__ = "login_sessions"
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    csrf: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class ConsentEvent(Base):

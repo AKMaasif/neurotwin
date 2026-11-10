@@ -20,5 +20,6 @@ def test_logs_never_contain_values_tokens_or_bodies(client, yousef, caplog):
         {"measure": "today_factors", "kind": "self_reported", "value_text": "PRIVATE-TEXT"}]}, headers=yousef)
     text = caplog.text
     assert "neurotwin.http" in text or "POST" in text
-    for leak in ("4.25", "PRIVATE-TEXT", "SECRET-NOTE", "Bearer", "demo-yousef", yousef["Authorization"]):
+    token = yousef["Cookie"].split("=", 1)[1]
+    for leak in ("4.25", "PRIVATE-TEXT", "SECRET-NOTE", "demo-yousef", token, yousef["X-CSRF-Token"]):
         assert leak not in text

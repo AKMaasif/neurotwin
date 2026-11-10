@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, hasToken, setToken, User } from "./api";
+import { api, setCsrf, SIGNED_OUT, User } from "./api";
 import { Lang, LangContext, makeT } from "./i18n";
 import SignIn from "./SignIn";
 import PersonalApp from "./personal/PersonalApp";
@@ -14,7 +14,7 @@ function savedLang(): Lang {
 export default function App() {
   const [lang, setLangState] = useState<Lang>(savedLang);
   const [user, setUser] = useState<User | null>(null);
-  const [checked, setChecked] = useState(!hasToken());
+  const [checked, setChecked] = useState(false);
   const t = useMemo(() => makeT(lang), [lang]);
 
   useEffect(() => {
@@ -24,9 +24,13 @@ export default function App() {
     document.title = t("appName");
   }, [lang, t]);
 
+  // Is this browser already signed in? The cookie is invisible to the page, so ask the server.
   useEffect(() => {
-    if (!hasToken()) return;
-    api.me().then(setUser).catch(() => setToken(null)).finally(() => setChecked(true));
+    api.session().then((s) => { setCsrf(s.csrf); setUser(s.user); setLangState(s.user.language); })
+      .catch(() => setUser(null)).finally(() => setChecked(true));
+    const onSignedOut = () => setUser(null);
+    window.addEventListener(SIGNED_OUT, onSignedOut);
+    return () => window.removeEventListener(SIGNED_OUT, onSignedOut);
   }, []);
 
   const setLang = (l: Lang) => {
@@ -35,12 +39,14 @@ export default function App() {
     if (user) api.setLanguage(l).catch(() => undefined);
   };
 
-  const signIn = (token: string, u: User) => {
-    setToken(token);
+  const signIn = (csrf: string, u: User) => {
+    setCsrf(csrf);
     setUser(u);
     setLang(u.language);
   };
-  const signOut = () => { setToken(null); setUser(null); };
+  const signOut = () => {
+    api.logout().catch(() => undefined).finally(() => { setCsrf(null); setUser(null); });
+  };
 
   return (
     <LangContext.Provider value={{ t, setLang }}>
