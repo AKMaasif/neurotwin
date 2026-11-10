@@ -313,6 +313,10 @@ def create_app(database_url: str | None = None, secret: str | None = None, seed_
             m["first"], m["last"] = iso(m["first"]), iso(m["last"])
             m["values"] = [{**v, "at": iso(v["at"])} for v in m["values"]]
         r["review"] = {k: [review_out(i) for i in v] for k, v in r["review"].items()}
+        for c in r["change"]:
+            for w in ("baseline", "recent"):
+                if c[w]:
+                    c[w] = {**c[w], "from": iso(c[w]["from"]), "to": iso(c[w]["to"])}
         return r
 
     @app.get("/api/participants/{pid}/change")
