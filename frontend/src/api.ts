@@ -54,6 +54,13 @@ export type ChangeResult = {
   excluded: { doubtful: number; unusable: number; withdrawn: number; missing: number };
   baseline: ChangeWindow | null; recent: ChangeWindow | null; difference: number | null; interval: [number, number] | null;
 };
+export type AiStatus = { provider: string | null; model: string | null; configured: boolean; keys_present: Record<string, boolean> };
+export type Draft = {
+  id: number; participant_id: string; language: "en" | "ar"; status: "pending_review" | "approved" | "rejected" | "refused";
+  statements: { text: string; cites: string[]; edited: boolean }[]; problems: { index: number; code: string; detail: string }[];
+  facts: { id: string; text: string }[]; provider: string; model: string; validator_version: string; attempts: number;
+  created_by: string; created_at: string; reviewed_by: string | null; reviewed_at: string | null; review_note: string | null;
+};
 export type AuditRow = { id: number; actor_id: string; action: string; target: string | null; at: string };
 
 // The sign-in itself lives in an HttpOnly cookie the page cannot read. The page keeps only the session's CSRF token,
@@ -125,6 +132,11 @@ export const api = {
   report: (pid: string) => get<Report>(`/api/participants/${encodeURIComponent(pid)}/report`),
   change: (pid: string, includeDoubtful = false) =>
     get<ChangeResult[]>(`/api/participants/${encodeURIComponent(pid)}/change${includeDoubtful ? "?include_doubtful=true" : ""}`),
+  aiStatus: () => get<AiStatus>("/api/ai/status"),
+  drafts: (pid: string) => get<Draft[]>(`/api/participants/${encodeURIComponent(pid)}/drafts`),
+  createDraft: (pid: string, language: string) => post<Draft>(`/api/participants/${encodeURIComponent(pid)}/drafts`, { language }),
+  reviewDraft: (id: number, decision: "approve" | "reject", note: string, statements?: { text: string; cites: string[] }[]) =>
+    post<Draft>(`/api/drafts/${id}/review`, { decision, note, statements }),
   audit: (pid: string) => get<AuditRow[]>(`/api/participants/${encodeURIComponent(pid)}/audit`),
 
   clinicianParticipants: () => get<ClinicianParticipant[]>("/api/clinician/participants"),
