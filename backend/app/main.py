@@ -17,12 +17,13 @@ from . import config
 from . import careplan as CP
 from . import drafts as D
 from . import llm
+from . import messages as M
 from . import protocols as P
 from . import quality as Q
 from . import services as S
 from .db import Database
 from .logs import SafeRequestLog
-from .models import AccessGrant, ActivitySession, AuditEvent, CarePlanItem, Draft, Evidence, ReviewItem, User
+from .models import AccessGrant, ActivitySession, AuditEvent, CarePlanItem, Draft, FamilyMessage, Evidence, ReviewItem, User
 from .auth import router as auth_router
 from .auth import user_out
 from .security import current_user, get_db, require_evidence_access
@@ -37,6 +38,11 @@ class CarePlanIn(BaseModel):
     text_ar: str | None = Field(default=None, max_length=300)
     day_part: str = "anytime"
     weekdays: list[int] = Field(default_factory=list, max_length=7)
+
+
+class MessageIn(BaseModel):
+    participant_id: str = Field(min_length=1, max_length=40)
+    text: str = Field(max_length=1000)
 
 
 class CarePlanStopIn(BaseModel):
@@ -169,6 +175,11 @@ def care_item_out(i: CarePlanItem, db: Session) -> dict:
     return {"id": i.id, "text_en": i.text_en, "text_ar": i.text_ar, "day_part": i.day_part, "weekdays": i.weekdays,
             "status": i.status, "created_at": iso(i.created_at), "written_by": who.display_name if who else None,
             "stopped_at": iso(i.stopped_at), "stop_note": i.stop_note}
+
+
+def message_out(m: FamilyMessage, db: Session) -> dict:
+    return {"id": m.id, "sender": M.sender_name(db, m), "participant_id": m.participant_id, "text": m.text,
+            "status": m.status, "created_at": iso(m.created_at), "sent_at": iso(m.sent_at), "read": m.read_at is not None}
 
 
 def change_out(r) -> dict:
@@ -415,6 +426,39 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
         _clinician_for(db, user, d.participant_id)
         statements = [x.model_dump() for x in body.statements] if body.statements is not None else None
         return draft_out(D.review(db, user, d, body.decision, body.note, statements))
+
+    # Family messages: write, preview, send ----------------------------------------------------------------------
+    @app.post("/api/family/messages")
+    def draft_message(body: MessageIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return message_out(M.make_draft(db, user, body.participant_id, body.text), db)
+
+    @app.post("/api/family/messages/{mid}/send")
+    def send_message(mid: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return message_out(M.send(db, user, mid), db)
+
+    @app.post("/api/family/messages/{mid}/discard")
+    def discard_message(mid: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return message_out(M.discard(db, user, mid), db)
+
+    @app.get("/api/family/messages")
+    def my_written_messages(participant_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return [message_out(m, db) for m in M.written_by(db, user, participant_id)]
+
+    @app.get("/api/messages")
+    def my_inbox(user: User = Depends(current_user), db: Session = Depends(get_db)):
+        if user.role != "participant":
+            raise HTTPException(404, "Not found, or you do not have access.")
+        return [message_out(m, db) for m in M.inbox(db, user)]
+
+    @app.post("/api/messages/{mid}/read")
+    def read_message(mid: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        M.mark_read(db, user, mid)
+        return {"ok": True}
+
+    @app.post("/api/messages/{mid}/hide")
+    def hide_message(mid: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        M.hide(db, user, mid)
+        return {"ok": True}
 
     # Care plan and reminders ---------------------------------------------------------------------------------
     @app.get("/api/participants/{pid}/care-plan")
