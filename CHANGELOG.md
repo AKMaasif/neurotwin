@@ -9,6 +9,7 @@ All notable changes, newest first. Versions follow `0.x` while NeuroTwin is a re
   fixed for the whole day.
 
 ### Added
+- Family messages: write, preview, then send. Authorised relatives only; the person can read and remove from view.
 - Care plan and reminders: clinicians write routines for a person; the person sees today's routines in English or
   Arabic and can answer Done or Not today. No answer is never counted as missed. Demo plan seeded for Fatima.
 - Clinician summary drafts: a model writes from stored facts, the output validator checks every statement, and the

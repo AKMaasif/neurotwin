@@ -3,6 +3,7 @@ import { api, FamilyEntry, User } from "../api";
 import { useT } from "../i18n";
 import { Brand, ErrorNote, Heading, LangSwitch, Status } from "../ui";
 import Account from "../Account";
+import Compose from "./Compose";
 
 /** What a family member sees: only who shares with them and which activities were done. Never answers or results. */
 export default function FamilyApp({ user, onSignOut }: { user: User; onSignOut: () => void }) {
@@ -58,6 +59,7 @@ export default function FamilyApp({ user, onSignOut }: { user: User; onSignOut: 
                   ))}
                 </ul>
                 <p className="muted" style={{ fontSize: 16 }}>{t("familyWhat")} {t("familyNoResponse")}</p>
+                <Compose pid={e.participant_id} name={e.display_name} />
               </>
             )}
           </section>

@@ -201,3 +201,19 @@ class CarePlanReply(Base):
     day: Mapped[str] = mapped_column(String(10))   # YYYY-MM-DD, the person's own day
     reply: Mapped[str] = mapped_column(String(10))  # done | not_today
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class FamilyMessage(Base):
+    """A short message from a family member to the person they are authorised to support. Care communication: it is
+    kept apart from evidence, never read by clinicians through the app, and never sent to a model. A message exists
+    as a draft until its writer has seen the preview and pressed Send."""
+    __tablename__ = "family_messages"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    sender_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    participant_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    text: Mapped[str] = mapped_column(String(300))
+    status: Mapped[str] = mapped_column(String(10), default="draft")   # draft | sent | discarded
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    hidden_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # the person's choice
