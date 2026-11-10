@@ -77,10 +77,16 @@ Stop the server, delete `backend\neurotwin.db`, start it again.
 | `NEUROTWIN_SECRET` | random per start | Signs sign-in tokens. Set it so sign-ins survive a restart |
 | `NEUROTWIN_SEED_DEMO` | `1` | Load the synthetic demo accounts into an empty database |
 
+## Contributing
+
+Work happens on branches and reaches `main` through `develop` and pull requests, with CI on every pull request.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Folders
 
 ```
 backend/   FastAPI service: evidence core, consent, sharing, quality rules, tests
 frontend/  React + TypeScript web app: personal app, family view, clinician dashboard
 docs/      Status, architecture, project brief
+.github/   CI workflow
 ```
