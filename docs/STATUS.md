@@ -1,4 +1,4 @@
-# Status — version 0.1 (10 Nov 2026)
+# Status — version 0.2 (10 Nov 2026)
 
 Four lists, kept separate on purpose. Software tests passing is not evidence of clinical accuracy, and nothing
 here has been tried with real older adults, families or clinicians yet.
