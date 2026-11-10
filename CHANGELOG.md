@@ -5,6 +5,8 @@ All notable changes, newest first. Versions follow `0.x` while NeuroTwin is a re
 ## Unreleased
 
 ### Added
+- Clinician summary drafts: a model writes from stored facts, the output validator checks every statement, and the
+  clinician approves, edits or rejects. Drafts keep their facts, model and validator version. Daily call cap.
 - Output validator for model-written drafts: citations, numbers and wording are checked by rules before any person
   sees a draft.
 - Provider clients for Google Gemini and Meta's Model API behind one interface, keys read from `backend/.env`, and
