@@ -31,6 +31,10 @@ export type CareItem = {
 };
 export type CareItemClinician = CareItem & { marked: { day: string; reply: "done" | "not_today" }[] };
 export type Reminder = CareItem & { reply: "done" | "not_today" | null };
+export type Message = {
+  id: number; sender: string; participant_id: string; text: string; status: "draft" | "sent" | "discarded";
+  created_at: string; sent_at: string | null; read: boolean;
+};
 export type Observation = {
   measure: string; kind: "observed" | "self_reported"; value_num?: number | null; value_text?: string | null;
   unit?: string | null; missing_reason?: string | null;
@@ -150,6 +154,13 @@ export const api = {
   stopCareItem: (id: number, note: string) => post<CareItem>(`/api/care-plan/${id}/stop`, { note: note || null }),
   reminders: (day: string) => get<{ day: string; items: Reminder[] }>(`/api/care-plan/today?day=${day}`),
   replyReminder: (id: number, reply: "done" | "not_today", day: string) => post<{ ok: boolean }>(`/api/care-plan/${id}/reply`, { reply, day }),
+  draftMessage: (participant_id: string, text: string) => post<Message>("/api/family/messages", { participant_id, text }),
+  sendMessage: (id: number) => post<Message>(`/api/family/messages/${id}/send`),
+  discardMessage: (id: number) => post<Message>(`/api/family/messages/${id}/discard`),
+  writtenMessages: (pid: string) => get<Message[]>(`/api/family/messages?participant_id=${encodeURIComponent(pid)}`),
+  inbox: () => get<Message[]>("/api/messages"),
+  readMessage: (id: number) => post<{ ok: boolean }>(`/api/messages/${id}/read`),
+  hideMessage: (id: number) => post<{ ok: boolean }>(`/api/messages/${id}/hide`),
   audit: (pid: string) => get<AuditRow[]>(`/api/participants/${encodeURIComponent(pid)}/audit`),
 
   clinicianParticipants: () => get<ClinicianParticipant[]>("/api/clinician/participants"),
