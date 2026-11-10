@@ -3,6 +3,7 @@ import { Printer, X } from "lucide-react";
 import { api, Report } from "../api";
 import { useT } from "../i18n";
 import { ErrorNote, Mark } from "../ui";
+import { changeHeadline } from "./Change";
 
 /** A printable, factual summary built by the server from stored records. Counts, ranges and decisions only. */
 export default function ReportView({ personId, onClose }: { personId: string; onClose: () => void }) {
@@ -75,6 +76,24 @@ export default function ReportView({ personId, onClose }: { personId: string; on
                 ))}
               </tbody>
             </table>
+
+            <h2>{t("chTitle")}</h2>
+            <p className="muted" style={{ margin: 0, fontSize: 13 }}>{t("chLede")}</p>
+            <table>
+              <thead><tr><th>{t("colMeasure")}</th><th>{t("colStatus")}</th><th>{t("colValue")}</th><th>n</th></tr></thead>
+              <tbody>
+                {r.change.map((c) => (
+                  <tr key={`${c.protocol_code}-${c.protocol_version}-${c.measure}`}>
+                    <td>{t.code(c.measure)} <span className="muted mono">{c.protocol_version}</span></td>
+                    <td>{changeHeadline(c, t)}</td>
+                    <td className="mono">{c.difference !== null && c.interval
+                      ? `${t.num(c.difference, 1)} [${t.num(c.interval[0], 1)}, ${t.num(c.interval[1], 1)}]` : "–"}</td>
+                    <td className="mono">{c.baseline && c.recent ? `${t.num(c.baseline.n)} + ${t.num(c.recent.n)}` : t.num(c.eligible_n)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="muted" style={{ margin: 0, fontSize: 12 }}>{r.change[0] ? t("chMethod", { method: r.change[0].method }) : null}</p>
 
             <h2>{t("repOpen")}</h2>
             {r.review.open.length === 0 ? <p className="muted">{t("repNoneOpen")}</p> : (
