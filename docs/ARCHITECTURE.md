@@ -5,10 +5,11 @@
  Family ──────┼── Web app (React) ──────┤
               │   personal · family     │   clinician dashboard
               └───────────┬─────────────┘
-                          │  /api (JSON, signed token)
+                          │  /api (JSON, session cookie + CSRF)
                 ┌─────────▼──────────┐
                 │  FastAPI service   │   main.py      routes, reply shapes
-                │                    │   security.py  sign-in, access rules
+                │                    │   security.py  passwords, sessions, access
+                │                    │   auth.py      sign-in and account routes
                 │  deterministic     │   services.py  every state change + audit
                 │  core, no models   │   quality.py   evidence-quality rules
                 │                    │   protocols.py versioned activities
@@ -43,7 +44,8 @@
 
 | Table | Holds |
 | --- | --- |
-| `users` | Demo accounts: role (participant, family, clinician), language |
+| `users` | Role (participant, family, clinician), language, username, scrypt password hash |
+| `login_sessions` | Signed-in browsers: hash of the session token, CSRF token, expiry |
 | `consent_events` | One row per decision; the newest row per scope is the current state |
 | `access_grants` | Owner, grantee, purpose, created, revoked |
 | `activity_sessions` | Activity and version, language, device, assisted, unwell, interruptions, status |
@@ -55,7 +57,9 @@
 
 | Method and path | Who |
 | --- | --- |
-| `GET /api/demo-accounts`, `POST /api/auth/demo-login` | Anyone (prototype sign-in) |
+| `POST /api/auth/login`, `GET /api/auth/session`, `POST /api/auth/logout` | Anyone / signed in |
+| `POST /api/account/password`, `GET /api/account/sessions`, `POST /api/account/sessions/revoke-others` | Signed in |
+| `GET /api/demo-accounts` | Anyone, demo mode only: demo usernames |
 | `GET /api/me`, `PUT /api/me/language` | Signed in |
 | `GET/POST /api/consents` | Participant |
 | `GET/POST /api/grants`, `GET /api/grants/candidates`, `POST /api/grants/{id}/revoke` | Participant |
