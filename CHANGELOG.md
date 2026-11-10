@@ -2,6 +2,12 @@
 
 All notable changes, newest first. Versions follow `0.x` while NeuroTwin is a research prototype.
 
+## Unreleased
+
+### Changed
+- In demo mode the front page opens any demo view in one click, with no username or password. The password form
+  appears only when demo mode is off. Shared demo accounts cannot change their password or sign out other devices.
+
 ## 0.2.0 — 10 Nov 2026
 
 ### Added

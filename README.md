@@ -34,18 +34,19 @@ cd D:\NeuroTwin
 ```
 
 The script creates a Python environment, installs everything, builds the web app, and starts the server.
-Open **http://127.0.0.1:8000** and sign in with a demo account.
+Open **http://127.0.0.1:8000** and choose a view. No username or password is needed in demo mode.
 
-### Demo accounts
+### Demo views
 
-| Username | Role |
+| View | Opens as |
 | --- | --- |
-| `fatima`, `yousef` | Older adult |
-| `mariam`, `omar` | Family member |
-| `dr.layla` | Clinician |
+| Older adult | Fatima (Arabic) or Yousef (English) |
+| Family member | Mariam or Omar |
+| Clinician | Dr. Layla |
 
-All start with the password **`neurotwin-demo-2026`** (set `NEUROTWIN_DEMO_PASSWORD` before the first start to
-choose another). Each person can change their own password under Account.
+One click opens a view. The demo accounts are shared by everyone using the server, so password changes and
+"sign out other devices" are switched off for them. On a server started with `NEUROTWIN_SEED_DEMO=0`, one-click
+entry is off and the front page shows a username and password form instead.
 
 If PowerShell blocks the script, run once: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 
@@ -89,8 +90,8 @@ Stop the server, delete `backend\neurotwin.db`, start it again.
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `NEUROTWIN_DATABASE_URL` | SQLite file `backend/neurotwin.db` | Any SQLAlchemy URL, e.g. PostgreSQL |
-| `NEUROTWIN_SEED_DEMO` | `1` | Load the synthetic demo accounts into an empty database |
-| `NEUROTWIN_DEMO_PASSWORD` | `neurotwin-demo-2026` | Password given to demo accounts when first created |
+| `NEUROTWIN_SEED_DEMO` | `1` | Demo mode: load the synthetic demo accounts and allow one-click entry to them |
+| `NEUROTWIN_DEMO_PASSWORD` | `neurotwin-demo-2026` | Password of the demo accounts (only needed if you sign in to them by password) |
 | `NEUROTWIN_SECURE_COOKIES` | `0` | Set to `1` when served over HTTPS (any deployment) |
 | `NEUROTWIN_SESSION_HOURS` | `8` | How long a sign-in lasts |
 

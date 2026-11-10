@@ -59,7 +59,7 @@
 | --- | --- |
 | `POST /api/auth/login`, `GET /api/auth/session`, `POST /api/auth/logout` | Anyone / signed in |
 | `POST /api/account/password`, `GET /api/account/sessions`, `POST /api/account/sessions/revoke-others` | Signed in |
-| `GET /api/demo-accounts` | Anyone, demo mode only: demo usernames |
+| `GET /api/demo-accounts`, `POST /api/auth/demo-enter` | Anyone, demo mode only: list demo views and open one without a password |
 | `GET /api/me`, `PUT /api/me/language` | Signed in |
 | `GET/POST /api/consents` | Participant |
 | `GET/POST /api/grants`, `GET /api/grants/candidates`, `POST /api/grants/{id}/revoke` | Participant |
