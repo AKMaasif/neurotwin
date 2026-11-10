@@ -102,9 +102,9 @@ def test_cannot_revoke_someone_elses_grant(client, yousef, login):
     assert r.status_code == 404
 
 
-def test_unsigned_and_forged_tokens_are_refused(client):
+def test_unsigned_and_forged_sessions_are_refused(client):
     assert client.get("/api/me").status_code == 401
-    assert client.get("/api/me", headers={"Authorization": "Bearer demo-fatima.forged"}).status_code == 401
+    assert client.get("/api/me", headers={"Cookie": "nt_session=forged"}).status_code == 401
 
 
 def test_participants_cannot_read_each_other(client, yousef):

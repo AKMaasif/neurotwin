@@ -75,6 +75,23 @@ def test_old_database_gets_new_column(tmp_path):
                 " session_id INTEGER, reason VARCHAR(60), raised_by VARCHAR(80), status VARCHAR(10),"
                 " resolved_by VARCHAR(40), resolution_note VARCHAR(500), created_at DATETIME, resolved_at DATETIME)")
     con.commit(); con.close()
-    create_app(database_url=f"sqlite:///{path}", secret="s", seed_demo=False, serve_frontend=False)
+    create_app(database_url=f"sqlite:///{path}", seed_demo=False, serve_frontend=False)
     cols = [r[1] for r in sqlite3.connect(path).execute("PRAGMA table_info(review_items)")]
     assert "decision" in cols
+
+
+def test_old_demo_database_gets_sign_in_details(tmp_path):
+    """A database made before passwords existed: demo accounts gain usernames and the demo password."""
+    import sqlite3
+    from fastapi.testclient import TestClient
+    from app.main import create_app
+    path = tmp_path / "old-users.db"
+    con = sqlite3.connect(path)
+    con.execute("CREATE TABLE users (id VARCHAR(40) PRIMARY KEY, display_name VARCHAR(120), role VARCHAR(20),"
+                " language VARCHAR(5), is_demo BOOLEAN, created_at DATETIME)")
+    con.execute("INSERT INTO users VALUES ('demo-omar', 'Omar', 'family', 'en', 1, '2026-11-01 00:00:00')")
+    con.commit(); con.close()
+    app = create_app(database_url=f"sqlite:///{path}", seed_demo=True, serve_frontend=False,
+                     demo_password="upgrade-demo-password")
+    r = TestClient(app).post("/api/auth/login", json={"username": "omar", "password": "upgrade-demo-password"})
+    assert r.status_code == 200
