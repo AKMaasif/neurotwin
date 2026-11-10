@@ -5,6 +5,7 @@ All notable changes, newest first. Versions follow `0.x` while NeuroTwin is a re
 ## Unreleased
 
 ### Changed
+- Voice typing: clips are converted to WAV in the browser; Meta speech uses its documented ASR endpoint.
 - Arabic drafts are written fully in Arabic (glossary and Arabic month names); model timeout 120 s; demo dates are
   fixed for the whole day.
 
