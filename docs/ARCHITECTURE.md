@@ -16,6 +16,7 @@
                 │                    │   change.py    within-person change
                 │  model-assisted,   │   llm.py       Gemini / Meta clients
                 │  always gated      │   validator.py output validator
+                │                    │   drafts.py    summary drafts + review
                 └─────────┬──────────┘
                           │ SQLAlchemy
                     SQLite (dev) / PostgreSQL

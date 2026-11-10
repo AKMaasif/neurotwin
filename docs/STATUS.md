@@ -5,7 +5,7 @@ here has been tried with real older adults, families or clinicians yet.
 
 ## Implemented and verified
 
-Verified by the 105 automated backend tests (`backend/tests/`), a clean type-check and production build of the web
+Verified by the 119 automated backend tests (`backend/tests/`), a clean type-check and production build of the web
 app, and a scripted click-through of every screen in Chromium, at phone width (420 px) and desktop width (1360 px),
 in English and Arabic.
 
@@ -36,9 +36,13 @@ in English and Arabic.
 - **Demo mode is open to anyone who can reach the server.** That is intended for judging and demos with synthetic
   data. A server holding real data must run with `NEUROTWIN_SEED_DEMO=0`.
 - **All data is synthetic.** The demo accounts and six weeks of records are invented to exercise the screens.
-- **Model provider clients (Gemini, Meta) are untested against the live services.** Their tests use a stand-in
-  transport and prove request shape, key handling and error handling only. No model-assisted feature is switched on
-  yet; `scripts/list_models.py` is the first live check, to be run with real keys.
+- **Clinician summary drafts are tested with a stand-in model only.** The flow is verified by 14 tests and a
+  click-through: facts built from records (no participant free text), one retry with the validator's reasons,
+  twice-refused drafts stored without showing their text, approve with edits marked as the clinician's, reject with
+  a reason, clinicians with a grant only, a daily call cap, audit events. What a live Gemini or Meta model actually
+  writes, how often the validator refuses it, and its Arabic quality are not yet measured: run
+  `scripts/try_draft.py --all` with real keys. Model listing with both keys has been run live once (10 Nov 2026).
+- **Approved summaries stay in the clinician workspace.** They are not shown to participants or family.
 - **Both activities are NeuroTwin prototypes** (`daily_checkin 0.1`, `reaction_time 0.1`). They are not published
   instruments, have no validated scoring, norms or thresholds, and none should be read into them.
 - **Reaction timing in a browser** depends on the device, screen and touch latency. Timing accuracy on real
@@ -51,8 +55,6 @@ in English and Arabic.
 - Account creation and invitations, password reset by a verified route, optional two-factor sign-in, role management.
 - Encryption at rest; PostgreSQL deployment inside the UAE; a shared rate-limit store when running more than one process.
 - Activities chosen and reviewed with clinicians, each versioned with its instructions and scoring.
-- Clinician summary drafter: model-written draft from stored facts, through the output validator, then approve, edit
-  or reject by the clinician. Needs a chosen provider and model.
 - A clinician assistant panel (questions about the stored records), behind the same validator.
 - Approved-plan coaching messages; speech-to-text with visible recording and transcript preview.
 - Family messages with preview and Send; appointment reminders.
