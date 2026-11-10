@@ -7,6 +7,7 @@ import type { Data, Sel } from "./ClinicianApp";
 import Decide from "./Decide";
 import ChangeSummary from "./Change";
 import Summary from "./Summary";
+import CarePlan from "./CarePlan";
 import { valueText } from "./EvidenceTable";
 
 const SESSION_LEVEL = new Set(["interrupted_session", "abandoned_session", "missing_required", "unknown_protocol"]);
@@ -18,24 +19,27 @@ export default function Detail({ person, data, sel, onSelect, onChanged }: {
   const record = sel?.kind === "record" ? data?.evidence.find((e) => e.id === sel.id) : undefined;
   const session = sel?.kind === "session" ? data?.sessions.find((s) => s.id === sel.id)
     : record?.session_id ? data?.sessions.find((s) => s.id === record.session_id) : undefined;
-  const [summary, setSummary] = useState(false);
-  useEffect(() => { if (sel) setSummary(false); }, [sel]);       // picking a record or session leaves the summary
-  const tab = summary ? "summary" : sel?.kind === "session" ? "session" : "record";
+  const [extra, setExtra] = useState<"summary" | "plan" | null>(null);
+  useEffect(() => { if (sel) setExtra(null); }, [sel]);       // picking a record or session leaves the summary
+  const tab = extra ?? (sel?.kind === "session" ? "session" : "record");
 
   return (
     <>
       <div className="pane-head"><span className="pane-title">{t("wsInspector")}</span></div>
       <div className="subtabs" role="tablist">
-        <button role="tab" className="subtab" aria-selected={tab === "record"} disabled={!record && !summary}
-          onClick={() => { setSummary(false); if (record) onSelect({ kind: "record", id: record.id }); }}>{t("wsRecord")}</button>
+        <button role="tab" className="subtab" aria-selected={tab === "record"} disabled={!record && !extra}
+          onClick={() => { setExtra(null); if (record) onSelect({ kind: "record", id: record.id }); }}>{t("wsRecord")}</button>
         <button role="tab" className="subtab" aria-selected={tab === "session"} disabled={!session}
           onClick={() => session && onSelect({ kind: "session", id: session.id })}>{t("wsSession")}</button>
         <button role="tab" className="subtab" aria-selected={tab === "summary"} disabled={!person}
-          onClick={() => setSummary(true)}>{t("smTab")}</button>
+          onClick={() => setExtra("summary")}>{t("smTab")}</button>
+        <button role="tab" className="subtab" aria-selected={tab === "plan"} disabled={!person}
+          onClick={() => setExtra("plan")}>{t("cpTab")}</button>
       </div>
       <div className="pane-body">
         {!person || !data ? <p className="muted">{person ? t("wsLoading") : t("cSelect")}</p>
-          : summary ? <Summary key={person.id} person={person} onSelect={onSelect} />
+          : tab === "summary" ? <Summary key={person.id} person={person} onSelect={onSelect} />
+          : tab === "plan" ? <CarePlan key={person.id} person={person} />
           : !sel ? <><Empty /><ChangeSummary changes={data.changes} /></>
           : tab === "record" && record ? <RecordView key={record.id} r={record} session={session} data={data} onSelect={onSelect} onChanged={onChanged} />
           : session ? <SessionView s={session} data={data} onSelect={onSelect} onChanged={onChanged} />
