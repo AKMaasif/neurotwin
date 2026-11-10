@@ -16,6 +16,8 @@ approved for clinical use. It holds synthetic demo data only; do not enter real 
   type (observed, self-reported, inferred), quality, protocol version and source, a "To check" queue and an access log.
 - **Change estimates** for clinicians: each person compared only with their own earlier results, with a 95%
   interval, abstaining when the evidence is thin.
+- **Summary drafts** for clinicians (needs a model key): a model writes from stored facts, rules check every
+  statement, and the clinician approves, edits or rejects.
 - **Password sign-in** with server-side sessions, and an Account screen for changing passwords.
 - **Evidence core**: append-only records, explicit missing data, deterministic quality rules, revocable purpose-scoped
   sharing, audit trail, logs that never contain health values.
@@ -107,7 +109,13 @@ copy .env.example .env      # then open .env and paste your keys
 ```
 
 The script lists the models each key can use and never prints a key. Put the provider and model you choose in
-`.env` (`NEUROTWIN_AI_PROVIDER`, `GEMINI_MODEL` or `META_MODEL`). `backend/.env` is ignored by git: never commit it,
+`.env` (`NEUROTWIN_AI_PROVIDER`, `GEMINI_MODEL` or `META_MODEL`), then check a real draft end to end:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\try_draft.py --all
+```
+
+With a provider set, the clinician's **Summary** tab can write a draft summary of a person's records. `backend/.env` is ignored by git: never commit it,
 and never send real health data to a provider. Every model-written draft must pass the output validator
 (`backend/app/validator.py`) and then a clinician's review.
 
