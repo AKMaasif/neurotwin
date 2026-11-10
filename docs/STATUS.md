@@ -1,0 +1,61 @@
+# Status — version 0.1 (10 Nov 2026)
+
+Four lists, kept separate on purpose. Software tests passing is not evidence of clinical accuracy, and nothing
+here has been tried with real older adults, families or clinicians yet.
+
+## Implemented and verified
+
+Verified by the 46 automated backend tests (`backend/tests/`), a clean type-check and production build of the web
+app, and a scripted click-through of every screen in Chromium, at phone width (420 px) and desktop width (1360 px),
+in English and Arabic.
+
+| Area | What works | How it was checked |
+| --- | --- | --- |
+| Consent | Give, withdraw, give again; history kept; no session starts or completes without consent; withdrawing keeps earlier records | Tests: `test_consent_and_sharing.py` |
+| Sharing | Purpose-scoped grants (`clinical_review` for clinicians, `participation_updates` for family); revoke stops access at once and deletes nothing; family never reaches evidence | Tests, 13 cases |
+| Evidence record | Observed / self-reported / inferred kept apart; producer, protocol version and session conditions on every record; missing values need a reason and are never stored as a value | Tests: `test_evidence_and_quality.py` |
+| Corrections | Self-reports are corrected by a new record that supersedes the old; observed results cannot be edited, only withdrawn with a reason; both kept and visible | Tests |
+| Quality rules | Interrupted, abandoned, assisted, unwell, out-of-range, too few valid taps, early taps, unknown version: labelled, never dropped or changed; review items raised once per session for session-wide reasons | Tests, 9 parametrised cases |
+| Inferred records | Refused unless produced by a rule or model, with sources that exist, belong to the same person and are usable | Service-level test (nothing infers yet) |
+| Access and audit | Sign-in tokens are signed; forged tokens refused; people cannot read each other; every view or change by someone else is in the access log, without values | Tests |
+| Logs | Request logs hold method, masked path, status and time only | Test checks values, free text, tokens and person ids never appear |
+| Personal app | Consent, check-in (3 questions, each skippable; Continue needs an answer), reaction activity (practice + 5 taps, stop at any time, interruptions counted), sharing, records with corrections, urgent-help and about pages | Click-through, both languages |
+| Family view | Shows only which activities were done and when; shows a plain notice when sharing ends | Click-through + test |
+| Clinician workspace | Three panes and an activity dock. Caseload: people grouped by "needs review", a Review card that leads to the work, a To check queue grouped by reason with multi-select. Timeline: one lane per measure on one time axis, sessions with their conditions (interrupted, helped, unwell, open items), doubtful points hollow, unusable and withdrawn records counted on the lane floor and never plotted; table view. Detail: the selected record or session with what it rests on, quality reasons, producer, history, and a Keep / Exclude decision with a required note. Activity: Workings (how the selected session became what is shown, from stored records only) and the access log. Export report. Keys J/K/Esc/W. One pane at a time with a bottom bar below 1100 px. | Click-through at 1440 px and 820 px, English and Arabic |
+| Review decisions | Keep (record stays, label unchanged) or Exclude (record withdrawn with the note; a session-wide reason excludes the whole session); batch decisions are all-or-nothing | Tests: `test_review_and_report.py` |
+| Report | Server-built factual summary: sessions by status, records by measure and quality, value ranges of usable and doubtful records, open items, decisions with notes; generating it is logged | Tests + click-through |
+
+## Experimental or simulated
+
+- **Sign-in is a prototype.** Pick a demo account; no passwords. Not suitable for real data.
+- **All data is synthetic.** The demo accounts and six weeks of records are invented to exercise the screens.
+- **Both activities are NeuroTwin prototypes** (`daily_checkin 0.1`, `reaction_time 0.1`). They are not published
+  instruments, have no validated scoring, norms or thresholds, and none should be read into them.
+- **Reaction timing in a browser** depends on the device, screen and touch latency. Timing accuracy on real
+  tablets and phones has not been measured.
+- **Arabic wording** is a first draft in Modern Standard Arabic by the development team, not yet reviewed by a
+  native speaker or adapted for Gulf usage.
+
+## Planned
+
+- Change engine: within-person comparison with measurement-error intervals, abstaining when evidence is thin.
+- Real authentication and role management; encryption at rest; PostgreSQL deployment inside the UAE.
+- Activities chosen and reviewed with clinicians, each versioned with its instructions and scoring.
+- A clinician assistant panel (questions about the stored records), only after the output validator exists
+- Output validator, then a clinician summary drafter behind it (model-assisted, draft-only, clinician approval).
+- Approved-plan coaching messages; speech-to-text with visible recording and transcript preview.
+- Family messages with preview and Send; appointment reminders.
+- Deletion requests handled by the research team (separate from withdrawal).
+- Optional imaging research module (clinician-directed, research only), after the core is validated.
+
+## Awaiting qualified approval
+
+| Item | Who |
+| --- | --- |
+| Which activities to use, their instructions, scoring and any adaptation | Clinical reviewer |
+| Quality-rule cut-offs (fewer than 3 valid taps unusable; 2+ early taps doubtful; valid ranges) — engineering defaults now | Clinical reviewer + statistician |
+| Consent text, in both languages | Ethics committee + clinical reviewer |
+| Arabic wording across the apps | Native-speaker reviewer (Gulf) |
+| Urgent-help wording and numbers (UAE: ambulance 998, police 999) | Clinical reviewer |
+| Accessibility on real devices with older adults | Accessibility lead + usability study |
+| Any use with real participants | Research ethics approval (Abu Dhabi DoH process) |
