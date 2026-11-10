@@ -5,13 +5,14 @@ All notable changes, newest first. Versions follow `0.x` while NeuroTwin is a re
 ## Unreleased
 
 ### Changed
-- Voice typing: clips are converted to WAV in the browser; Meta speech uses its documented ASR endpoint.
+- Voice typing: clips are converted to WAV in the browser; speech is Gemini only; the request no longer asks for
+  "Arabic" in a way that let the model translate.
 - Arabic drafts are written fully in Arabic (glossary and Arabic month names); model timeout 120 s; demo dates are
   fixed for the whole day.
 
 ### Added
 - Voice typing in the family message box: visible recording, transcript to check, clip never stored. Speech provider
-  chosen by `NEUROTWIN_STT_PROVIDER`; `scripts/try_voice.py` for a live check.
+  with Gemini; `scripts/try_voice.py` for a live check.
 - Family messages: write, preview, then send. Authorised relatives only; the person can read and remove from view.
 - Care plan and reminders: clinicians write routines for a person; the person sees today's routines in English or
   Arabic and can answer Done or Not today. No answer is never counted as missed. Demo plan seeded for Fatima.

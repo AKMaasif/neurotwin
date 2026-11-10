@@ -1,7 +1,7 @@
 """Live check of speech to text with a short recording of your own voice.
 
-    python scripts/try_voice.py clip.webm            # the provider chosen in backend/.env
-    python scripts/try_voice.py clip.m4a --all --language ar
+    python scripts/try_voice.py clip.m4a
+    python scripts/try_voice.py clip.m4a --language ar
 
 Record a few seconds with any recorder (a phone voice memo works), save it as .webm, .ogg, .m4a, .mp3 or .wav.
 The clip goes to the provider once. Nothing is stored. Prints no keys.
@@ -25,7 +25,6 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("file")
     ap.add_argument("--language", default="en", choices=["en", "ar"])
-    ap.add_argument("--all", action="store_true", help="try every provider that has a key and a speech model")
     args = ap.parse_args()
     load_env()
     path = Path(args.file)
@@ -35,13 +34,9 @@ def main() -> int:
         return 1
     import os
     env = dict(os.environ)
-    if args.all:
-        chosen = [llm.get_stt_client({**env, "NEUROTWIN_STT_PROVIDER": p}) for p in ("gemini", "meta")]
-    else:
-        chosen = [llm.get_stt_client(env)]
-    chosen = [c for c in chosen if c]
+    chosen = [c for c in [llm.get_stt_client(env)] if c]
     if not chosen:
-        print("No speech provider is ready. Set META_STT_MODEL (and a Meta key) or a Gemini key and model in backend/.env.")
+        print("Speech uses Gemini: set GEMINI_API_KEY and GEMINI_MODEL in backend/.env.")
         return 1
     failed = False
     for c in chosen:
