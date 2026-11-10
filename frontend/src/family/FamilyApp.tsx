@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import { api, FamilyEntry, User } from "../api";
 import { useT } from "../i18n";
 import { Brand, ErrorNote, Heading, LangSwitch, Status } from "../ui";
+import Account from "../Account";
 
 /** What a family member sees: only who shares with them and which activities were done. Never answers or results. */
 export default function FamilyApp({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   const { t } = useT();
   const [entries, setEntries] = useState<FamilyEntry[] | null>(null);
   const [error, setError] = useState<unknown>(null);
+  const [account, setAccount] = useState(false);
 
   const load = useCallback(() => { setError(null); api.familyShared().then(setEntries).catch(setError); }, []);
   useEffect(load, [load]);
@@ -16,9 +18,20 @@ export default function FamilyApp({ user, onSignOut }: { user: User; onSignOut: 
     <div className="personal">
       <header className="p-bar">
         <Brand />
-        <div className="who"><LangSwitch /><button className="link" onClick={onSignOut}>{t("signOut")}</button></div>
+        <div className="who">
+          <LangSwitch />
+          <button className="link" onClick={() => setAccount(!account)} aria-pressed={account}>{t("acTitle")}</button>
+          <button className="link" onClick={onSignOut}>{t("signOut")}</button>
+        </div>
       </header>
       <main className="p-main">
+        {account ? (
+          <>
+            <Heading>{t("acTitle")}</Heading>
+            <Account user={user} large />
+            <button className="btn block" onClick={() => setAccount(false)}>{t("back")}</button>
+          </>
+        ) : <>
         <Heading>{t("hello", { name: user.display_name })}</Heading>
         <p className="lede">{t("familyLede")}</p>
         <ErrorNote error={error} onRetry={load} />
@@ -49,6 +62,7 @@ export default function FamilyApp({ user, onSignOut }: { user: User; onSignOut: 
             )}
           </section>
         ))}
+        </>}
       </main>
       <footer className="p-foot"><span>{t("prototypeLong")}</span></footer>
     </div>
