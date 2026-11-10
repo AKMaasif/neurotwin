@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Activity, LineChart, PanelRight, Users } from "lucide-react";
-import { api, AuditRow, ClinicianParticipant, Evidence, ReviewItem, Session, User } from "../api";
+import { api, AuditRow, ChangeResult, ClinicianParticipant, Evidence, ReviewItem, Session, User } from "../api";
 import { useT } from "../i18n";
 import { ErrorNote } from "../ui";
 import Caseload from "./Caseload";
@@ -10,7 +10,7 @@ import Dock from "./Dock";
 import ReportView from "./Report";
 
 export type Sel = { kind: "record"; id: number } | { kind: "session"; id: number } | null;
-export type Data = { sessions: Session[]; evidence: Evidence[]; items: ReviewItem[]; audit: AuditRow[] };
+export type Data = { sessions: Session[]; evidence: Evidence[]; items: ReviewItem[]; audit: AuditRow[]; changes: ChangeResult[] };
 type Pane = "left" | "stage" | "right" | "dock";
 
 const narrowQuery = "(max-width: 1100px)";
@@ -28,6 +28,7 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
   const [dockOpen, setDockOpen] = useState(true);
   const [pane, setPane] = useState<Pane>("left");
   const [report, setReport] = useState(false);
+  const [withDoubtful, setWithDoubtful] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
   const loadPeople = useCallback(async () => {
@@ -39,17 +40,19 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
   }, []);
   useEffect(() => { loadPeople(); }, [loadPeople]);
 
-  const loadData = useCallback(async (id: string) => {
+  const loadData = useCallback(async (id: string, doubtful: boolean) => {
     setError(null);
     try {
-      const [sessions, evidence, items, audit] = await Promise.all([
-        api.sessions(id), api.evidence(id), api.reviewItems(id, "all"), api.audit(id)]);
-      setData({ sessions, evidence, items, audit });
+      const [sessions, evidence, items, changes] = await Promise.all([
+        api.sessions(id), api.evidence(id), api.reviewItems(id, "all"), api.change(id, doubtful)]);
+      const audit = await api.audit(id);   // after the others, so it includes this view
+      setData({ sessions, evidence, items, audit, changes });
     } catch (e) { setError(e); }
   }, []);
-  useEffect(() => { if (pid) { setData(null); setSel(null); loadData(pid); } }, [pid, loadData]);
+  useEffect(() => { if (pid) { setData(null); setSel(null); loadData(pid, withDoubtful); } }, [pid, loadData]);  // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (pid) loadData(pid, withDoubtful); }, [withDoubtful]);  // eslint-disable-line react-hooks/exhaustive-deps
 
-  const refresh = useCallback(() => { if (pid) loadData(pid); loadPeople(); }, [pid, loadData, loadPeople]);
+  const refresh = useCallback(() => { if (pid) loadData(pid, withDoubtful); loadPeople(); }, [pid, withDoubtful, loadData, loadPeople]);
 
   const select = useCallback((s: Sel) => {
     setSel(s);
@@ -91,6 +94,7 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
         <Stage
           user={user} person={person} data={data} sel={sel} onSelect={select} onSignOut={onSignOut}
           onReport={() => setReport(true)} error={error} onRetry={refresh}
+          withDoubtful={withDoubtful} setWithDoubtful={setWithDoubtful}
         />
       </section>
       <aside className="ws-right" aria-label={t("wsInspector")}>

@@ -5,7 +5,7 @@ here has been tried with real older adults, families or clinicians yet.
 
 ## Implemented and verified
 
-Verified by the 46 automated backend tests (`backend/tests/`), a clean type-check and production build of the web
+Verified by the 58 automated backend tests (`backend/tests/`), a clean type-check and production build of the web
 app, and a scripted click-through of every screen in Chromium, at phone width (420 px) and desktop width (1360 px),
 in English and Arabic.
 
@@ -23,6 +23,7 @@ in English and Arabic.
 | Family view | Shows only which activities were done and when; shows a plain notice when sharing ends | Click-through + test |
 | Clinician workspace | Three panes and an activity dock. Caseload: people grouped by "needs review", a Review card that leads to the work, a To check queue grouped by reason with multi-select. Timeline: one lane per measure on one time axis, sessions with their conditions (interrupted, helped, unwell, open items), doubtful points hollow, unusable and withdrawn records counted on the lane floor and never plotted; table view. Detail: the selected record or session with what it rests on, quality reasons, producer, history, and a Keep / Exclude decision with a required note. Activity: Workings (how the selected session became what is shown, from stored records only) and the access log. Export report. Keys J/K/Esc/W. One pane at a time with a bottom bar below 1100 px. | Click-through at 1440 px and 820 px, English and Arabic |
 | Review decisions | Keep (record stays, label unchanged) or Exclude (record withdrawn with the note; a session-wide reason excludes the whole session); batch decisions are all-or-nothing | Tests: `test_review_and_report.py` |
+| Change engine | Within-person comparison per measure and activity version: earliest 3 usable records against the latest 2, difference with a t-based 95% interval from the person's own variation; "within" or "outside usual variation"; abstains with too few usable records or no variation; doubtful records counted only when the clinician switches them on; never pools versions; clinicians only, logged. Shown as baseline and recent bands on the timeline, in the detail panel and in the report | Tests: `test_change.py`, 12 cases + click-through |
 | Report | Server-built factual summary: sessions by status, records by measure and quality, value ranges of usable and doubtful records, open items, decisions with notes; generating it is logged | Tests + click-through |
 
 ## Experimental or simulated
@@ -38,7 +39,6 @@ in English and Arabic.
 
 ## Planned
 
-- Change engine: within-person comparison with measurement-error intervals, abstaining when evidence is thin.
 - Real authentication and role management; encryption at rest; PostgreSQL deployment inside the UAE.
 - Activities chosen and reviewed with clinicians, each versioned with its instructions and scoring.
 - A clinician assistant panel (questions about the stored records), only after the output validator exists
@@ -53,6 +53,7 @@ in English and Arabic.
 | Item | Who |
 | --- | --- |
 | Which activities to use, their instructions, scoring and any adaptation | Clinical reviewer |
+| Change-engine settings: 3 baseline and 2 recent records, 95% interval, doubtful excluded by default; whether a reliable-change method with published test-retest reliability should replace it once real activities are chosen | Statistician + clinical reviewer |
 | Quality-rule cut-offs (fewer than 3 valid taps unusable; 2+ early taps doubtful; valid ranges) — engineering defaults now | Clinical reviewer + statistician |
 | Consent text, in both languages | Ethics committee + clinical reviewer |
 | Arabic wording across the apps | Native-speaker reviewer (Gulf) |

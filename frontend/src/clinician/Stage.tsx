@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { FileText, LineChart, Menu, Table2, X } from "lucide-react";
+import { CircleDashed, FileText, LineChart, Menu, Table2, X } from "lucide-react";
 import { api, ClinicianParticipant, Evidence, User } from "../api";
 import { useT } from "../i18n";
 import { ErrorNote } from "../ui";
@@ -7,9 +7,10 @@ import type { Data, Sel } from "./ClinicianApp";
 import EvidenceTable from "./EvidenceTable";
 import Timeline from "./Timeline";
 
-export default function Stage({ user, person, data, sel, onSelect, onSignOut, onReport, error, onRetry }: {
+export default function Stage({ user, person, data, sel, onSelect, onSignOut, onReport, error, onRetry, withDoubtful, setWithDoubtful }: {
   user: User; person: ClinicianParticipant | null; data: Data | null; sel: Sel; onSelect: (s: Sel) => void;
   onSignOut: () => void; onReport: () => void; error: unknown; onRetry: () => void;
+  withDoubtful: boolean; setWithDoubtful: (v: boolean) => void;
 }) {
   const { t, setLang } = useT();
   const [mode, setMode] = useState<"timeline" | "table">("timeline");
@@ -40,6 +41,10 @@ export default function Stage({ user, person, data, sel, onSelect, onSignOut, on
         <div className="rail-group">
           <button className="ibtn" aria-pressed={mode === "timeline"} title={t("wsTimeline")} aria-label={t("wsTimeline")} onClick={() => setMode("timeline")}><LineChart size={18} /></button>
           <button className="ibtn" aria-pressed={mode === "table"} title={t("wsTable")} aria-label={t("wsTable")} onClick={() => setMode("table")}><Table2 size={18} /></button>
+        </div>
+        <div className="rail-group">
+          <button className="ibtn" aria-pressed={withDoubtful} title={t("chIncludeDoubtful")} aria-label={t("chIncludeDoubtful")}
+            onClick={() => setWithDoubtful(!withDoubtful)}><CircleDashed size={18} /></button>
         </div>
         <div className="rail-group">
           <button className="ibtn" title={t("wsReport")} aria-label={t("wsReport")} disabled={!person} onClick={onReport}><FileText size={18} /></button>

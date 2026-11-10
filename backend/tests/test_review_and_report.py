@@ -58,6 +58,8 @@ def test_report_counts_and_audits(client, login):
     trail = client.get("/api/participants/demo-fatima/audit", headers=dr).json()
     assert any(a["action"] == "report.generated" for a in trail)
     assert "score" not in str(rep).lower()
+    rt_change = next(c for c in rep["change"] if c["measure"] == "rt_median_ms")
+    assert rt_change["status"] == "insufficient" and rt_change["include_doubtful"] is False
 
 
 def test_report_needs_access(client, login):
