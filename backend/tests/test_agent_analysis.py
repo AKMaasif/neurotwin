@@ -135,3 +135,62 @@ def test_api_flow(client, login, data):
 def test_cancel_marks_run(data):
     run = A.create_run("OAS2_0001_MR1", "OAS2_0001_MR2")
     assert A.cancel(run["run_id"])["state"] == "cancelled"
+
+
+def write_seg(base, mri, labels_shift=0, tool="SynthSeg", version="1.0"):
+    d = base / "segmentations" / mri
+    d.mkdir(parents=True)
+    seg = np.zeros((24, 24, 20), np.int16)
+    seg[8:16, 8:16, 6:14] = 3
+    seg[10:14, 10:14, 8:12 + labels_shift] = 17
+    nib.save(nib.Nifti1Image(seg, np.eye(4)), d / "seg.nii.gz")
+    (d / "tool.json").write_text(json.dumps({"tool": tool, "version": version, "source": "test"}))
+
+
+def test_without_segmentation_steps_stay_unavailable(data):
+    pytest.importorskip("ants")
+    run = A.create_run("OAS2_0001_MR1", "OAS2_0001_MR2")
+    out = A.run_all(run["run_id"])
+    states = {s["key"]: s["state"] for s in out["steps"]}
+    assert states["quality_review"] in ("done", "warning") and states["anatomical_analysis"] == "unavailable"
+    assert states["longitudinal_comparison"] == states["findings_review"] == states["report"] == "unavailable"
+    assert out["state"] == "partial" and "segmentations/OAS2_0001_MR1" in out["steps"][3]["detail"]
+
+
+def test_with_segmentation_measures_and_marks_uncertain(data):
+    pytest.importorskip("ants")
+    write_seg(data, "OAS2_0001_MR1")
+    write_seg(data, "OAS2_0001_MR2", labels_shift=-2)
+    out = A.run_all(A.create_run("OAS2_0001_MR1", "OAS2_0001_MR2")["run_id"])
+    assert out["state"] == "complete"
+    hip = next(r for r in out["measurements"]["regions"] if r["label"] == 17)
+    assert hip["earlier_voxels"] == 4 * 4 * 4 and hip["later_voxels"] == 4 * 4 * 2
+    assert hip["difference_pct"] == -50.0 and hip["uncertainty"] is None and hip["status"] == "uncertain"
+    assert all(f["status"] == "uncertain" for f in out["review"]["findings"])
+    assert out["report"]["status"].startswith("draft") and "no language model" in out["report"]["author"]
+    text = json.dumps(out["report"]).lower()
+    assert "alzheimer" not in text and "diseased" not in text.replace("no region is labelled as diseased", "")
+
+
+def test_mixed_tool_versions_fail(data):
+    pytest.importorskip("ants")
+    write_seg(data, "OAS2_0001_MR1")
+    write_seg(data, "OAS2_0001_MR2", version="2.0")
+    out = A.run_all(A.create_run("OAS2_0001_MR1", "OAS2_0001_MR2")["run_id"])
+    assert out["state"] == "failed" and "different tools or versions" in out["steps"][3]["detail"]
+
+
+def test_pairs_listing_and_overlay_endpoints(client, login, data):
+    pytest.importorskip("ants")
+    h = login("demo-dr-layla")
+    pairs = client.get("/api/imaging/agent/pairs", headers=h).json()["pairs"]
+    assert any(p["earlier"] == "OAS2_0001_MR1" and p["interval"]["nearest_target_months"] == 15 and not p["segmented"] for p in pairs)
+    write_seg(data, "OAS2_0001_MR1")
+    write_seg(data, "OAS2_0001_MR2", labels_shift=-2)
+    rid = client.post("/api/imaging/agent/runs", json={"earlier": "OAS2_0001_MR1", "later": "OAS2_0001_MR2"}, headers=h).json()["run_id"]
+    got = client.get(f"/api/imaging/agent/runs/{rid}", headers=h).json()
+    assert got["state"] == "complete"
+    for layer in ("regions", "change"):
+        r = client.get(f"/api/imaging/agent/runs/{rid}/overlay.png?layer={layer}&axis=2&index=10&label=17", headers=h)
+        assert r.status_code == 200 and r.headers["content-type"] == "image/png"
+    assert client.get(f"/api/imaging/agent/runs/{rid}/overlay.png?layer=x", headers=h).status_code == 422
