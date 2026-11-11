@@ -100,7 +100,7 @@ def test_alignment_improves_similarity_and_keeps_originals(data):
     run = A.create_run("OAS2_0001_MR1", "OAS2_0001_MR2")
     out = A.align(run["run_id"])
     assert img.read_bytes() == before
-    assert out["state"] == "partial" and out["alignment"]["correlation_after"] >= out["alignment"]["correlation_before"]
+    assert out["state"] == "aligned" and out["alignment"]["correlation_after"] >= out["alignment"]["correlation_before"]
     assert (A.runs_root() / run["run_id"] / "later_aligned.npy").is_file()
     assert A.load_run(run["run_id"])["alignment"] is not None  # persisted
 
