@@ -28,7 +28,7 @@ export default function FamilyApp({ user, onSignOut }: { user: User; onSignOut: 
   if (!user.is_demo) nav.push(["account", t("acTitle"), UserRound]);
 
   return (
-    <div className="fam">
+    <div className="fam-app">
       <aside className="fam-side">
         <Brand />
         <nav aria-label={t("famMenu")}>
