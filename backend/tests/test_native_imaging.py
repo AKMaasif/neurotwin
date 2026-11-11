@@ -15,6 +15,7 @@ from conftest import make_user, sign_in
 def native_storage(tmp_path, monkeypatch):
     monkeypatch.setenv("NEUROTWIN_NATIVE_ROOT", str(tmp_path / "native"))
     monkeypatch.setenv("NEUROTWIN_IMAGING_USERS", "demo-dr-layla,research-two")
+    monkeypatch.setenv("NEUROTWIN_IMAGING_OPEN", "0")
 
 
 @pytest.fixture
