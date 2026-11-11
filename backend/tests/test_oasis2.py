@@ -93,3 +93,13 @@ def test_listing_parser_ignores_directories_and_garbage():
     lines = ["drwxr-x--- u/g 0 2009-03-18 15:28 OAS2_RAW_PART1/OAS2_0001_MR1/", "not a listing line",
              "-rw-r----- u/g 348 2009-03-18 15:28 OAS2_RAW_PART1/OAS2_0001_MR1/RAW/mpr-1.nifti.hdr"]
     assert oasis2.parse_listing(lines) == [("OAS2_RAW_PART1/OAS2_0001_MR1/RAW/mpr-1.nifti.hdr", 348)]
+
+
+def test_bsdtar_listing_format_and_utf16_are_read(tmp_path):
+    lines = ["drwxr-xr-x  0 u g 0 Mar 18  2009 OAS2_RAW_PART1/",
+             "-rw-r-----  0 dmarcus wheel 348 Mar 18  2009 OAS2_RAW_PART1/OAS2_0001_MR1/RAW/mpr-1.nifti.hdr",
+             "-rw-r-----  0 dmarcus wheel 273 Mar 18  2009 OAS2_RAW_PART1/OAS2_0001_MR1/OLD/mpr-3_to_711-2C_t4"]
+    path = tmp_path / "list.txt"; path.write_bytes("\n".join(lines).encode("utf-16"))
+    files = oasis2.parse_listing(oasis2.read_listing(path))
+    assert files[0] == ("OAS2_RAW_PART1/OAS2_0001_MR1/RAW/mpr-1.nifti.hdr", 348) and len(files) == 2
+    assert list(oasis2.index_scans(files)) == ["OAS2_0001_MR1"]  # files outside RAW/ are not scans
