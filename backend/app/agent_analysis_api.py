@@ -1,0 +1,101 @@
+"""Endpoints for the two-scan Agent Analysis workflow (stages 1-2). Clinician research access only."""
+import io
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi.responses import JSONResponse, Response
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from . import agent_analysis as A
+from . import oasis2_api as O
+from . import services
+from .imaging import HEADERS, research_access
+from .models import User
+from .oasis2_api import AXES
+from .security import get_db
+
+router = APIRouter(prefix="/api/imaging/agent", tags=["agent analysis"])
+
+
+class PairIn(BaseModel):
+    earlier: str
+    later: str
+    scan: str = "mpr-1"
+
+
+def _out(data, code=200):
+    return JSONResponse(data, status_code=code, headers=HEADERS)
+
+
+@router.get("/tools")
+def tools(_: User = Depends(research_access)):
+    return _out(A.tools())
+
+
+@router.post("/validate")
+def validate(body: PairIn, _: User = Depends(research_access)):
+    return _out(A.validate_pair(body.earlier, body.later, body.scan))
+
+
+@router.post("/runs")
+def start(body: PairIn, background: BackgroundTasks, user: User = Depends(research_access), db: Session = Depends(get_db)):
+    run = A.create_run(body.earlier, body.later, body.scan)
+    services.audit(db, user.id, "agent_analysis.start", target=run["run_id"])
+    db.commit()
+    if run["state"] != "blocked":
+        background.add_task(A.align, run["run_id"])
+    return _out(run, 202 if run["state"] != "blocked" else 200)
+
+
+def _get(run_id: str) -> dict:
+    run = A.load_run(run_id)
+    if run is None:
+        raise HTTPException(404, "Unknown run.")
+    return run
+
+
+@router.get("/runs/{run_id}")
+def get_run(run_id: str, _: User = Depends(research_access)):
+    return _out(_get(run_id))
+
+
+@router.post("/runs/{run_id}/cancel")
+def cancel(run_id: str, _: User = Depends(research_access)):
+    _get(run_id)
+    return _out(A.cancel(run_id))
+
+
+@router.post("/runs/{run_id}/retry")
+def retry(run_id: str, background: BackgroundTasks, _: User = Depends(research_access)):
+    old = _get(run_id)
+    run = A.create_run(old["earlier"], old["later"], old["scan"], parent=run_id)
+    if run["state"] != "blocked":
+        background.add_task(A.align, run["run_id"])
+    return _out(run, 202)
+
+
+@router.get("/runs/{run_id}/slice.png")
+def slice_png(run_id: str, layer: str = "earlier", axis: int = 2, index: int = 0, _: User = Depends(research_access)):
+    import numpy as np
+    from PIL import Image
+    if layer not in ("earlier", "later_original", "later_aligned") or axis not in AXES:
+        raise HTTPException(422, "Unknown layer or axis.")
+    run = _get(run_id)
+    data = A.layer_volume(run, layer)
+    if data is None:
+        raise HTTPException(404, "This layer is not available for this run.")
+    if not 0 <= index < data.shape[axis]:
+        raise HTTPException(422, f"index must be between 0 and {data.shape[axis] - 1}.")
+    ref = A.layer_volume(run, "earlier")  # one display range for every layer so brightness is comparable
+    lo, hi = (float(v) for v in np.percentile(ref[ref > 0], [1, 99]))
+    gray = np.clip((np.take(data, index, axis=axis) - lo) / max(hi - lo, 1e-6), 0, 1) * 255
+    buf = io.BytesIO()
+    image = Image.fromarray(np.rot90(gray).astype(np.uint8), mode="L")
+    zooms = O._load(run["earlier"], run["scan"])[3]
+    i, j = [k for k in range(3) if k != axis]
+    zi, zj = zooms[i] or 1.0, zooms[j] or 1.0
+    if abs(zi - zj) > 1e-3:  # true proportions when voxels are not cubes
+        m = min(zi, zj)
+        image = image.resize((max(1, round(image.width * zi / m)), max(1, round(image.height * zj / m))), Image.BILINEAR)
+    image.save(buf, format="PNG")
+    return Response(buf.getvalue(), media_type="image/png", headers=HEADERS)
