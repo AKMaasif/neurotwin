@@ -1,6 +1,6 @@
 # Compare visits (OASIS-2), Level 1
 
-Shows two visits of the same person side by side in Brain Analytics, under **Compare visits**. Research users only (same access rule as the rest of Brain Analytics). Observed images only: no registration, no segmentation, no prediction.
+Shows two visits of the same person side by side in Brain Analytics, under **Compare visits**. Open to every clinician demo account in demo mode (see IMAGING_PREVIEW.md); participant and family accounts have no access. Observed images only: no registration, no segmentation, no prediction.
 
 ## Prepare the data (once)
 
@@ -25,6 +25,7 @@ A person appears in the list only when at least two of their visits are extracte
 - The views are along **voxel axes**. These raw files are Analyze format with no verified orientation, so the app does not call any view axial, coronal or sagittal. When the first axis was labelled "axial" during testing, the image was a side-on view, which is why neutral names are used.
 - The two visits are **not registered**. The same slice number can show different anatomy, so differences between panels are not evidence of change.
 - Voxels that are not cubic are drawn in true proportion.
+- **Trend over visits.** For a person with three or more recorded visits, imported nWBV is plotted against years since the first visit with the average change per year. It is descriptive only: no uncertainty range, no normal/abnormal call, no forecast. With fewer than three visits the page says there are not enough visits.
 - Each visit has several repeat scans of the same session. They are not extra time points.
 
 ## Not included
