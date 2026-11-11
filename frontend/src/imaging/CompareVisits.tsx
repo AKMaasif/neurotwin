@@ -6,6 +6,29 @@ const slice = (mri: string, axis: number, index: number) => `/api/imaging/oasis2
 const years = (days: number) => (days / 365.25).toFixed(2);
 const show = (v: number | null | undefined, digits?: number) => v === null || v === undefined ? "missing" : digits === undefined ? String(v) : v.toFixed(digits);
 
+/** Level 2: imported nWBV at each recorded visit. Needs three or more visits; otherwise it says so. Descriptive only. */
+function Trend({ subject }: { subject: Oasis2Subject }) {
+  const pts = subject.visits.filter(v => v.imported_measures.nWBV !== null).map(v => ({ x: v.delay_days / 365.25, y: v.imported_measures.nWBV as number, id: v.mri_id }));
+  if (pts.length < 3) return <section className="cmp-trend"><h2>Trend over visits</h2>
+    <p role="status">Not enough visits to describe a trend. {subject.subject_id} has {pts.length} recorded {pts.length === 1 ? "visit" : "visits"}; at least three are needed.</p></section>;
+  const W = 520, H = 180, pad = 36, xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys) - 0.01, y1 = Math.max(...ys) + 0.01;
+  const sx = (x: number) => pad + ((x - x0) / (x1 - x0 || 1)) * (W - 2 * pad), sy = (y: number) => H - pad - ((y - y0) / (y1 - y0 || 1)) * (H - 2 * pad);
+  const mx = xs.reduce((a, b) => a + b) / xs.length, my = ys.reduce((a, b) => a + b) / ys.length;
+  const slope = xs.reduce((a, x, i) => a + (x - mx) * (ys[i] - my), 0) / xs.reduce((a, x) => a + (x - mx) ** 2, 0);
+  return <section className="cmp-trend"><h2>Trend over visits</h2>
+    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Imported nWBV at ${pts.length} visits over ${(x1 - x0).toFixed(1)} years`}>
+      <line x1={pad} y1={H - pad} x2={W - pad} y2={H - pad} stroke="#8aa0b2" /><line x1={pad} y1={pad / 2} x2={pad} y2={H - pad} stroke="#8aa0b2" />
+      <polyline fill="none" stroke="#2f7f95" strokeWidth="2" points={pts.map(p => `${sx(p.x)},${sy(p.y)}`).join(" ")} />
+      {pts.map(p => <g key={p.id}><circle cx={sx(p.x)} cy={sy(p.y)} r="5" fill="#12304a" /><text x={sx(p.x)} y={sy(p.y) - 10} fontSize="11" textAnchor="middle" fill="#12304a">{p.y.toFixed(3)}</text></g>)}
+      <text x={W / 2} y={H - 8} fontSize="11" textAnchor="middle" fill="#3d566b">years since the first visit</text>
+      <text x="12" y={H / 2} fontSize="11" transform={`rotate(-90 12 ${H / 2})`} textAnchor="middle" fill="#3d566b">nWBV (imported)</text>
+    </svg>
+    <p>Across these {pts.length} visits the imported value changed by about {slope.toFixed(4)} per year on average (a straight line through the points).</p>
+    <p className="cmp-note-plain">Descriptive only. nWBV comes from the OASIS table; its measurement variability is not known here, so no uncertainty range, no abnormal/normal call and no forecast is given.</p>
+  </section>;
+}
+
 /** Two visits of one person side by side. Observed images only: no registration, no prediction. */
 export default function CompareVisits() {
   const [list, setList] = useState<Oasis2Subject[] | null>(null), [error, setError] = useState("");
@@ -27,8 +50,8 @@ export default function CompareVisits() {
   useEffect(() => { setIndex(Math.floor(sliceCount / 2)); setFailed([]); }, [sliceCount, axis]);
   const gap = useMemo(() => va && vb ? Math.abs(vb.delay_days - va.delay_days) : null, [va, vb]);
 
-  if (error) return <section className="brain-loading" role="alert"><h1>Visit comparison unavailable</h1><p>{error}</p>
-    <p>Build the manifest with <code>scripts/oasis2_manifest.py</code>, then extract at least one subject (see docs/OASIS2_COMPARE.md).</p></section>;
+  if (error) return <section className="brain-loading" role="alert"><h1>Visit comparison is not ready on this server</h1><p>{error}</p>
+    <p>The OASIS-2 manifest and at least one subject's scans must be prepared on the server (see docs/OASIS2_COMPARE.md).</p></section>;
   if (!list) return <section className="brain-loading" role="status"><h1>Opening OASIS-2 visits</h1><progress aria-label="Loading" /></section>;
   const readyCount = list.filter(s => s.ready).length;
 
@@ -57,6 +80,7 @@ export default function CompareVisits() {
       {va && vb && va.mri_id === vb.mri_id && <p className="cmp-note" role="status">The same visit is chosen on both sides. Pick two different visits to compare.</p>}
       {gap !== null && gap > 0 && <p className="cmp-gap">{years(gap)} years between these two visits (from the dataset's recorded delay).{gap < 365 && " This is under a year."}</p>}
       <div className="cmp-grid">{panel(va, "Earlier")}{panel(vb, "Later")}</div>
+      {subject && <Trend subject={subject} />}
       <ul className="cmp-limits">
         <li><strong>Not registered.</strong> The two images are not aligned, so the same slice number may show different anatomy. Do not read differences between panels as change.</li>
         <li><strong>Orientation not verified.</strong> These raw files are Analyze format and the views are in voxel axes, not confirmed left/right.</li>

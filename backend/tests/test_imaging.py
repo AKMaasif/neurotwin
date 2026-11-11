@@ -6,6 +6,12 @@ from app.models import AuditEvent
 from sqlalchemy import select
 
 
+@pytest.fixture(autouse=True)
+def restricted_mode(monkeypatch):
+    """These tests cover the explicit-list mode; the open demo mode has its own tests."""
+    monkeypatch.setenv("NEUROTWIN_IMAGING_OPEN", "0")
+
+
 @pytest.fixture
 def imaging_files(tmp_path, monkeypatch):
     assets = tmp_path / "OAS1_0001_MR1" / "assets"
