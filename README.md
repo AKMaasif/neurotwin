@@ -5,7 +5,15 @@ and Arabic, consent-controlled sharing with family, and a clinician dashboard th
 provenance and quality.
 
 **Independent research prototype. Not a medical device. It does not diagnose, score or predict, and it is not
-approved for clinical use. It holds synthetic demo data only; do not enter real health information.**
+approved for clinical use. Clinical demo records are synthetic; do not enter real health information.**
+
+An optional, separate **Brain Analytics** research preview can display one locally prepared OASIS-1 case, with
+interactive MRI slices, actual 3D cortical surfaces, layers, internal exploration and imported measurements.
+See [the preview guide](docs/IMAGING_PREVIEW.md) for setup, access restrictions and current limitations.
+
+Start with the [project goal, completed work and remaining roadmap](docs/PROJECT_ROADMAP.md) for the current
+development picture. New MRI processing follows the [NeuroTwin-owned architecture](docs/NATIVE_IMAGING_AND_AI_PLAN.md)
+without FreeSurfer execution; the supplied derivative viewer remains a labelled reference.
 
 ## What is in this version (0.2)
 

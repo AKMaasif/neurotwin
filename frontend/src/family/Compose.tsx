@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, Message } from "../api";
 import { useT } from "../i18n";
 import { ErrorNote, FormError } from "../ui";
+import VoiceButton from "../voice";
 
 const MAX = 300;
 
@@ -13,6 +14,7 @@ export default function Compose({ pid, name }: { pid: string; name: string }) {
   const [draft, setDraft] = useState<Message | null>(null);
   const [sent, setSent] = useState<Message[]>([]);
   const [busy, setBusy] = useState(false);
+  const [fromVoice, setFromVoice] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
   const loadSent = useCallback(() => {
@@ -26,7 +28,7 @@ export default function Compose({ pid, name }: { pid: string; name: string }) {
     setBusy(false);
   };
   const preview = () => run(async () => setDraft(await api.draftMessage(pid, text)));
-  const send = () => run(async () => { await api.sendMessage(draft!.id); setDraft(null); setText(""); loadSent(); });
+  const send = () => run(async () => { await api.sendMessage(draft!.id); setDraft(null); setText(""); setFromVoice(false); loadSent(); });
   const discard = () => run(async () => { await api.discardMessage(draft!.id); setDraft(null); setText(""); });
 
   return (
@@ -51,6 +53,8 @@ export default function Compose({ pid, name }: { pid: string; name: string }) {
             <textarea className="note" value={text} maxLength={MAX} dir="auto" style={{ minHeight: 96, fontSize: "1.05em" }}
               onChange={(e) => setText(e.target.value)} /></label>
           <p className="muted" style={{ fontSize: 14, margin: 0 }}>{t("fmHint", { name })} · {t("fmLeft", { n: t.num(MAX - text.length) })}</p>
+          <VoiceButton onText={(w) => { setText((x) => (x ? `${x} ${w}` : w).slice(0, MAX)); setFromVoice(true); }} />
+          {fromVoice && <p className="notice" style={{ margin: 0 }}>{t("voiceCheck")}</p>}
           <FormError error={error} />
           <button className="btn primary" style={{ justifySelf: "start" }} disabled={busy || !text.trim()} onClick={preview}>{t("fmPreview")}</button>
         </>

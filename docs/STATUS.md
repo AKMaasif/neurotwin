@@ -1,18 +1,24 @@
-# Status — version 0.2 (10 Nov 2026)
+# Status — version 0.2 (updated 11 Nov 2026)
 
 Four lists, kept separate on purpose. Software tests passing is not evidence of clinical accuracy, and nothing
 here has been tried with real older adults, families or clinicians yet.
 
+The current goal, completed imaging work and prioritized remaining steps are maintained in
+[PROJECT_ROADMAP.md](PROJECT_ROADMAP.md). The application inventory below includes historical verification;
+it does not imply the current full test suite passes.
+
 ## Implemented and verified
 
-Verified by the 139 automated backend tests (`backend/tests/`), a clean type-check and production build of the web
-app, and a scripted click-through of every screen in Chromium, at phone width (420 px) and desktop width (1360 px),
-in English and Arabic.
+The original application baseline was checked with 149 automated backend tests (`backend/tests/`), a frontend
+type-check/build and scripted Chromium checks in English and Arabic. The current imaging work separately passed
+19 focused imaging/native/log checks and browser workflows. The full backend suite (166 tests, including 17 imaging and native-imaging tests) passes once the date-dependent
+summary-draft tests are fixed (PR #18), checked on 11 Nov 2026. A frontend type-check and production build also pass. See PROJECT_ROADMAP.md for the scope and limitations of this verification.
 
 | Area | What works | How it was checked |
 | --- | --- | --- |
 | Care plan and reminders | A clinician with a clinical-review grant writes routines (English, Arabic or both; time of day; weekdays). The person sees today's routines in their language, marked as from their clinician, and may answer Done or Not today. Unanswered is never stored or shown as missed. Stopping keeps the history. | `tests/test_careplan.py` (10 tests: access, validation, latest-answer-counts, silence not stored, stop, weekday filter, audit holds no text, 12-routine limit); click-through in Chromium in Arabic (right-to-left) and English. Not yet tested on a real phone or with users. |
 | Family messages | A family member with an active sharing grant writes a short message (300 characters, no web addresses), sees a preview of exactly what will be sent, and only then presses Send. Drafts reach nobody; a newer draft replaces an older one; the grant is checked again at Send; 5 messages a day per person. The person reads messages, can remove them from their own view (kept in the record), and is never asked to reply. Clinicians have no route to them and no model sees them. | `tests/test_messages.py` (9 tests); Chromium click-through at phone width in Arabic. Not yet tested on a real phone or with families. |
+| Voice typing (plumbing) | In the family message box, "Speak instead" records only after a press, shows a red indicator and timer, releases the microphone on stop, sends the clip once to the speech provider (never stored), and puts the words in the text box for the person to fix. The message still needs Preview and Send. Participants need voice-recording consent; 2.5 MB and daily caps; hidden when no provider is set. | `tests/test_voice.py` (9 tests with a stand-in provider); Chromium click-through with a fake microphone. The browser converts the clip to WAV before sending. **Live transcription quality is not measured** (see Experimental). Speech uses Gemini only. |
 | Consent | Give, withdraw, give again; history kept; no session starts or completes without consent; withdrawing keeps earlier records | Tests: `test_consent_and_sharing.py` |
 | Sharing | Purpose-scoped grants (`clinical_review` for clinicians, `participation_updates` for family); revoke stops access at once and deletes nothing; family never reaches evidence | Tests, 13 cases |
 | Evidence record | Observed / self-reported / inferred kept apart; producer, protocol version and session conditions on every record; missing values need a reason and are never stored as a value | Tests: `test_evidence_and_quality.py` |
@@ -33,11 +39,34 @@ in English and Arabic.
 
 ## Experimental or simulated
 
+- **Native MRI import and workflow foundation:** Brain Analytics now opens a NeuroTwin-owned import/processing page.
+  It accepts original NIfTI or Analyze pairs and can import the existing OASIS-1 participant's raw acquisition locally.
+  Originals/hashes and run history are preserved; technical validation and display preparation run without FreeSurfer.
+  Stage states, failed attempts, cancellation, retry history and restart recovery are stored. The existing original scan
+  successfully prepared, with its Analyze orientation explicitly flagged for review. Native segmentation, measurement,
+  AI-agent execution and forecasting remain blocked; no anatomical or disease finding is produced. The supplied
+  FreeSurfer-based viewer remains a separately labelled legacy reference. See [IMAGING_PREVIEW.md](IMAGING_PREVIEW.md).
+
+- **Brain Analytics research preview (11 Nov 2026):** a separate single-participant OASIS-1 workspace now displays
+  locally prepared, real MRI volumes and supplied FreeSurfer surfaces, annotations, thickness and regional statistics.
+  It includes linked slices, zoom/rotation/pan, layers, clipping, MRI cutting planes, internal camera exploration,
+  region inspection, a measurement table and CSV export. Explicitly enabled clinician accounts only; source imaging
+  is stored outside the public frontend and outside git. The research case is not attached to synthetic demo people.
+  Source outputs are legacy FreeSurfer derivatives and **have not received independent anatomical QC**. This increment
+  does not execute FreeSurfer jobs, edit anatomy, compare visits or predict outcomes. Tools are initially English.
+  Setup and verification details: [IMAGING_PREVIEW.md](IMAGING_PREVIEW.md).
+
+- **Speech to text uses Gemini only, and has had two live checks.** On 10 Nov 2026 the project owner ran one English
+  clip twice. The first run was transcribed correctly; the second came back translated into Arabic with a changed name,
+  because the request said "in Arabic". The request now says to write the language actually spoken and never translate.
+  That fix has not been re-run live. Meta's speech model was dropped from the project. Accuracy in Gulf Arabic and with
+  older voices is unmeasured, and a transcript can still misspell names, which is why the person always reads and fixes it.
 - **Sign-in has no account recovery, two-factor sign-in or account creation yet.** Accounts exist only as demo
   accounts with a shared starting password; the rate limit is held in memory for a single server process.
 - **Demo mode is open to anyone who can reach the server.** That is intended for judging and demos with synthetic
   data. A server holding real data must run with `NEUROTWIN_SEED_DEMO=0`.
-- **All data is synthetic.** The demo accounts and six weeks of records are invented to exercise the screens.
+- **Clinical demo data is synthetic.** The demo accounts and six weeks of activity records are invented to exercise
+  the screens. The separately enabled imaging research preview uses one real de-identified OASIS case.
 - **Clinician summary drafts are tested with a stand-in model only.** The flow is verified by 14 tests and a
   click-through: facts built from records (no participant free text), one retry with the validator's reasons,
   twice-refused drafts stored without showing their text, approve with edits marked as the clinician's, reject with
@@ -58,10 +87,11 @@ in English and Arabic.
 - Encryption at rest; PostgreSQL deployment inside the UAE; a shared rate-limit store when running more than one process.
 - Activities chosen and reviewed with clinicians, each versioned with its instructions and scoring.
 - A clinician assistant panel (questions about the stored records), behind the same validator.
-- Model-assisted wording of reminders (not started; routines are clinician-written text today); speech-to-text with visible recording and transcript preview.
+- Model-assisted wording of reminders (not started; routines are clinician-written text today); voice typing for more screens (only the family message box has it).
 
 - Deletion requests handled by the research team (separate from withdrawal).
-- Optional imaging research module (clinician-directed, research only), after the core is validated.
+- Expand the imaging research preview with scan import, processing jobs, persisted QC/editing and longitudinal
+  analysis; forecasts require a separately trained and evaluated model.
 
 ## Awaiting qualified approval
 
