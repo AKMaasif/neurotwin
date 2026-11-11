@@ -27,6 +27,8 @@ from .logs import SafeRequestLog
 from .models import AccessGrant, ActivitySession, AuditEvent, CarePlanItem, Draft, FamilyMessage, Evidence, ReviewItem, User
 from .auth import router as auth_router
 from .auth import user_out
+from .imaging import router as imaging_router
+from .native_imaging_api import ImagingRequestGuard, router as native_imaging_router
 from .security import current_user, get_db, require_evidence_access
 
 Lang = Literal["en", "ar"]
@@ -211,6 +213,9 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
         "session_hours": session_hours or config.SESSION_HOURS,
     }
     app.state.db.create_all()
+    from .native_imaging import recover_interrupted
+    with app.state.db.SessionLocal() as db:
+        recover_interrupted(db)
     if config.SEED_DEMO if seed_demo is None else seed_demo:
         from .seed import ensure_demo_credentials, seed
         with app.state.db.SessionLocal() as db:
@@ -220,6 +225,7 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
     app.state.get_llm = llm.get_client
     app.state.get_stt = llm.get_stt_client
     app.add_middleware(SafeRequestLog)
+    app.add_middleware(ImagingRequestGuard)
 
     @app.exception_handler(S.Refused)
     async def _refused(_: Request, exc: S.Refused):
@@ -231,6 +237,8 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
 
     # Sign-in, sign-out, account settings -----------------------------------------------------------------------
     app.include_router(auth_router)
+    app.include_router(imaging_router)
+    app.include_router(native_imaging_router)
 
     @app.get("/api/demo-accounts")
     def demo_accounts(request: Request, db: Session = Depends(get_db)):
