@@ -380,7 +380,7 @@ def analyze(run_id: str) -> dict:
                      "earlier_voxels": ne, "later_voxels": nl, "uncertainty": None})
     run["measurements"] = {"unit": "mm3", "voxel_mm3": round(vox, 3), "source": "voxel counts of the imported segmentation on the grid the tool produced (not resampled)",
                            "earlier_total_mm3": round(e_tot, 1), "later_total_mm3": round(l_tot, 1), "regions": rows}
-    _set(run, "longitudinal_comparison", "done", "Regional volumes measured in each scan's own space; no uncertainty range exists yet.")
+    _set(run, "longitudinal_comparison", "done", "Regional volumes counted on the segmentation tool's own grid; no uncertainty range exists yet.")
     # findings review: deterministic rules, no model
     flags = []
     total_pct = None if e_tot == 0 else (l_tot - e_tot) / e_tot
