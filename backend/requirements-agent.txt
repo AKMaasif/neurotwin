@@ -1,0 +1,2 @@
+# Optional: native alignment for Agent Analysis (large wheel; the API reports alignment unavailable without it)
+antspyx>=0.6,<0.7
