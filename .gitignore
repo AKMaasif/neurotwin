@@ -7,3 +7,10 @@ frontend/node_modules/
 frontend/dist/
 frontend/*.tsbuildinfo
 .env
+backend/imaging_data/
+/OASIS*/
+*.m4a
+*.nii
+*.nii.gz
+*.img
+*.hdr
