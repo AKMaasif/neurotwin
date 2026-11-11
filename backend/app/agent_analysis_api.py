@@ -32,6 +32,11 @@ def tools(_: User = Depends(research_access)):
     return _out(A.tools())
 
 
+@router.get("/pairs")
+def pairs(_: User = Depends(research_access)):
+    return _out({"pairs": A.candidate_pairs()})
+
+
 @router.post("/validate")
 def validate(body: PairIn, _: User = Depends(research_access)):
     return _out(A.validate_pair(body.earlier, body.later, body.scan))
@@ -43,7 +48,7 @@ def start(body: PairIn, background: BackgroundTasks, user: User = Depends(resear
     services.audit(db, user.id, "agent_analysis.start", target=run["run_id"])
     db.commit()
     if run["state"] != "blocked":
-        background.add_task(A.align, run["run_id"])
+        background.add_task(A.run_all, run["run_id"])
     return _out(run, 202 if run["state"] != "blocked" else 200)
 
 
@@ -70,7 +75,7 @@ def retry(run_id: str, background: BackgroundTasks, _: User = Depends(research_a
     old = _get(run_id)
     run = A.create_run(old["earlier"], old["later"], old["scan"], parent=run_id)
     if run["state"] != "blocked":
-        background.add_task(A.align, run["run_id"])
+        background.add_task(A.run_all, run["run_id"])
     return _out(run, 202)
 
 
@@ -97,5 +102,45 @@ def slice_png(run_id: str, layer: str = "earlier", axis: int = 2, index: int = 0
     if abs(zi - zj) > 1e-3:  # true proportions when voxels are not cubes
         m = min(zi, zj)
         image = image.resize((max(1, round(image.width * zi / m)), max(1, round(image.height * zj / m))), Image.BILINEAR)
+    image.save(buf, format="PNG")
+    return Response(buf.getvalue(), media_type="image/png", headers=HEADERS)
+
+
+PALETTE = [(230, 25, 75), (60, 180, 75), (255, 225, 25), (0, 130, 200), (245, 130, 48), (145, 30, 180), (70, 240, 240), (240, 50, 230),
+           (210, 245, 60), (250, 190, 212), (0, 128, 128), (220, 190, 255), (170, 110, 40), (255, 250, 200), (128, 0, 0), (170, 255, 195)]
+
+
+@router.get("/runs/{run_id}/overlay.png")
+def overlay_png(run_id: str, layer: str = "regions", axis: int = 2, index: int = 0, label: int = 0, _: User = Depends(research_access)):
+    """Transparent colour layer for one slice. regions: earlier segmentation. change: labels that differ after alignment."""
+    import numpy as np
+    from PIL import Image
+    if layer not in ("regions", "change") or axis not in AXES:
+        raise HTTPException(422, "Unknown layer or axis.")
+    run = _get(run_id)
+    e, l = A.layer_labels(run, "earlier_seg"), A.layer_labels(run, "later_seg_aligned")
+    if e is None or l is None:
+        raise HTTPException(404, "No segmentation layers for this run: the anatomical step has not run.")
+    if not 0 <= index < e.shape[axis]:
+        raise HTTPException(422, f"index must be between 0 and {e.shape[axis] - 1}.")
+    pe, pl = np.take(e, index, axis=axis), np.take(l, index, axis=axis)
+    rgba = np.zeros(pe.shape + (4,), np.uint8)
+    if layer == "regions":
+        for lab in np.unique(pe):
+            if lab == 0 or (label and lab != label):
+                continue
+            rgba[pe == lab] = (*PALETTE[int(lab) % len(PALETTE)], 255)
+    else:  # loss in red (earlier only), gain in blue (later only), for the chosen region or all labelled regions
+        sel = (lambda a: a == label) if label else (lambda a: a > 0)
+        rgba[sel(pe) & ~sel(pl)] = (220, 40, 40, 255)
+        rgba[sel(pl) & ~sel(pe)] = (40, 90, 220, 255)
+    image = Image.fromarray(np.rot90(rgba), mode="RGBA")
+    zooms = O._load(run["earlier"], run["scan"])[3]
+    i, j = [k for k in range(3) if k != axis]
+    zi, zj = zooms[i] or 1.0, zooms[j] or 1.0
+    if abs(zi - zj) > 1e-3:
+        m = min(zi, zj)
+        image = image.resize((max(1, round(image.width * zi / m)), max(1, round(image.height * zj / m))), Image.NEAREST)
+    buf = io.BytesIO()
     image.save(buf, format="PNG")
     return Response(buf.getvalue(), media_type="image/png", headers=HEADERS)
