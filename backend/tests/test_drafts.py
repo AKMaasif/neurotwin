@@ -1,5 +1,6 @@
 """The draft flow with a scripted stand-in for the model. Says nothing about how a live model writes."""
 import json
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -7,8 +8,11 @@ from app import drafts as D
 from app import llm
 from app.validator import numbers_in
 
+# Demo dates are relative to today (seed.py), so the expected date is worked out the same way, never typed in.
+S5_DAY = D._day(datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=-42 + 7 * 2 + 1, hours=9))
+
 GOOD = {"statements": [
-    {"text": "Session S5 on 14 Oct 2026 was interrupted, and its records are marked doubtful.", "cites": ["S5", "E11"]},
+    {"text": f"Session S5 on {S5_DAY} was interrupted, and its records are marked doubtful.", "cites": ["S5", "E11"]},
     {"text": "There is one open review item for that session.", "cites": ["R1"]},
 ]}
 BAD = {"statements": [{"text": "The results suggest early dementia.", "cites": ["E11"]}]}
@@ -50,7 +54,7 @@ def test_facts_cover_sessions_records_changes_and_open_items(app):
         facts = {f.id: f for f in D.build_facts(db, "demo-fatima")}
     assert "interrupted" in facts["S5"].text and "640 ms" in facts["E11"].text and "doubtful" in facts["E11"].text
     assert any(k.startswith("C") for k in facts) and "R1" in facts
-    assert "640" in facts["E11"].numbers and numbers_in("14 Oct 2026") <= facts["S5"].numbers
+    assert "640" in facts["E11"].numbers and numbers_in(S5_DAY) <= facts["S5"].numbers
 
 
 def test_free_text_from_participants_is_never_sent(client, app, dr, login, yousef):
@@ -115,7 +119,7 @@ def test_only_clinicians_with_a_grant(client, app, dr, login, yousef):
 
 def test_approve_with_an_edit_marks_the_clinicians_words(client, app, dr):
     d = make(client, app, dr, GOOD)[0].json()
-    edited = [{"text": "Session S5 on 14 Oct 2026 was interrupted by a phone call.", "cites": ["S5"]},
+    edited = [{"text": f"Session S5 on {S5_DAY} was interrupted by a phone call.", "cites": ["S5"]},
               d["statements"][1]]
     r = client.post(f"/api/drafts/{d['id']}/review", json={"decision": "approve", "statements": edited}, headers=dr).json()
     assert r["status"] == "approved" and r["reviewed_by"] == "demo-dr-layla"
