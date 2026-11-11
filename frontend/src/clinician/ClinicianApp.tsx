@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Activity, LineChart, PanelRight, Users } from "lucide-react";
 import { api, AuditRow, ChangeResult, ClinicianParticipant, Evidence, ReviewItem, Session, User } from "../api";
 import { useT } from "../i18n";
@@ -8,6 +8,7 @@ import Stage from "./Stage";
 import Detail from "./Detail";
 import Dock from "./Dock";
 import ReportView from "./Report";
+const BrainAnalytics = lazy(() => import("../imaging/BrainAnalytics"));
 
 export type Sel = { kind: "record"; id: number } | { kind: "session"; id: number } | null;
 export type Data = { sessions: Session[]; evidence: Evidence[]; items: ReviewItem[]; audit: AuditRow[]; changes: ChangeResult[] };
@@ -30,6 +31,7 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
   const [report, setReport] = useState(false);
   const [withDoubtful, setWithDoubtful] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const [imaging, setImaging] = useState(false);
 
   const loadPeople = useCallback(async () => {
     try {
@@ -65,7 +67,7 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (imaging || tag === "INPUT" || tag === "TEXTAREA" || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === "Escape") { setSel(null); setReport(false); }
       else if (e.key === "w" || e.key === "W") setDockOpen((v) => !v);
       else if ((e.key === "j" || e.key === "k") && openItems.length) {
@@ -78,9 +80,11 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [openItems, sel, select]);
+  }, [openItems, sel, select, imaging]);
 
   const person = people?.find((p) => p.id === pid) ?? null;
+
+  if (imaging) return <Suspense fallback={<p role="status">Opening Brain Analytics…</p>}><BrainAnalytics onClose={() => { setPane("stage"); setImaging(false); }} /></Suspense>;
 
   return (
     <div className="ws" data-pane={pane}>
@@ -95,6 +99,7 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
           user={user} person={person} data={data} sel={sel} onSelect={select} onSignOut={onSignOut}
           onReport={() => setReport(true)} error={error} onRetry={refresh}
           withDoubtful={withDoubtful} setWithDoubtful={setWithDoubtful}
+          onImaging={() => setImaging(true)}
         />
       </section>
       <aside className="ws-right" aria-label={t("wsInspector")}>
