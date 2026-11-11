@@ -550,6 +550,10 @@ const en = {
 
   ptTagSleep: "Sleep", ptTagToday: "Today",
 
+  famNavPeople: "People", famNavWrite: "Write a note", famDoneN: "{n} completed", famRecentN: "{n} recent",
+  famSeeTitle: "What you see here", famWhoFor: "Who is it for?", famNoActive: "You can write once someone is sharing with you.",
+  famSinceShort: "Sharing since", famMenu: "Family sections",
+
   chBaseline: "baseline",
   chRecent: "recent",
 };
@@ -1089,6 +1093,10 @@ const ar: Record<Key, string> = {
   ptUrgentSub: "هذا التطبيق لا يتصل بأحد. اعرف بمن تتصل.",
 
   ptTagSleep: "نوم", ptTagToday: "اليوم",
+
+  famNavPeople: "الأشخاص", famNavWrite: "اكتب رسالة", famDoneN: "{n} مكتمل", famRecentN: "{n} حديثة",
+  famSeeTitle: "ما تراه هنا", famWhoFor: "لمن الرسالة؟", famNoActive: "يمكنك الكتابة عندما يشاركك أحدهم تحديثاته.",
+  famSinceShort: "المشاركة منذ", famMenu: "أقسام العائلة",
 
   chBaseline: "الأساس",
   chRecent: "الأحدث",
