@@ -143,7 +143,7 @@ def write_seg(base, mri, labels_shift=0, tool="SynthSeg", version="1.0"):
     seg = np.zeros((24, 24, 20), np.int16)
     seg[8:16, 8:16, 6:14] = 3
     seg[10:14, 10:14, 8:12 + labels_shift] = 17
-    nib.save(nib.Nifti1Image(seg, np.eye(4)), d / "seg.nii.gz")
+    nib.save(nib.Nifti1Image(seg, A.scan_affine(mri, "mpr-1")), d / "seg.nii.gz")
     (d / "tool.json").write_text(json.dumps({"tool": tool, "version": version, "source": "test"}))
 
 
@@ -194,3 +194,33 @@ def test_pairs_listing_and_overlay_endpoints(client, login, data):
         r = client.get(f"/api/imaging/agent/runs/{rid}/overlay.png?layer={layer}&axis=2&index=10&label=17", headers=h)
         assert r.status_code == 200 and r.headers["content-type"] == "image/png"
     assert client.get(f"/api/imaging/agent/runs/{rid}/overlay.png?layer=x", headers=h).status_code == 422
+
+
+def test_finer_segmentation_grid_is_measured_natively_and_resampled_for_display(data):
+    pytest.importorskip("ants")
+    # a tool output on a grid twice as fine (as SynthSeg does): volumes come from its own voxels, overlays from the scan grid
+    for mri in ("OAS2_0001_MR1", "OAS2_0001_MR2"):
+        d = data / "segmentations" / mri
+        d.mkdir(parents=True)
+        aff = A.scan_affine(mri, "mpr-1").copy()
+        aff[:3, :3] /= 2
+        fine = np.zeros((48, 48, 40), np.int16)
+        fine[16:32, 16:32, 12:28] = 17
+        nib.save(nib.Nifti1Image(fine, aff), d / "seg.nii.gz")
+        (d / "tool.json").write_text(json.dumps({"tool": "SynthSeg", "version": "1.0"}))
+    out = A.run_all(A.create_run("OAS2_0001_MR1", "OAS2_0001_MR2")["run_id"])
+    assert out["state"] == "complete"
+    hip = next(r for r in out["measurements"]["regions"] if r["label"] == 17)
+    assert hip["earlier_voxels"] == 16 * 16 * 16 and hip["earlier_mm3"] == 16 * 16 * 16 * 0.125  # native voxel volume, not the scan's
+    assert A.layer_labels(out, "earlier_seg").shape == (24, 24, 20)
+
+
+def test_segmentation_missing_part_of_the_scan_is_refused(data):
+    pytest.importorskip("ants")
+    for mri in ("OAS2_0001_MR1", "OAS2_0001_MR2"):
+        d = data / "segmentations" / mri
+        d.mkdir(parents=True)
+        nib.save(nib.Nifti1Image(np.ones((6, 6, 6), np.int16), A.scan_affine(mri, "mpr-1")), d / "seg.nii.gz")
+        (d / "tool.json").write_text(json.dumps({"tool": "SynthSeg", "version": "1.0"}))
+    out = A.run_all(A.create_run("OAS2_0001_MR1", "OAS2_0001_MR2")["run_id"])
+    assert out["state"] == "failed" and "field of view" in out["steps"][3]["detail"]
