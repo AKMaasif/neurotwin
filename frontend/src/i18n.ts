@@ -532,10 +532,8 @@ const en = {
   ptTabToday: "Today",
   ptTabReminders: "Routines",
   ptTabMessages: "Messages",
-  ptTabMore: "More",
   ptForToday: "For today",
   ptManage: "Yours to manage",
-  ptMoreTitle: "More",
   ptProgress: "{n} of {total} done today",
   ptProgressNone: "Start whenever you like",
   ptProgressAll: "All done for today",
@@ -547,6 +545,10 @@ const en = {
   ptStepOf: "{n} of {total}",
   ptMoonHint: "Use the buttons to change the hours.",
   ptLeave: "Close",
+
+  ptUrgentSub: "This app cannot call anyone. See who to ring.",
+
+  ptTagSleep: "Sleep", ptTagToday: "Today",
 
   chBaseline: "baseline",
   chRecent: "recent",
@@ -1070,10 +1072,8 @@ const ar: Record<Key, string> = {
   ptTabToday: "اليوم",
   ptTabReminders: "الروتين",
   ptTabMessages: "الرسائل",
-  ptTabMore: "المزيد",
   ptForToday: "لليوم",
   ptManage: "بين يديك",
-  ptMoreTitle: "المزيد",
   ptProgress: "أُنجز {n} من {total} اليوم",
   ptProgressNone: "ابدأ متى شئت",
   ptProgressAll: "اكتمل كل شيء لليوم",
@@ -1085,6 +1085,10 @@ const ar: Record<Key, string> = {
   ptStepOf: "{n} من {total}",
   ptMoonHint: "استخدم الأزرار لتغيير عدد الساعات.",
   ptLeave: "إغلاق",
+
+  ptUrgentSub: "هذا التطبيق لا يتصل بأحد. اعرف بمن تتصل.",
+
+  ptTagSleep: "نوم", ptTagToday: "اليوم",
 
   chBaseline: "الأساس",
   chRecent: "الأحدث",
