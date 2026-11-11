@@ -286,14 +286,36 @@ def _read_seg(mri_id: str):
     tool = json.loads(tool_file.read_text())
     if not tool.get("tool") or not tool.get("version"):
         return None, f"tool.json for {mri_id} must name the tool and its version"
-    arr = np.asarray(nib.load(str(seg_file)).dataobj)
+    img = nib.load(str(seg_file))
+    arr = np.asarray(img.dataobj)
     while arr.ndim > 3 and arr.shape[-1] == 1:
         arr = arr[..., 0]
-    return np.rint(arr).astype("int16"), tool
+    return (np.rint(arr).astype("int16"), img.affine), tool
+
+
+def scan_affine(mri_id: str, scan: str):
+    import nibabel as nib
+    return nib.load(str(O._raw_dir(mri_id) / f"{scan}.nifti.hdr")).affine
+
+
+def onto_scan_grid(seg, affine, shape, scan_aff):
+    """Nearest-label resampling of a segmentation onto the scan's own grid (labels are never blended)."""
+    import nibabel as nib
+    from nibabel.processing import resample_from_to
+    out = resample_from_to(nib.Nifti1Image(seg.astype("int16"), affine), (shape, scan_aff), order=0, mode="constant", cval=0)
+    return out.get_fdata().astype("int16")
 
 
 def _set(run: dict, key: str, state: str, detail: str) -> None:
     next(s for s in run["steps"] if s["key"] == key).update(state=state, detail=detail)
+
+
+def _covers(seg, affine, shape, scan_aff, need=0.98) -> bool:
+    """True when the scan's grid lies inside the segmentation's field of view."""
+    import numpy as np
+    corners = np.array([[i, j, k, 1.0] for i in (0, shape[0] - 1) for j in (0, shape[1] - 1) for k in (0, shape[2] - 1)])
+    idx = (np.linalg.inv(affine) @ scan_aff @ corners.T).T[:, :3]
+    return bool(((idx >= -0.5) & (idx <= np.array(seg.shape) - 0.5)).all())
 
 
 def analyze(run_id: str) -> dict:
@@ -319,17 +341,21 @@ def analyze(run_id: str) -> dict:
         _write(run_dir, run)
         return run
     d1, _, _, zooms = O._load(run["earlier"], run["scan"])
+    (es_native, ea), (ls_native, la) = es, ls
+    saff = scan_affine(run["earlier"], run["scan"])
     problems = []
-    if es.shape != d1.shape or ls.shape != d1.shape:
-        problems.append("segmentation size does not match the scan")
+    if not _covers(es_native, ea, d1.shape, saff) or not _covers(ls_native, la, d1.shape, saff):
+        problems.append("a segmentation does not cover the scan's field of view")
     if (et["tool"], et["version"]) != (lt["tool"], lt["version"]):
         problems.append("the two segmentations came from different tools or versions")
-    unknown = sorted((set(np.unique(es).tolist()) | set(np.unique(ls).tolist())) - set(SEG_LABELS) - {0})
+    unknown = sorted((set(np.unique(es_native).tolist()) | set(np.unique(ls_native).tolist())) - set(SEG_LABELS) - {0})
     if problems:
         _set(run, "anatomical_analysis", "failed", "; ".join(problems))
         run["state"] = "failed"
         _write(run_dir, run)
         return run
+    es = onto_scan_grid(es_native, ea, d1.shape, saff)
+    ls = onto_scan_grid(ls_native, la, d1.shape, saff)
     # bring the later labels onto the earlier anatomy with the stored rigid transform (nearest label, never blended)
     import ants
     fixed = ants.from_numpy(np.ascontiguousarray(d1), spacing=tuple(zooms))
@@ -341,17 +367,18 @@ def analyze(run_id: str) -> dict:
          f"Segmentation imported from {et['tool']} {et['version']} for both scans; labels carried to the earlier anatomy without blending."
          + (f" Labels outside the known list were ignored: {unknown}." if unknown else ""))
     run["segmentation_tool"] = {"tool": et["tool"], "version": et["version"], "source": et.get("source")}
-    vox = float(np.prod(zooms))
+    vox_e, vox_l = abs(float(np.linalg.det(ea[:3, :3]))), abs(float(np.linalg.det(la[:3, :3])))
+    vox = vox_e
     rows, e_tot, l_tot = [], 0.0, 0.0
     for lab, name in SEG_LABELS.items():
-        ne, nl = int((es == lab).sum()), int((ls == lab).sum())
-        e_mm3, l_mm3 = ne * vox, nl * vox
+        ne, nl = int((es_native == lab).sum()), int((ls_native == lab).sum())
+        e_mm3, l_mm3 = ne * vox_e, nl * vox_l
         e_tot += e_mm3
         l_tot += l_mm3
         rows.append({"label": lab, "name": name, "earlier_mm3": round(e_mm3, 1), "later_mm3": round(l_mm3, 1),
                      "difference_mm3": round(l_mm3 - e_mm3, 1), "difference_pct": None if e_mm3 == 0 else round(100 * (l_mm3 - e_mm3) / e_mm3, 2),
                      "earlier_voxels": ne, "later_voxels": nl, "uncertainty": None})
-    run["measurements"] = {"unit": "mm3", "voxel_mm3": round(vox, 3), "source": "voxel counts of the imported segmentation in each scan's own space (not resampled)",
+    run["measurements"] = {"unit": "mm3", "voxel_mm3": round(vox, 3), "source": "voxel counts of the imported segmentation on the grid the tool produced (not resampled)",
                            "earlier_total_mm3": round(e_tot, 1), "later_total_mm3": round(l_tot, 1), "regions": rows}
     _set(run, "longitudinal_comparison", "done", "Regional volumes measured in each scan's own space; no uncertainty range exists yet.")
     # findings review: deterministic rules, no model
