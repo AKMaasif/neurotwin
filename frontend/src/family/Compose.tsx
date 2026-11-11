@@ -32,40 +32,40 @@ export default function Compose({ pid, name }: { pid: string; name: string }) {
   const discard = () => run(async () => { await api.discardMessage(draft!.id); setDraft(null); setText(""); });
 
   return (
-    <div style={{ display: "grid", gap: 10 }}>
+    <div className="fam-compose">
       {draft ? (
         <>
-          <h3 style={{ margin: 0, fontSize: 16, color: "var(--muted)" }}>{t("fmPreviewTitle", { name })}</h3>
-          <div className="p-card" style={{ background: "var(--surface-2, #f6f8fa)" }}>
-            <p style={{ fontSize: "1.15em", margin: 0, whiteSpace: "pre-wrap" }} dir="auto">{draft.text}</p>
+          <h2 className="fam-h">{t("fmPreviewTitle", { name })}</h2>
+          <div className="fam-bubble">
+            <p dir="auto">{draft.text}</p>
           </div>
-          <p className="muted" style={{ fontSize: 14, margin: 0 }}>{t("fmNotSent", { name })}</p>
+          <p className="fam-muted">{t("fmNotSent", { name })}</p>
           <FormError error={error} />
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button className="btn primary" disabled={busy} onClick={send}>{t("fmSend")}</button>
-            <button className="btn" disabled={busy} onClick={() => setDraft(null)}>{t("fmEdit")}</button>
-            <button className="btn danger" disabled={busy} onClick={discard}>{t("fmDiscard")}</button>
+          <div className="fam-actions">
+            <button className="fam-btn" disabled={busy} onClick={send}>{t("fmSend")}</button>
+            <button className="fam-btn ghost" disabled={busy} onClick={() => setDraft(null)}>{t("fmEdit")}</button>
+            <button className="fam-btn danger" disabled={busy} onClick={discard}>{t("fmDiscard")}</button>
           </div>
         </>
       ) : (
         <>
-          <label className="field"><span>{t("fmWrite", { name })}</span>
-            <textarea className="note" value={text} maxLength={MAX} dir="auto" style={{ minHeight: 96, fontSize: "1.05em" }}
+          <label className="fam-field"><span>{t("fmWrite", { name })}</span>
+            <textarea value={text} maxLength={MAX} dir="auto"
               onChange={(e) => setText(e.target.value)} /></label>
-          <p className="muted" style={{ fontSize: 14, margin: 0 }}>{t("fmHint", { name })} · {t("fmLeft", { n: t.num(MAX - text.length) })}</p>
+          <p className="fam-muted">{t("fmHint", { name })} · {t("fmLeft", { n: t.num(MAX - text.length) })}</p>
           <VoiceButton onText={(w) => { setText((x) => (x ? `${x} ${w}` : w).slice(0, MAX)); setFromVoice(true); }} />
-          {fromVoice && <p className="notice" style={{ margin: 0 }}>{t("voiceCheck")}</p>}
+          {fromVoice && <p className="fam-voice">{t("voiceCheck")}</p>}
           <FormError error={error} />
-          <button className="btn primary" style={{ justifySelf: "start" }} disabled={busy || !text.trim()} onClick={preview}>{t("fmPreview")}</button>
+          <button className="fam-btn" disabled={busy || !text.trim()} onClick={preview}>{t("fmPreview")}</button>
         </>
       )}
       {sent.length > 0 && (
         <>
-          <h3 style={{ margin: "8px 0 0", fontSize: 16, color: "var(--muted)" }}>{t("fmSentList")}</h3>
-          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8 }}>
+          <h2 className="fam-h">{t("fmSentList")}</h2>
+          <ul className="fam-sent">
             {sent.slice(0, 5).map((m) => (
-              <li key={m.id}><span dir="auto">{m.text}</span>{" "}
-                <span className="muted" style={{ fontSize: 13 }}>· {t.date(m.sent_at)} · {m.read ? t("fmSeen") : t("fmDelivered")}</span></li>
+              <li key={m.id}><span dir="auto">{m.text}</span>
+                <small>{t.date(m.sent_at)} · {m.read ? t("fmSeen") : t("fmDelivered")}</small></li>
             ))}
           </ul>
         </>
