@@ -206,7 +206,7 @@ def review_out(r: ReviewItem) -> dict:
 def create_app(database_url: str | None = None, seed_demo: bool | None = None, serve_frontend: bool = True,
                demo_password: str | None = None, secure_cookies: bool | None = None,
                session_hours: float | None = None) -> FastAPI:
-    app = FastAPI(title="IFHAS-NeuroTwin API", version="0.2.0",
+    app = FastAPI(title="IFHAS-NeuroTwin API", version="0.3.0",
                   description="Research prototype. Not a medical device. Synthetic demo data only.")
     app.state.db = Database(database_url or config.DATABASE_URL)
     app.state.settings = {
