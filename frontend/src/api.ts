@@ -106,7 +106,16 @@ const get = <R,>(p: string) => call<R>("GET", p);
 const post = <R,>(p: string, b?: unknown) => call<R>("POST", p, b ?? {});
 export const imagingPost = <R,>(path: string, body?: FormData) => call<R>("POST", `/api/imaging/native/${path}`, body);
 
+export type Oasis2Visit = {
+  mri_id: string; delay_days: number; years_since_previous: number | null; status: string; prepared: boolean;
+  clinical: { Age: number | null; "M/F"?: string | null; MMSE: number | null; CDR: number | null };
+  imported_measures: { eTIV: number | null; nWBV: number | null; ASF: number | null };
+};
+export type Oasis2Subject = { subject_id: string; group_label_from_dataset: string | null; level1_compare: boolean; level2_trend: boolean; ready: boolean; visits: Oasis2Visit[] };
+
 export const api = {
+  oasis2Info: (mri: string) => get<{ shape: number[]; voxel_mm: number[]; frame: string }>(`/api/imaging/oasis2/visits/${mri}/info`),
+  oasis2Subjects: () => get<{ subjects: Oasis2Subject[]; summary: Record<string, number> }>("/api/imaging/oasis2/subjects"),
   demoAccounts: () => get<DemoAccount[]>("/api/demo-accounts"),
   login: (username: string, password: string) => post<{ user: User; csrf: string }>("/api/auth/login", { username, password }),
   demoEnter: (username: string) => post<{ user: User; csrf: string }>("/api/auth/demo-enter", { username }),
