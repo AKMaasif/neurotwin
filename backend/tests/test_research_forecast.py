@@ -1,6 +1,6 @@
-import numpy as np
 import pytest
 
+np = pytest.importorskip("numpy")
 pytest.importorskip("sklearn")
 
 from app import research_forecast as R
