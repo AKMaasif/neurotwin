@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { CircleDashed, FileText, LineChart, Menu, Table2, X } from "lucide-react";
+import { Brain, CircleDashed, FileText, LineChart, Menu, Table2, X } from "lucide-react";
 import { api, ClinicianParticipant, Evidence, User } from "../api";
 import { useT } from "../i18n";
 import { ErrorNote } from "../ui";
@@ -8,10 +8,11 @@ import EvidenceTable from "./EvidenceTable";
 import Account from "../Account";
 import Timeline from "./Timeline";
 
-export default function Stage({ user, person, data, sel, onSelect, onSignOut, onReport, error, onRetry, withDoubtful, setWithDoubtful }: {
+export default function Stage({ user, person, data, sel, onSelect, onSignOut, onReport, error, onRetry, withDoubtful, setWithDoubtful, onImaging }: {
   user: User; person: ClinicianParticipant | null; data: Data | null; sel: Sel; onSelect: (s: Sel) => void;
   onSignOut: () => void; onReport: () => void; error: unknown; onRetry: () => void;
   withDoubtful: boolean; setWithDoubtful: (v: boolean) => void;
+  onImaging: () => void;
 }) {
   const { t, setLang } = useT();
   const [mode, setMode] = useState<"timeline" | "table">("timeline");
@@ -77,6 +78,7 @@ export default function Stage({ user, person, data, sel, onSelect, onSignOut, on
             )}
         </div>
         <div className="stage-actions">
+          <button className="btn" onClick={onImaging}><Brain size={16} aria-hidden="true" />{t.lang === "ar" ? "تحليل صور الدماغ" : "Brain Analytics"}</button>
           <button className="btn primary" disabled={!person} onClick={onReport}><FileText size={16} aria-hidden="true" />{t("wsReport")}</button>
           <div style={{ position: "relative" }} ref={menuRef}>
             <button className="btn" aria-label={t("wsMenu")} aria-expanded={menu} onClick={() => setMenu((v) => !v)}><Menu size={18} /></button>

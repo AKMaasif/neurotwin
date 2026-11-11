@@ -85,10 +85,11 @@ export class ApiError extends Error {
 }
 
 async function call<R>(method: string, path: string, body?: unknown): Promise<R> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const isForm = body instanceof FormData;
+  const headers: Record<string, string> = isForm ? {} : { "Content-Type": "application/json" };
   if (method !== "GET" && csrf) headers["X-CSRF-Token"] = csrf;
   const res = await fetch(path, { method, headers, credentials: "same-origin",
-    body: body === undefined ? undefined : JSON.stringify(body) });
+    body: body === undefined ? undefined : isForm ? body : JSON.stringify(body) });
   if (!res.ok) {
     let msg = res.statusText;
     try { msg = (await res.json()).detail ?? msg; } catch { /* not JSON */ }
@@ -103,6 +104,7 @@ async function call<R>(method: string, path: string, body?: unknown): Promise<R>
 
 const get = <R,>(p: string) => call<R>("GET", p);
 const post = <R,>(p: string, b?: unknown) => call<R>("POST", p, b ?? {});
+export const imagingPost = <R,>(path: string, body?: FormData) => call<R>("POST", `/api/imaging/native/${path}`, body);
 
 export const api = {
   demoAccounts: () => get<DemoAccount[]>("/api/demo-accounts"),
