@@ -107,23 +107,24 @@ html { scroll-behavior: smooth; }
 .lp-lead { margin-top: 16px; font-size: 18px; line-height: 1.6; color: var(--lp-body); max-width: 640px; }
 
 /* ---- Access ---- */
-.lp-access { background: var(--lp-soft); margin-top: 100px; padding-block: 100px; }
-.lp-cards { margin-top: 36px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
-.lp-card { position: relative; overflow: hidden; border-radius: 28px; padding: 30px; min-height: 400px; display: flex; flex-direction: column; transition: transform .25s, box-shadow .25s; }
+.lp-access { background: var(--lp-soft); margin-top: 100px; padding-block: 56px; scroll-margin-top: 0; min-height: 100svh; display: flex; flex-direction: column; justify-content: center; }
+.lp-access > .lp-wrap { width: 100%; }
+.lp-cards { margin-top: 28px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+.lp-card { position: relative; overflow: hidden; border-radius: 28px; padding: 26px; min-height: 0; display: flex; flex-direction: column; transition: transform .25s, box-shadow .25s; }
 .lp-card:hover { transform: translateY(-6px); box-shadow: 0 24px 50px rgba(11,43,68,.16); }
 .lp-card.pat { background: linear-gradient(160deg, #ffe9c7, #ffc98a); color: #3a1d05; }
 .lp-card.cli { background: var(--lp-navy); color: #fff; }
 .lp-card.fam { background: linear-gradient(160deg, #e8e4ff, #c9d7ff); color: #1c1b4a; }
 .lp-card-orb { position: absolute; inset-inline-end: -50px; top: -50px; width: 190px; height: 190px; border-radius: 50%; background: rgba(255,255,255,.3); box-shadow: 0 0 0 38px rgba(255,255,255,.18); }
 .lp-card.cli .lp-card-orb { background: rgba(127,208,224,.16); box-shadow: 0 0 0 38px rgba(127,208,224,.08); }
-.lp-card-ico { position: relative; width: 60px; height: 60px; border-radius: 18px; display: grid; place-items: center; background: #3a1d05; color: #ffd9a0; }
+.lp-card-ico { position: relative; width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; background: #3a1d05; color: #ffd9a0; }
 .lp-card.cli .lp-card-ico { background: #fff; color: var(--lp-navy); }
 .lp-card.fam .lp-card-ico { background: #1c1b4a; color: #cdd6ff; }
-.lp-card-tag { position: relative; margin-top: 26px; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; opacity: .8; }
+.lp-card-tag { position: relative; margin-top: 18px; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; opacity: .8; }
 [dir="rtl"] .lp-card-tag { letter-spacing: 0; }
 .lp-card.cli .lp-card-tag { color: #9fdcec; opacity: 1; }
-.lp-card h3 { position: relative; margin-top: 6px; font-size: 32px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
-.lp-card p { position: relative; margin-top: 12px; font-size: 17px; line-height: 1.55; flex: 1; opacity: .9; }
+.lp-card h3 { position: relative; margin-top: 6px; font-size: 28px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+.lp-card p { position: relative; margin-top: 10px; font-size: 16px; line-height: 1.55; flex: 1; opacity: .9; }
 .lp-card.cli p { color: #d3e6f0; opacity: 1; }
 .lp-card-go { position: relative; margin-top: 24px; width: 100%; min-height: 64px; border: 0; background: transparent; color: inherit; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0; text-align: start; cursor: pointer; font: inherit; }
 .lp-card-go b { display: block; font-size: 18px; }
@@ -206,4 +207,14 @@ html { scroll-behavior: smooth; }
   .lp-hero-body { padding-top: 40px; }
   .lp-video { width: 100%; max-width: 440px; }
   .lp-video-frame { height: auto; width: 100%; }
+}
+
+/* Short windows: keep the title and all three cards in view after pressing "Try the demo". */
+@media (min-width: 900px) and (max-height: 760px) {
+  .lp-access { padding-block: 24px; margin-top: 60px; }
+  .lp-access h2 { font-size: clamp(26px, 3vw, 34px); }
+  .lp-access .lp-lead { display: none; }
+  .lp-cards { margin-top: 18px; }
+  .lp-card { padding: 22px; }
+  .lp-card-tag { margin-top: 12px; }
 }
