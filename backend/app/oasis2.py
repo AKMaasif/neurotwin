@@ -34,16 +34,28 @@ def load_table(path: str | Path) -> list[dict]:
     return out
 
 
+_BSD = re.compile(r"^(?P<perm>[-dlh][rwxsStT-]{9})\s+\d+\s+\S+\s+\S+\s+(?P<size>\d+)\s+\w{3}\s+\d+\s+\S+\s+(?P<path>.+)$")
+_GNU = re.compile(r"^(?P<perm>[-dlh][rwxsStT-]{9})\s+\S+\s+(?P<size>\d+)\s+\d{4}-\d\d-\d\d\s+\d\d:\d\d\s+(?P<path>.+)$")
+
+
+def read_listing(path: str | Path) -> list[str]:
+    """Lines of a `tar -tv` listing. PowerShell's `>` writes UTF-16, so the encoding is detected, not assumed."""
+    raw = Path(path).read_bytes()
+    if raw[:2] in (b"\xff\xfe", b"\xfe\xff") or raw[1:2] == b"\x00":
+        text = raw.decode("utf-16", errors="replace")
+    else:
+        text = raw.decode("utf-8", errors="replace")
+    return text.replace("\ufeff", "").splitlines()
+
+
 def parse_listing(lines: list[str]) -> list[tuple[str, int]]:
-    """(path, size) pairs from `tar -tv` lines: perms owner size date time path."""
+    """(path, size) for regular files, from GNU (`perms owner/group size date time path`) or bsdtar
+    (`perms links owner group size Mon day year path`) listings. Directories and unreadable lines are skipped."""
     files = []
     for line in lines:
-        parts = line.split(None, 5)
-        if len(parts) == 6 and parts[0].startswith("-"):
-            try:
-                files.append((parts[5].rstrip("\n"), int(parts[2])))
-            except ValueError:
-                continue
+        m = _GNU.match(line.strip()) or _BSD.match(line.strip())
+        if m and m["perm"].startswith("-"):
+            files.append((m["path"].rstrip(), int(m["size"])))
     return files
 
 
