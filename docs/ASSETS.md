@@ -8,3 +8,7 @@ Images and video used by the landing page, in `frontend/public/landing/`.
 | `brain-anatomy.webp`, `brain-anatomy-1200.webp` | Six anatomical views of the brain, transparent background, resized from the supplied PNG. | Used under a licence the project author confirmed they hold. Record the licence wording and credit here before any public release. |
 
 These are illustrations for orientation. NeuroTwin does not read brain structure from them and does not diagnose.
+
+## OASIS imaging data
+
+The author states that they hold permission from the data provider to use the OASIS-1 and OASIS-2 data and to show it in this demonstration. The data files are not in the repository; they stay in the git-ignored `backend/imaging_data/` folder and `OASIS*` folders. Keep the written permission and the required citation with the project records. If the provider's terms limit redistribution or public hosting, those terms apply to any public deployment.
