@@ -1,13 +1,18 @@
-# Status — version 0.2 (10 Nov 2026)
+# Status — version 0.2 (updated 11 Nov 2026)
 
 Four lists, kept separate on purpose. Software tests passing is not evidence of clinical accuracy, and nothing
 here has been tried with real older adults, families or clinicians yet.
 
+The current goal, completed imaging work and prioritized remaining steps are maintained in
+[PROJECT_ROADMAP.md](PROJECT_ROADMAP.md). The application inventory below includes historical verification;
+it does not imply the current full test suite passes.
+
 ## Implemented and verified
 
-Verified by the 149 automated backend tests (`backend/tests/`), a clean type-check and production build of the web
-app, and a scripted click-through of every screen in Chromium, at phone width (420 px) and desktop width (1360 px),
-in English and Arabic.
+The original application baseline was checked with 149 automated backend tests (`backend/tests/`), a frontend
+type-check/build and scripted Chromium checks in English and Arabic. The current imaging work separately passed
+19 focused imaging/native/log checks and browser workflows. The full backend suite (166 tests, including 17 imaging and native-imaging tests) passes once the date-dependent
+summary-draft tests are fixed (PR #18), checked on 11 Nov 2026. A frontend type-check and production build also pass. See PROJECT_ROADMAP.md for the scope and limitations of this verification.
 
 | Area | What works | How it was checked |
 | --- | --- | --- |
@@ -34,6 +39,23 @@ in English and Arabic.
 
 ## Experimental or simulated
 
+- **Native MRI import and workflow foundation:** Brain Analytics now opens a NeuroTwin-owned import/processing page.
+  It accepts original NIfTI or Analyze pairs and can import the existing OASIS-1 participant's raw acquisition locally.
+  Originals/hashes and run history are preserved; technical validation and display preparation run without FreeSurfer.
+  Stage states, failed attempts, cancellation, retry history and restart recovery are stored. The existing original scan
+  successfully prepared, with its Analyze orientation explicitly flagged for review. Native segmentation, measurement,
+  AI-agent execution and forecasting remain blocked; no anatomical or disease finding is produced. The supplied
+  FreeSurfer-based viewer remains a separately labelled legacy reference. See [IMAGING_PREVIEW.md](IMAGING_PREVIEW.md).
+
+- **Brain Analytics research preview (11 Nov 2026):** a separate single-participant OASIS-1 workspace now displays
+  locally prepared, real MRI volumes and supplied FreeSurfer surfaces, annotations, thickness and regional statistics.
+  It includes linked slices, zoom/rotation/pan, layers, clipping, MRI cutting planes, internal camera exploration,
+  region inspection, a measurement table and CSV export. Explicitly enabled clinician accounts only; source imaging
+  is stored outside the public frontend and outside git. The research case is not attached to synthetic demo people.
+  Source outputs are legacy FreeSurfer derivatives and **have not received independent anatomical QC**. This increment
+  does not execute FreeSurfer jobs, edit anatomy, compare visits or predict outcomes. Tools are initially English.
+  Setup and verification details: [IMAGING_PREVIEW.md](IMAGING_PREVIEW.md).
+
 - **Speech to text uses Gemini only, and has had two live checks.** On 10 Nov 2026 the project owner ran one English
   clip twice. The first run was transcribed correctly; the second came back translated into Arabic with a changed name,
   because the request said "in Arabic". The request now says to write the language actually spoken and never translate.
@@ -43,7 +65,8 @@ in English and Arabic.
   accounts with a shared starting password; the rate limit is held in memory for a single server process.
 - **Demo mode is open to anyone who can reach the server.** That is intended for judging and demos with synthetic
   data. A server holding real data must run with `NEUROTWIN_SEED_DEMO=0`.
-- **All data is synthetic.** The demo accounts and six weeks of records are invented to exercise the screens.
+- **Clinical demo data is synthetic.** The demo accounts and six weeks of activity records are invented to exercise
+  the screens. The separately enabled imaging research preview uses one real de-identified OASIS case.
 - **Clinician summary drafts are tested with a stand-in model only.** The flow is verified by 14 tests and a
   click-through: facts built from records (no participant free text), one retry with the validator's reasons,
   twice-refused drafts stored without showing their text, approve with edits marked as the clinician's, reject with
@@ -67,7 +90,8 @@ in English and Arabic.
 - Model-assisted wording of reminders (not started; routines are clinician-written text today); voice typing for more screens (only the family message box has it).
 
 - Deletion requests handled by the research team (separate from withdrawal).
-- Optional imaging research module (clinician-directed, research only), after the core is validated.
+- Expand the imaging research preview with scan import, processing jobs, persisted QC/editing and longitudinal
+  analysis; forecasts require a separately trained and evaluated model.
 
 ## Awaiting qualified approval
 

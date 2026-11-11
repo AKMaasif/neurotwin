@@ -217,3 +217,31 @@ class FamilyMessage(Base):
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     hidden_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # the person's choice
+
+
+class NativeScan(Base):
+    """Original research MRI, deliberately separate from synthetic clinical participants."""
+    __tablename__ = "native_scans"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    subject: Mapped[str] = mapped_column(String(40))
+    declared_modality: Mapped[str] = mapped_column(String(20), default="T1w")
+    files: Mapped[list] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class NativeRun(Base):
+    """Durable native processing attempt; retries create another run, preserving history."""
+    __tablename__ = "native_runs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    scan_id: Mapped[str] = mapped_column(ForeignKey("native_scans.id"), index=True)
+    parent_run_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    status: Mapped[str] = mapped_column(String(30), default="queued")
+    stages: Mapped[list] = mapped_column(JSON)
+    findings: Mapped[list] = mapped_column(JSON, default=list)
+    result: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    error: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    retryable: Mapped[bool] = mapped_column(Boolean, default=False)
+    producer_version: Mapped[str] = mapped_column(String(40), default="neurotwin-native/0.1")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
