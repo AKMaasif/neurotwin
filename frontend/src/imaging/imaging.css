@@ -66,7 +66,7 @@
 .ag-stage { overflow: hidden; background: #000; }
 .ag-zoom { position: relative; transform-origin: center; }
 .ag-zoom img { display: block; width: 100%; height: auto; }
-.ag-zoom img.ag-ov { position: absolute; inset: 0; image-rendering: pixelated; pointer-events: none; }
+.ag-zoom img.ag-ov { position: absolute; inset: 0; image-rendering: pixelated; pointer-events: none; background: transparent; }
 .ag-key { display: inline-block; width: .8rem; height: .8rem; vertical-align: middle; }
 .ag-loss { background: #dc2828; } .ag-gain { background: #285adc; }
 .ag-scroll { overflow-x: auto; }
