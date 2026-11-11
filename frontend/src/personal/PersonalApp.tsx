@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { BellRing, ChartNoAxesColumn, ChevronRight, Info as InfoIcon, MessageCircle, MessageCircleHeart, Phone, ShieldCheck, Users, UserRound, Zap, House } from "lucide-react";
 import { api, Consent, Session, User } from "../api";
 import { useT } from "../i18n";
 import { Brand, ErrorNote, Heading, LangSwitch } from "../ui";
@@ -10,23 +11,28 @@ import Records from "./Records";
 import Reminders from "./Reminders";
 import Messages from "./Messages";
 import Account from "../Account";
+import "./patient.css";
 
 export type Screen = "home" | "consent" | "checkin" | "reaction" | "sharing" | "reminders" | "messages" | "records" | "account" | "urgent" | "about";
+
+const TAB_SCREENS: Screen[] = ["home", "reminders", "messages", "records"];
 
 export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   const { t } = useT();
   const [screen, setScreen] = useState<Screen>("home");
   const [consent, setConsent] = useState<Consent | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [unread, setUnread] = useState(0);
   const [error, setError] = useState<unknown>(null);
   const [ready, setReady] = useState(false);
 
   const refresh = useCallback(async () => {
     setError(null);
     try {
-      const [cs, ss] = await Promise.all([api.consents(), api.sessions(user.id)]);
+      const [cs, ss, inbox] = await Promise.all([api.consents(), api.sessions(user.id), api.inbox().catch(() => [])]);
       setConsent(cs.find((c) => c.scope === "participation") ?? null);
       setSessions(ss);
+      setUnread(inbox.filter((m) => !m.read).length);
     } catch (e) { setError(e); }
     setReady(true);
   }, [user.id]);
@@ -34,11 +40,13 @@ export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut
 
   const go = (s: Screen) => { setScreen(s); window.scrollTo(0, 0); };
   const home = () => { go("home"); refresh(); };
+  const tab = (s: Screen) => { go(s); refresh(); };
   const participating = consent?.granted === true;
+  const needsConsent = screen === "home" && !participating && consent?.at == null;
 
   let body;
   if (!ready) body = <p className="muted">{t("loading")}</p>;
-  else if (screen === "consent" || (screen === "home" && !participating && consent?.at == null))
+  else if (screen === "consent" || needsConsent)
     body = <ConsentScreen consent={consent} onChanged={home} onClose={home} />;
   else if (screen === "checkin") body = <Checkin onDone={home} />;
   else if (screen === "reaction") body = <Reaction onDone={home} />;
@@ -55,10 +63,12 @@ export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut
   );
   else if (screen === "urgent") body = <Info title={t("urgentTitle")} lines={[t("urgentBody"), t("urgentUAE")]} onBack={home} />;
   else if (screen === "about") body = <Info title={t("aboutTitle")} lines={[t("aboutBody"), t("prototypeLong")]} onBack={home} />;
-  else body = <Home user={user} sessions={sessions} participating={participating} go={go} />;
+  else body = <Home user={user} sessions={sessions} participating={participating} unread={unread} go={go} />;
+
+  const tabbed = ready && TAB_SCREENS.includes(screen) && !needsConsent;
 
   return (
-    <div className="personal">
+    <div className={`personal ${tabbed ? "has-tabs" : ""}`}>
       <header className="p-bar">
         <Brand />
         <div className="who">
@@ -74,6 +84,16 @@ export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut
         <button className="link" onClick={() => go("urgent")}>{t("urgentHelp")}</button>
         <button className="link" onClick={() => go("about")}>{t("aboutLink")}</button>
       </footer>
+      {tabbed && (
+        <nav className="pt-tabs" aria-label={t("appName")}>
+          {([["home", "ptTabToday", House], ["reminders", "ptTabReminders", BellRing], ["messages", "ptTabMessages", MessageCircle], ["records", "recordsTitle", ChartNoAxesColumn]] as const).map(([s, label, Icon]) => (
+            <button key={s} onClick={() => tab(s)} aria-current={screen === s ? "page" : undefined}>
+              <Icon size={24} aria-hidden="true" />{t(label)}
+              {s === "messages" && unread > 0 && <span className="dot" role="img" aria-label={t("ptNew", { n: unread })} />}
+            </button>
+          ))}
+        </nav>
+      )}
     </div>
   );
 }
@@ -83,20 +103,42 @@ function isToday(iso: string) {
   return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
 }
 
-function Home({ user, sessions, participating, go }: {
-  user: User; sessions: Session[]; participating: boolean; go: (s: Screen) => void;
+/** The four numbers behind the ring: how many of today's two activities are finished. Not a score, not a streak. */
+function Ring({ done, total, label }: { done: number; total: number; label: string }) {
+  const { t } = useT();
+  const offset = 264 - 264 * (total ? done / total : 0);
+  return (
+    <svg className="ring" width="104" height="104" viewBox="0 0 104 104" role="img" aria-label={label}>
+      <circle className="trk" cx="52" cy="52" r="42" fill="none" strokeWidth="10" />
+      <circle className="bar" cx="52" cy="52" r="42" fill="none" strokeWidth="10" style={{ strokeDashoffset: offset }} transform="rotate(-90 52 52)" />
+      <text x="52" y="60" textAnchor="middle" fill="#fff" fontWeight="800" fontSize="26">{t.num(done)}/{t.num(total)}</text>
+    </svg>
+  );
+}
+
+function Home({ user, sessions, participating, unread, go }: {
+  user: User; sessions: Session[]; participating: boolean; unread: number; go: (s: Screen) => void;
 }) {
   const { t } = useT();
   const doneToday = (code: string) => sessions.some((s) => s.protocol_code === code && s.status === "completed" && isToday(s.started_at));
   const activities = [
-    { code: "daily_checkin", screen: "checkin" as Screen, title: t("checkinTitle"), meta: t("checkinMeta") },
-    { code: "reaction_time", screen: "reaction" as Screen, title: t("reactionTitle"), meta: t("reactionMeta") },
+    { code: "daily_checkin", screen: "checkin" as Screen, title: t("checkinTitle"), meta: t("checkinMeta"), Icon: MessageCircleHeart, tone: "a" },
+    { code: "reaction_time", screen: "reaction" as Screen, title: t("reactionTitle"), meta: t("reactionMeta"), Icon: Zap, tone: "g" },
   ];
   const next = activities.find((a) => !doneToday(a.code));
+  const done = activities.filter((a) => doneToday(a.code)).length;
+  const ringLabel = t("ptProgress", { n: t.num(done), total: t.num(activities.length) });
+
+  const manage = [
+    { s: "consent" as Screen, title: t("consentTitle"), meta: t("consentMeta"), Icon: ShieldCheck, cls: "c1" },
+    { s: "sharing" as Screen, title: t("sharingTitle"), meta: t("sharingMeta"), Icon: Users, cls: "c2" },
+    { s: "about" as Screen, title: t("aboutTitle"), meta: t("aboutLink"), Icon: InfoIcon, cls: "c4" },
+    ...(!user.is_demo ? [{ s: "account" as Screen, title: t("acTitle"), meta: t("acLink"), Icon: UserRound, cls: "c5" }] : []),
+  ];
 
   return (
-    <>
-      <div style={{ display: "grid", gap: 6 }}>
+    <div className="pt-rise" style={{ display: "contents" }}>
+      <div className="pt-hello">
         <Heading>{t("hello", { name: user.display_name })}</Heading>
         <p className="lede">{t("homeLede")}</p>
       </div>
@@ -107,37 +149,58 @@ function Home({ user, sessions, participating, go }: {
         </div>
       )}
 
-      {participating && next && (
-        <section className="p-card next" aria-labelledby="next-h">
-          <p className="eyebrow">{t("nextUp")}</p>
-          <h2 id="next-h">{next.title}</h2>
-          <p className="muted">{next.meta}</p>
-          <button className="btn primary block" onClick={() => go(next.screen)}>{t("start")}</button>
+      {participating && (
+        <section className="pt-hero" aria-label={ringLabel}>
+          <Ring done={done} total={activities.length} label={ringLabel} />
+          <div>
+            <b>{done === activities.length ? t("ptProgressAll") : done === 0 ? t("ptProgressNone") : ringLabel}</b>
+            <span>{t("ptProgressSub")}</span>
+          </div>
         </section>
       )}
 
       {participating && (
-        <div className="p-list">
-          {activities.filter((a) => a !== next).map((a) => (
-            <button key={a.code} className="p-row" onClick={() => go(a.screen)}>
-              <span className="t"><b>{a.title}</b><span>{doneToday(a.code) ? `✓ ${t("doneToday")}` : a.meta}</span></span>
-              <span className="chev" aria-hidden="true">›</span>
-            </button>
-          ))}
-        </div>
+        <>
+          <h2 className="pt-sec">{t("ptForToday")}</h2>
+          {activities.map((a) => {
+            const isDone = doneToday(a.code);
+            return (
+              <button key={a.code} className={`pt-tile ${isDone ? "done" : a === next ? "next" : ""}`} onClick={() => go(a.screen)}>
+                <span className={`ico ${a.tone}`}><a.Icon size={34} aria-hidden="true" /></span>
+                <span className="t"><b>{a.title}</b><span>{isDone ? `✓ ${t("doneToday")}` : a.meta}</span></span>
+                <ChevronRight className="go" size={26} aria-hidden="true" />
+              </button>
+            );
+          })}
+        </>
       )}
 
-      <div className="p-list">
-        {([["reminders", "remTitle", "remMeta"], ["messages", "msgTitle", "msgMeta"], ["sharing", "sharingTitle", "sharingMeta"], ["records", "recordsTitle", "recordsMeta"],
-          ["consent", "consentTitle", "consentMeta"], ["account", "acTitle", "acLink"]] as const)
-          .filter(([s]) => s !== "account" || !user.is_demo).map(([s, title, meta]) => (
-          <button key={s} className="p-row" onClick={() => go(s)}>
-            <span className="t"><b>{t(title)}</b><span>{t(meta)}</span></span>
-            <span className="chev" aria-hidden="true">›</span>
+      <button className="pt-tile" onClick={() => go("reminders")}>
+        <span className="ico v"><BellRing size={32} aria-hidden="true" /></span>
+        <span className="t"><b>{t("remTitle")}</b><span>{t("remMeta")}</span></span>
+        <ChevronRight className="go" size={26} aria-hidden="true" />
+      </button>
+      <button className="pt-tile" onClick={() => go("messages")}>
+        <span className="ico r"><MessageCircle size={32} aria-hidden="true" /></span>
+        <span className="t"><b>{t("msgTitle")}</b><span>{unread > 0 ? t("ptNew", { n: t.num(unread) }) : t("msgMeta")}</span></span>
+        {unread > 0 && <span className="pt-badge" aria-hidden="true">{t.num(unread)}</span>}
+        <ChevronRight className="go" size={26} aria-hidden="true" />
+      </button>
+
+      <h2 className="pt-sec">{t("ptManage")}</h2>
+      <div className="pt-grid">
+        {manage.map(({ s, title, meta, Icon, cls }) => (
+          <button key={s} className={`pt-mini ${cls}`} onClick={() => go(s)}>
+            <Icon size={28} aria-hidden="true" /><b>{title}</b><span>{meta}</span>
           </button>
         ))}
       </div>
-    </>
+
+      <button className="pt-urgent" onClick={() => go("urgent")}>
+        <span className="ico"><Phone size={26} aria-hidden="true" /></span>
+        <span><b>{t("urgentHelp")}</b><span>{t("ptUrgentSub")}</span></span>
+      </button>
+    </div>
   );
 }
 
