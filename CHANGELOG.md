@@ -2,7 +2,27 @@
 
 All notable changes, newest first. Versions follow `0.x` while NeuroTwin is a research prototype.
 
-## Unreleased
+## 0.3.0 - 11 November 2026
+
+### Added
+- New landing page with one-click demo entry for the patient, clinician and family views (English and Arabic).
+- Redesigned participant app: Today screen, bottom tabs, picture-card daily check-in. Answers and skip behaviour
+  are unchanged.
+- Redesigned family view: sidebar layout, people cards, write-preview-send notes kept.
+- Brain Analytics: Compare visits for two visits of the same OASIS-2 person (elapsed days from the dataset's own
+  delay, imported measures labelled as imported, voxel-axis views because orientation is unverified, not
+  registered), and a descriptive trend over visits for people with three or more visits.
+- OASIS-2 manifest reader and subject extractor scripts; the imaging pages are open to every clinician demo account
+  in demo mode (`NEUROTWIN_IMAGING_OPEN=0` restores the explicit list).
+- Research experiment on stages 9 and 10 with subject-grouped evaluation, baselines and a shuffled-outcome control.
+  Result: conversion prediction showed no skill on 15 events; nothing from it is shown per person.
+- Imaging workflow document for stages 1-10 with gates, targets and the three bounded agents.
+- CI installs the imaging and research packages so their tests run.
+
+### Fixed
+- Family view styles no longer leak into the landing page's family card; access cards fit the window.
+
+## Earlier in 0.3.0
 
 ### Changed
 - Voice typing: clips are converted to WAV in the browser; speech is Gemini only; the request no longer asks for
