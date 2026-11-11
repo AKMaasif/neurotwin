@@ -529,6 +529,27 @@ const en = {
   lpMain: "Main sections",
   lpSkip: "Skip to the views",
 
+  ptTabToday: "Today",
+  ptTabReminders: "Routines",
+  ptTabMessages: "Messages",
+  ptForToday: "For today",
+  ptManage: "Yours to manage",
+  ptProgress: "{n} of {total} done today",
+  ptProgressNone: "Start whenever you like",
+  ptProgressAll: "All done for today",
+  ptProgressSub: "Stopping or skipping is always fine.",
+  ptNew: "{n} new",
+  ptNoNew: "No new messages",
+  ptStartIt: "Start",
+  ptDoneMark: "Done",
+  ptStepOf: "{n} of {total}",
+  ptMoonHint: "Use the buttons to change the hours.",
+  ptLeave: "Close",
+
+  ptUrgentSub: "This app cannot call anyone. See who to ring.",
+
+  ptTagSleep: "Sleep", ptTagToday: "Today",
+
   chBaseline: "baseline",
   chRecent: "recent",
 };
@@ -1047,6 +1068,27 @@ const ar: Record<Key, string> = {
   lpFootLeft: "IFHAS-NeuroTwin · نموذج بحثي أولي",
   lpMain: "الأقسام الرئيسية",
   lpSkip: "تخطَّ إلى الواجهات",
+
+  ptTabToday: "اليوم",
+  ptTabReminders: "الروتين",
+  ptTabMessages: "الرسائل",
+  ptForToday: "لليوم",
+  ptManage: "بين يديك",
+  ptProgress: "أُنجز {n} من {total} اليوم",
+  ptProgressNone: "ابدأ متى شئت",
+  ptProgressAll: "اكتمل كل شيء لليوم",
+  ptProgressSub: "التوقف أو التخطي مسموح دائمًا.",
+  ptNew: "{n} جديدة",
+  ptNoNew: "لا رسائل جديدة",
+  ptStartIt: "ابدأ",
+  ptDoneMark: "تم",
+  ptStepOf: "{n} من {total}",
+  ptMoonHint: "استخدم الأزرار لتغيير عدد الساعات.",
+  ptLeave: "إغلاق",
+
+  ptUrgentSub: "هذا التطبيق لا يتصل بأحد. اعرف بمن تتصل.",
+
+  ptTagSleep: "نوم", ptTagToday: "اليوم",
 
   chBaseline: "الأساس",
   chRecent: "الأحدث",
