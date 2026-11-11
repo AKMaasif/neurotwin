@@ -3,6 +3,7 @@ import { ArrowLeft, Brain, ChevronRight, Layers, Maximize2, RotateCcw, Search, S
 import BrainScene, { SceneActions } from "./BrainScene";
 import SliceView from "./SliceView";
 import NativeWorkflow from "./NativeWorkflow";
+import CompareVisits from "./CompareVisits";
 import { BrainData, Cursor, Selection, Settings, initialSettings, loadBrain, offset, world } from "./data";
 import "./imaging.css";
 
@@ -16,7 +17,7 @@ export default function BrainAnalytics({ onClose }: { onClose: () => void }) {
   const scene = useRef<SceneActions>(null);
   const set = <K extends keyof Settings>(key: K, value: Settings[K]) => setSettings(s => ({ ...s, [key]: value }));
   useEffect(() => {
-    if (tab === "native" || data) return;
+    if (tab === "native" || tab === "compare" || data) return;
     const controller = new AbortController(); setError(""); setData(null);
     loadBrain(controller.signal, setProgress).then(d => { setData(d); setCursor(d.manifest.shape.map(n => Math.floor(n / 2)) as Cursor); })
       .catch(e => { if (!controller.signal.aborted) setError(e.message); });
@@ -45,11 +46,11 @@ export default function BrainAnalytics({ onClose }: { onClose: () => void }) {
       <span className="brain-badge">RESEARCH PREVIEW</span>
     </header>
     <nav className="brain-tabs" aria-label="Brain analytics sections">
-      {[["viewer", "Images & 3D"], ["native", "Import & processing"], ["measurements", "Measurements"], ["provenance", "Source & quality"]].map(([id, label]) =>
+      {[["viewer", "Images & 3D"], ["native", "Import & processing"], ["compare", "Compare visits"], ["measurements", "Measurements"], ["provenance", "Source & quality"]].map(([id, label]) =>
         <button key={id} aria-current={tab === id ? "page" : undefined} onClick={() => setTab(id)}>{label}</button>)}
       <span>Observed anatomy · One visit · No prediction</span>
     </nav>
-    {tab === "native" ? <NativeWorkflow /> : error ? <div className="brain-loading" role="alert"><Brain size={40} /><h1>Research case unavailable</h1><p>{error}</p>
+    {tab === "native" ? <NativeWorkflow /> : tab === "compare" ? <CompareVisits /> : error ? <div className="brain-loading" role="alert"><Brain size={40} /><h1>Research case unavailable</h1><p>{error}</p>
       <p>The local case must be prepared and your account enabled for research imaging.</p><button onClick={() => setAttempt(v => v + 1)}>Try again</button></div>
       : !data ? <div className="brain-loading" role="status"><Brain size={40} /><h1>Opening your brain study</h1><p>{progress}</p><progress aria-label="Loading imaging artifacts" /></div>
       : <>
