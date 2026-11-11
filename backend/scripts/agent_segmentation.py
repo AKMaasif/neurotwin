@@ -20,17 +20,21 @@ def prepare(ids: list[str], out: Path) -> None:
     out.mkdir(parents=True, exist_ok=True)
     for mri in ids:
         data, _, _, zooms = O._load(mri, "mpr-1")
-        nib.save(nib.Nifti1Image(np.asarray(data, np.float32), np.diag([*zooms, 1.0])), out / f"{mri}.nii.gz")
-        print("wrote", out / f"{mri}.nii.gz", "shape", data.shape, "voxel", zooms)
+        affine = nib.load(str(O._raw_dir(mri) / "mpr-1.nifti.hdr")).affine  # keep the file's own orientation: tools need it
+        nib.save(nib.Nifti1Image(np.asarray(data, np.float32), affine), out / f"{mri}.nii.gz")
+        print("wrote", out / f"{mri}.nii.gz", "shape", data.shape, "voxel", zooms, "axes", "".join(nib.aff2axcodes(affine)))
 
 
 def import_seg(mri: str, seg: Path, tool: str, version: str) -> None:
     import nibabel as nib
+    from app import agent_analysis as A
     data, _, _, _ = O._load(mri, "mpr-1")
-    got = nib.load(str(seg)).shape
-    got = got[:3] if len(got) > 3 and got[3] == 1 else got
-    if tuple(got) != tuple(data.shape):
-        sys.exit(f"Segmentation shape {got} does not match the scan {data.shape}. Use the output in the input's own space.")
+    img = nib.load(str(seg))
+    arr_shape = img.shape[:3]
+    class _S:  # shape holder for the coverage check
+        shape = arr_shape
+    if not A._covers(_S, img.affine, data.shape, A.scan_affine(mri, "mpr-1")):
+        sys.exit("The segmentation does not cover the scan's field of view. Segment the file written by the prepare step.")
     dest = O.root() / "segmentations" / mri
     dest.mkdir(parents=True, exist_ok=True)
     shutil.copy(seg, dest / ("seg.nii.gz" if str(seg).endswith(".gz") else "seg.nii"))
