@@ -113,7 +113,26 @@ export type Oasis2Visit = {
 };
 export type Oasis2Subject = { subject_id: string; group_label_from_dataset: string | null; level1_compare: boolean; level2_trend: boolean; ready: boolean; visits: Oasis2Visit[] };
 
+export type AgentStep = { key: string; label: string; state: string; detail: string | null };
+export type AgentRegion = { label: number; name: string; earlier_mm3: number; later_mm3: number; difference_mm3: number; difference_pct: number | null;
+  earlier_voxels: number; later_voxels: number; uncertainty: null; status: string; review_notes: string[] };
+export type AgentRun = {
+  run_id: string; earlier: string; later: string; scan: string; state: string; parent_run_id: string | null; steps: AgentStep[];
+  validation: { status: string; blockers: string[]; limitations: string[]; interval: { months: number; days: number; nearest_target_months: number | null; within_requested_window: boolean } | null };
+  alignment: null | { method: string; tool: string; correlation_before: number; correlation_after: number; rotation_deg: number; shift_mm_voxel_frame: number; flags: string[]; mask: string };
+  segmentation_tool?: { tool: string; version: string };
+  measurements?: { unit: string; earlier_total_mm3: number; later_total_mm3: number; source: string; regions: AgentRegion[] };
+  review?: { flags: string[]; note: string };
+  report?: { status: string; author: string; sections: Record<string, string[]> };
+};
+export type AgentPair = { subject_id: string; earlier: string; later: string; segmented: boolean; interval: { months: number; nearest_target_months: number | null; within_requested_window: boolean } };
+
 export const api = {
+  agentPairs: () => get<{ pairs: AgentPair[] }>("/api/imaging/agent/pairs"),
+  agentStart: (earlier: string, later: string) => post<AgentRun>("/api/imaging/agent/runs", { earlier, later }),
+  agentRun: (id: string) => get<AgentRun>(`/api/imaging/agent/runs/${id}`),
+  agentCancel: (id: string) => post<AgentRun>(`/api/imaging/agent/runs/${id}/cancel`),
+  agentRetry: (id: string) => post<AgentRun>(`/api/imaging/agent/runs/${id}/retry`),
   oasis2Info: (mri: string) => get<{ shape: number[]; voxel_mm: number[]; frame: string }>(`/api/imaging/oasis2/visits/${mri}/info`),
   oasis2Subjects: () => get<{ subjects: Oasis2Subject[]; summary: Record<string, number> }>("/api/imaging/oasis2/subjects"),
   demoAccounts: () => get<DemoAccount[]>("/api/demo-accounts"),

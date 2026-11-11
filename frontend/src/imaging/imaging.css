@@ -48,3 +48,30 @@
 .cmp-limits { margin: 0; padding-inline-start: 20px; display: grid; gap: 6px; color: #3d566b; font-size: 14px; }
 .cmp-empty { background: #fff; border: 1px dashed #b9c9d6; border-radius: 14px; padding: 24px; }
 @media (max-width: 800px) { .cmp-grid { grid-template-columns: 1fr; } }
+
+/* Agent Analysis */
+
+
+.ag-pick select { min-width: 22rem; max-width: 100%; }
+.ag h2 { margin: 0 0 6px; font-size: 20px; } .ag h2 small { font-weight: 400; font-size: 13px; color: #3d566b; margin-inline-start: 8px; }
+.ag-steps li { margin: 0; } .ag-chip { display: inline-block; }
+.ag-run { padding: .7rem 1.2rem; font-weight: 600; }
+.ag-steps ol { list-style: none; padding: 0; display: grid; gap: .5rem; }
+.ag-steps li { border-left: 4px solid #8aa0b2; padding: .4rem .75rem; background: rgba(18, 48, 74, .04); }
+.ag-steps li p { margin: .2rem 0 0; font-size: .9rem; }
+.ag-steps .ag-done { border-color: #2f7f95; } .ag-steps .ag-warning { border-color: #b7791f; }
+.ag-steps .ag-failed, .ag-steps .ag-blocked { border-color: #b3261e; } .ag-steps .ag-running { border-color: #12304a; }
+.ag-chip { font-size: .75rem; padding: .1rem .5rem; border-radius: 999px; background: #e3ebf1; color: #12304a; margin-right: .4rem; }
+.ag-actions { display: flex; gap: .5rem; flex-wrap: wrap; margin: .5rem 0; }
+.ag-stage { overflow: hidden; background: #000; }
+.ag-zoom { position: relative; transform-origin: center; }
+.ag-zoom img { display: block; width: 100%; height: auto; }
+.ag-zoom img.ag-ov { position: absolute; inset: 0; image-rendering: pixelated; pointer-events: none; }
+.ag-key { display: inline-block; width: .8rem; height: .8rem; vertical-align: middle; }
+.ag-loss { background: #dc2828; } .ag-gain { background: #285adc; }
+.ag-scroll { overflow-x: auto; }
+.ag-table table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+.ag-table th, .ag-table td { border-bottom: 1px solid #d5dee6; padding: .3rem .5rem; text-align: left; }
+.ag-table td button { background: none; border: 0; text-decoration: underline; cursor: pointer; padding: 0; color: inherit; }
+.ag-sel { background: rgba(47, 127, 149, .15); }
+.ag-evidence, .ag-need { border: 1px solid #8aa0b2; padding: .75rem 1rem; margin-top: .75rem; }
