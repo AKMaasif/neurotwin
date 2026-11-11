@@ -1,0 +1,4 @@
+# Needed for the OASIS-2 manifest and the stage 9/10 research experiment (and their tests).
+numpy>=1.26
+openpyxl>=3.1
+scikit-learn>=1.4
