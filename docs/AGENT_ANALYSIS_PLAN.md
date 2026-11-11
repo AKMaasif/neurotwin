@@ -1,7 +1,8 @@
 # Agent Analysis: two-scan comparison — inventory, gaps and staged plan
 
-Status: plan plus Stages 1–2 implemented and checked on real OASIS-2 scans. Stages 3–6 are not built yet; this page says what each
-needs. Nothing here is a diagnosis, a clinical measurement or a prediction.
+Status: all stages are built. Stages 1–2 (validation, alignment) are verified on real OASIS-2 scans. Stages 3–6 run only when
+segmentations from a validated tool are imported (`AGENT_ANALYSIS_SEGMENTATION.md`); they are tested on synthetic fixtures and have
+not yet run on real segmentations. Nothing here is a diagnosis, a clinical measurement or a prediction.
 
 ## What was asked
 
@@ -43,10 +44,13 @@ every highlighted region traces back to a measurement.
 |---|---|---|---|
 | 1 | Pair selection and validation | **Built** | same subject, recorded dates, interval classed against 12/15/18 mo, headers and intensities checked, mismatches become limitations |
 | 2 | Native alignment | **Built** | derived files stored apart from originals; similarity must improve and parameters must be plausible, else the run is flagged |
-| 3 | Quality review | Planned | intensity, motion and coverage checks per scan, using repeats for spread |
-| 4 | Anatomical analysis | Blocked on a validated tool | selectable layers, each tagged with the tool and version that produced it |
-| 5 | Longitudinal comparison | Blocked on stage 4 | per-region differences, with processing and acquisition differences kept apart from change |
-| 6 | Findings review, explanation, report, viewer | Planned | text may only restate verified numbers; every overlay region links to its measurement |
+| 3 | Quality review | **Built** | per-scan range and coverage plus alignment fit; no repeat spread, so no uncertainty |
+| 4 | Anatomical analysis | **Built as import** | SynthSeg output run outside NeuroTwin; tool and version recorded; mixed versions refused; labels carried to the earlier anatomy by nearest label |
+| 5 | Longitudinal comparison | **Built as import** | per-region volumes from voxel counts in each scan's own space; uncertainty shown as not estimated |
+| 6 | Findings review, report, viewer | **Built** | deterministic rules and template (no language model); every region links to its measurements; viewer has layers, opacity, zoom, saved views |
+
+Not done: a measurement-uncertainty estimate (needs the extracted repeat scans), 3D rotation, DICOM input, and a run on real
+segmentations (waiting for SynthSeg output from the project owner).
 
 ## Rules the build keeps
 

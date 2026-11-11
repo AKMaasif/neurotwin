@@ -237,7 +237,7 @@ def align(run_id: str) -> dict:
                             "mask": "voxels above the earlier scan's 60th intensity percentile (not a brain mask)",
                             "files": ["later_aligned.npy", "later_to_earlier.mat"]}
         step.update(state="warning" if flags else "done", detail="; ".join(flags) or "Aligned. Derived files stored separately from the originals.")
-        run["state"] = "partial"  # becomes complete only when every later step has run
+        run["state"] = "aligned"  # later steps still to run; ends as complete or partial
     except Exception as exc:
         step.update(state="failed", detail=f"{type(exc).__name__}: alignment did not finish.")
         run["state"] = "failed"
@@ -249,7 +249,7 @@ def cancel(run_id: str) -> dict | None:
     run = load_run(run_id)
     if run is None:
         return None
-    if run["state"] in ("queued", "running"):
+    if run["state"] in ("queued", "running", "aligned"):
         _CANCEL.setdefault(run_id, threading.Event()).set()
         run["state"] = "cancelled"
         run["steps"][1].update(state="cancelled", detail="Cancelled.")
@@ -301,7 +301,7 @@ def analyze(run_id: str) -> dict:
     import numpy as np
     run = load_run(run_id)
     run_dir = runs_root() / run_id
-    if run["state"] != "partial":
+    if run["state"] != "aligned":
         return run
     v = run["validation"]
     qprob = [p for k in ("earlier", "later") for p in v["checks"][k]["problems"]]
