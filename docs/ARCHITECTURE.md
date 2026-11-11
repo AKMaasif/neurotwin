@@ -90,3 +90,16 @@ Interactive API docs: http://127.0.0.1:8000/docs while the server runs.
   A passing draft goes to the clinician to approve, edit or reject. No model output reaches a participant or
   family without that approval. Providers sit behind `llm.get_client()`; with no key the feature is simply off.
 - **Imaging research module**: a separate service and store, linked by participant id and consent scope only.
+
+## Imaging research preview and native workflow
+
+The current research case is separate from synthetic clinical participants. Explicit research-user configuration is
+required; native runs are also scoped to the importing account. `imaging.py` serves the legacy OASIS derivatives.
+`native_imaging_api.py` exposes original scan import, run state, cancel/retry and protected display buffers.
+`native_imaging.py` preserves source hashes, performs bounded technical checks, and creates display artifacts without
+FreeSurfer. `native_scans` and `native_runs` are additive tables; large artifacts stay in ignored local storage.
+
+Native preparation runs in background tasks with a process-local single-worker semaphore. The database persists state;
+restart recovery marks stale queued/running attempts failed for explicit retry. This initial runner requires one server
+process per database. The frontend defaults to the native workflow; the legacy viewer loads only when requested.
+Native segmentation, anatomical measurements, agents and prediction are explicitly blocked until implemented/evaluated.
