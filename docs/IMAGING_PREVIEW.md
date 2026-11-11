@@ -6,7 +6,7 @@ This is NeuroTwin's own local imaging page, using supplied FreeSurfer derivative
 
 Run `start-imaging.ps1` from the project root. It starts the app on http://127.0.0.1:8001 and explicitly enables the local demo clinician (`demo-dr-layla`) for this research case. Open the clinician view, then **Brain Analytics** (or **تحليل صور الدماغ**). The imaging tools are currently an English research preview.
 
-This account is a shared local demo identity, not production research authentication. Keep this preview on loopback. Imaging is disabled by default for every account unless its ID appears in `NEUROTWIN_IMAGING_USERS`; family/participant accounts cannot access it even if mistakenly listed. There is no linkage between the research subject and synthetic clinical participants.
+In demo mode every clinician demo account can open Brain Analytics, so anyone who enters through the landing page's clinical card can try the Images & 3D, Import & processing, Compare visits, Measurements and Source & quality tabs. Participant and family accounts never have access, and signed-out visitors are refused. Set `NEUROTWIN_IMAGING_OPEN=0` to return to the explicit list in `NEUROTWIN_IMAGING_USERS`. All clinician demo visitors share one demo identity, so they can see each other's native imports. Keep the demo off the public internet unless the data provider's terms allow serving the scans there.
 
 ## What works
 
