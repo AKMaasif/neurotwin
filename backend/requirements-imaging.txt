@@ -1,0 +1,3 @@
+# Optional local artifact preparation; the API itself does not require these.
+nibabel>=5.3,<6
+numpy>=2.1,<3
