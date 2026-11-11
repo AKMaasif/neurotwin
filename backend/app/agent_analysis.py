@@ -20,9 +20,20 @@ DAYS_PER_MONTH = 365.25 / 12
 VISIT = re.compile(r"^OAS2_\d{4}_MR\d{1,2}$")
 RUN_ID = re.compile(r"^[0-9a-f]{12}$")
 
+SEG_LABELS = {  # SynthSeg 1.0 label names (BBillot/SynthSeg, Apache-2.0); 0 is background and is never measured
+    2: "left cerebral white matter", 3: "left cerebral cortex", 4: "left lateral ventricle", 5: "left inferior lateral ventricle",
+    7: "left cerebellum white matter", 8: "left cerebellum cortex", 10: "left thalamus", 11: "left caudate", 12: "left putamen",
+    13: "left pallidum", 14: "3rd ventricle", 15: "4th ventricle", 16: "brain-stem", 17: "left hippocampus", 18: "left amygdala",
+    26: "left accumbens area", 28: "left ventral DC", 41: "right cerebral white matter", 42: "right cerebral cortex",
+    43: "right lateral ventricle", 44: "right inferior lateral ventricle", 46: "right cerebellum white matter",
+    47: "right cerebellum cortex", 49: "right thalamus", 50: "right caudate", 51: "right putamen", 52: "right pallidum",
+    53: "right hippocampus", 54: "right amygdala", 58: "right accumbens area", 60: "right ventral DC"}
+SMALL_MM3 = 1000.0   # regions smaller than this are flagged: a few voxels of boundary shift is a large percentage
+TOTAL_DISAGREE = 0.05
+
 STEP_NEEDS = {
-    "quality_review": "Per-scan motion and coverage checks with a same-session repeat spread (mpr-2..4 are not extracted yet).",
-    "anatomical_analysis": "A validated segmentation tool and weights (FreeSurfer, FastSurfer or SynthSeg) and a brain mask tool; not reachable here.",
+    "quality_review": "Per-scan checks run; a same-session repeat spread (mpr-2..4, not extracted) is still needed for uncertainty.",
+    "anatomical_analysis": "Segmentation output for both scans from a validated tool (SynthSeg): see docs/AGENT_ANALYSIS_SEGMENTATION.md.",
     "longitudinal_comparison": "Regional volumes from the anatomical step on both scans, with one tool version.",
     "findings_review": "Measurements to review; none exist until the steps above run.",
     "report": "Verified measurements. Text may only restate them; real data is not sent to an external text provider.",
@@ -226,7 +237,7 @@ def align(run_id: str) -> dict:
                             "mask": "voxels above the earlier scan's 60th intensity percentile (not a brain mask)",
                             "files": ["later_aligned.npy", "later_to_earlier.mat"]}
         step.update(state="warning" if flags else "done", detail="; ".join(flags) or "Aligned. Derived files stored separately from the originals.")
-        run["state"] = "partial"  # later steps are unavailable, so the run never reads as complete
+        run["state"] = "aligned"  # later steps still to run; ends as complete or partial
     except Exception as exc:
         step.update(state="failed", detail=f"{type(exc).__name__}: alignment did not finish.")
         run["state"] = "failed"
@@ -238,7 +249,7 @@ def cancel(run_id: str) -> dict | None:
     run = load_run(run_id)
     if run is None:
         return None
-    if run["state"] in ("queued", "running"):
+    if run["state"] in ("queued", "running", "aligned"):
         _CANCEL.setdefault(run_id, threading.Event()).set()
         run["state"] = "cancelled"
         run["steps"][1].update(state="cancelled", detail="Cancelled.")
@@ -255,3 +266,150 @@ def layer_volume(run: dict, layer: str):
         return np.load(path)
     mri = {"earlier": run["earlier"], "later_original": run["later"]}.get(layer)
     return None if mri is None else O._load(mri, run["scan"])[0]
+
+
+# ---- stages 3-6: quality review, imported segmentation, volume comparison, findings review, report ----
+
+def seg_dir(mri_id: str) -> Path:
+    return O.root() / "segmentations" / mri_id
+
+
+def _read_seg(mri_id: str):
+    """Segmentation produced elsewhere by a named tool. Returns (labels array, tool record) or (None, reason)."""
+    d = seg_dir(mri_id)
+    tool_file = d / "tool.json"
+    seg_file = next((d / n for n in ("seg.nii.gz", "seg.nii", "seg.img") if (d / n).is_file()), None)
+    if seg_file is None or not tool_file.is_file():
+        return None, f"no segmentation and tool record for {mri_id} (expected seg.nii.gz and tool.json in segmentations/{mri_id}/)"
+    import nibabel as nib
+    import numpy as np
+    tool = json.loads(tool_file.read_text())
+    if not tool.get("tool") or not tool.get("version"):
+        return None, f"tool.json for {mri_id} must name the tool and its version"
+    arr = np.asarray(nib.load(str(seg_file)).dataobj)
+    while arr.ndim > 3 and arr.shape[-1] == 1:
+        arr = arr[..., 0]
+    return np.rint(arr).astype("int16"), tool
+
+
+def _set(run: dict, key: str, state: str, detail: str) -> None:
+    next(s for s in run["steps"] if s["key"] == key).update(state=state, detail=detail)
+
+
+def analyze(run_id: str) -> dict:
+    """Runs after alignment. Each step reports exactly what it could do."""
+    import numpy as np
+    run = load_run(run_id)
+    run_dir = runs_root() / run_id
+    if run["state"] != "aligned":
+        return run
+    v = run["validation"]
+    qprob = [p for k in ("earlier", "later") for p in v["checks"][k]["problems"]]
+    align = run["alignment"]
+    _set(run, "quality_review", "warning" if (qprob or align["flags"]) else "done",
+         "; ".join(qprob + align["flags"]) or f"Intensity range and coverage normal for both scans; alignment similarity {align['correlation_after']}. No repeat-scan spread, so measurement uncertainty is not estimated.")
+    es, et = _read_seg(run["earlier"])
+    ls, lt = _read_seg(run["later"])
+    if es is None or ls is None:
+        reason = "; ".join(x for x in (es is None and et, ls is None and lt) if x)
+        _set(run, "anatomical_analysis", "unavailable", "Needs: " + reason)
+        for k in ("longitudinal_comparison", "findings_review", "report"):
+            _set(run, k, "unavailable", "Needs the anatomical analysis step first.")
+        run["state"] = "partial"
+        _write(run_dir, run)
+        return run
+    d1, _, _, zooms = O._load(run["earlier"], run["scan"])
+    problems = []
+    if es.shape != d1.shape or ls.shape != d1.shape:
+        problems.append("segmentation size does not match the scan")
+    if (et["tool"], et["version"]) != (lt["tool"], lt["version"]):
+        problems.append("the two segmentations came from different tools or versions")
+    unknown = sorted((set(np.unique(es).tolist()) | set(np.unique(ls).tolist())) - set(SEG_LABELS) - {0})
+    if problems:
+        _set(run, "anatomical_analysis", "failed", "; ".join(problems))
+        run["state"] = "failed"
+        _write(run_dir, run)
+        return run
+    # bring the later labels onto the earlier anatomy with the stored rigid transform (nearest label, never blended)
+    import ants
+    fixed = ants.from_numpy(np.ascontiguousarray(d1), spacing=tuple(zooms))
+    moving = ants.from_numpy(ls.astype("float32"), spacing=tuple(zooms))
+    warped = ants.apply_transforms(fixed=fixed, moving=moving, transformlist=[str(run_dir / "later_to_earlier.mat")], interpolator="genericLabel")
+    np.save(run_dir / "earlier_seg.npy", es)
+    np.save(run_dir / "later_seg_aligned.npy", np.rint(warped.numpy()).astype("int16"))
+    _set(run, "anatomical_analysis", "done",
+         f"Segmentation imported from {et['tool']} {et['version']} for both scans; labels carried to the earlier anatomy without blending."
+         + (f" Labels outside the known list were ignored: {unknown}." if unknown else ""))
+    run["segmentation_tool"] = {"tool": et["tool"], "version": et["version"], "source": et.get("source")}
+    vox = float(np.prod(zooms))
+    rows, e_tot, l_tot = [], 0.0, 0.0
+    for lab, name in SEG_LABELS.items():
+        ne, nl = int((es == lab).sum()), int((ls == lab).sum())
+        e_mm3, l_mm3 = ne * vox, nl * vox
+        e_tot += e_mm3
+        l_tot += l_mm3
+        rows.append({"label": lab, "name": name, "earlier_mm3": round(e_mm3, 1), "later_mm3": round(l_mm3, 1),
+                     "difference_mm3": round(l_mm3 - e_mm3, 1), "difference_pct": None if e_mm3 == 0 else round(100 * (l_mm3 - e_mm3) / e_mm3, 2),
+                     "earlier_voxels": ne, "later_voxels": nl, "uncertainty": None})
+    run["measurements"] = {"unit": "mm3", "voxel_mm3": round(vox, 3), "source": "voxel counts of the imported segmentation in each scan's own space (not resampled)",
+                           "earlier_total_mm3": round(e_tot, 1), "later_total_mm3": round(l_tot, 1), "regions": rows}
+    _set(run, "longitudinal_comparison", "done", "Regional volumes measured in each scan's own space; no uncertainty range exists yet.")
+    # findings review: deterministic rules, no model
+    flags = []
+    total_pct = None if e_tot == 0 else (l_tot - e_tot) / e_tot
+    if total_pct is None or abs(total_pct) > TOTAL_DISAGREE:
+        flags.append("Total labelled volume differs by more than 5% between scans, which points to acquisition or processing differences rather than anatomy." if total_pct is not None else "Earlier scan has no labelled volume.")
+    findings = []
+    for r in rows:
+        why = ["No measurement-uncertainty estimate exists, so the size of this difference cannot be judged against noise."]
+        if min(r["earlier_mm3"], r["later_mm3"]) < SMALL_MM3:
+            why.append("Small region: a few voxels at the boundary are a large percentage.")
+        if r["earlier_voxels"] == 0 or r["later_voxels"] == 0:
+            why.append("Region absent in one scan.")
+        r["status"] = "uncertain"
+        r["review_notes"] = why
+        findings.append({"label": r["label"], "name": r["name"], "status": "uncertain", "notes": why})
+    run["review"] = {"flags": flags, "findings": findings, "rules": ["uncertainty not estimated", "small region", "region absent", "total volume disagreement"],
+                     "note": "Measured differences, not findings of disease. Clinical interpretation is left to a clinician."}
+    _set(run, "findings_review", "warning", "; ".join(flags) or "All regional differences are marked uncertain until a measurement-uncertainty estimate exists.")
+    top = sorted((r for r in rows if r["difference_pct"] is not None), key=lambda r: -abs(r["difference_pct"]))[:5]
+    run["report"] = {"status": "draft for clinical review", "author": "deterministic template; no language model used",
+                     "sections": {
+                         "measured": [f"{r['name']}: {r['earlier_mm3']} to {r['later_mm3']} mm3 ({r['difference_pct']:+.1f}%)" for r in top],
+                         "quality_limitations": v["limitations"] + align["flags"],
+                         "processing": [f"Alignment: {align['method']} ({align['tool']}), similarity {align['correlation_before']} to {align['correlation_after']}",
+                                        f"Segmentation: {run['segmentation_tool']['tool']} {run['segmentation_tool']['version']}"],
+                         "needs_clinical_review": ["Every regional difference is marked uncertain; no noise estimate exists.",
+                                                   "Nothing here is a diagnosis; no region is labelled as diseased."] + flags}}
+    _set(run, "report", "done", "Draft report built from the measurements above; needs clinical review.")
+    run["state"] = "complete"
+    _write(run_dir, run)
+    return run
+
+
+def candidate_pairs() -> list[dict]:
+    """Every ordered pair of locally extracted visits of one person, with its interval class."""
+    manifest = O._manifest()
+    out = []
+    for s in manifest["subjects"]:
+        ready = [v for v in s["visits"] if O._scans(v["mri_id"])]
+        for i, a in enumerate(ready):
+            for b in ready[i + 1:]:
+                iv = classify_interval(b["delay_days"] - a["delay_days"])
+                out.append({"subject_id": s["subject_id"], "earlier": a["mri_id"], "later": b["mri_id"], "interval": iv,
+                            "segmented": seg_dir(a["mri_id"]).is_dir() and seg_dir(b["mri_id"]).is_dir()})
+    return sorted(out, key=lambda p: (not p["interval"]["within_requested_window"], p["subject_id"]))
+
+
+def layer_labels(run: dict, layer: str):
+    import numpy as np
+    d = runs_root() / run["run_id"]
+    if layer in ("earlier_seg", "later_seg_aligned") and (d / f"{layer}.npy").is_file():
+        return np.load(d / f"{layer}.npy")
+    return None
+
+
+def run_all(run_id: str) -> dict:
+    """The Agent Analysis button: alignment, then quality review through report, in order."""
+    align(run_id)
+    return analyze(run_id)
