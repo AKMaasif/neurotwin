@@ -28,6 +28,7 @@ from .models import AccessGrant, ActivitySession, AuditEvent, CarePlanItem, Draf
 from .auth import router as auth_router
 from .auth import user_out
 from .imaging import router as imaging_router
+from .oasis2_api import router as oasis2_router
 from .native_imaging_api import ImagingRequestGuard, router as native_imaging_router
 from .security import current_user, get_db, require_evidence_access
 
@@ -205,7 +206,7 @@ def review_out(r: ReviewItem) -> dict:
 def create_app(database_url: str | None = None, seed_demo: bool | None = None, serve_frontend: bool = True,
                demo_password: str | None = None, secure_cookies: bool | None = None,
                session_hours: float | None = None) -> FastAPI:
-    app = FastAPI(title="IFHAS-NeuroTwin API", version="0.2.0",
+    app = FastAPI(title="IFHAS-NeuroTwin API", version="0.3.0",
                   description="Research prototype. Not a medical device. Synthetic demo data only.")
     app.state.db = Database(database_url or config.DATABASE_URL)
     app.state.settings = {
@@ -238,6 +239,7 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
     # Sign-in, sign-out, account settings -----------------------------------------------------------------------
     app.include_router(auth_router)
     app.include_router(imaging_router)
+    app.include_router(oasis2_router)
     app.include_router(native_imaging_router)
 
     @app.get("/api/demo-accounts")

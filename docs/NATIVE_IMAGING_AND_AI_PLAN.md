@@ -118,6 +118,8 @@ Exit: live agent outputs are source-grounded and reviewed; no raw-MRI disease re
 - [ ] Compare against meaningful baselines; evaluate error, calibration, uncertainty, subgroup/site behavior and abstention.
 - [ ] Validate the final held-out model before enabling the corresponding UI result.
 
+Concrete design for stages 8–10 on OASIS-2, including targets, splits, baselines and the user-facing levels, is in [IMAGING_WORKFLOW_STAGES_1_10.md](IMAGING_WORKFLOW_STAGES_1_10.md).
+
 Exit: only outcomes justified by evidence become available. One person's data can test the application but cannot establish general disease-detection or forecasting performance.
 
 ## Completion definition

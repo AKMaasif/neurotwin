@@ -21,9 +21,14 @@ HEADERS = {"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosn
 
 
 def research_access(request: Request, user: User = Depends(current_user)) -> User:
-    configured = os.environ.get("NEUROTWIN_IMAGING_USERS", "")
-    allowed = {v.strip() for v in configured.split(",") if v.strip()}
-    if user.role != "clinician" or user.id not in allowed:
+    """Signed-in clinician accounts only. In demo mode every clinician demo account may open the imaging pages, so
+    visitors can try them; set NEUROTWIN_IMAGING_OPEN=0 to go back to the explicit list in NEUROTWIN_IMAGING_USERS.
+    Participant and family accounts never have access."""
+    if user.role != "clinician":
+        raise HTTPException(403, "Research imaging is available only to clinician accounts.")
+    allowed = {v.strip() for v in os.environ.get("NEUROTWIN_IMAGING_USERS", "").split(",") if v.strip()}
+    open_demo = bool(getattr(request.app.state, "demo", False)) and os.environ.get("NEUROTWIN_IMAGING_OPEN", "1") != "0"
+    if user.id not in allowed and not open_demo:
         raise HTTPException(403, "Research imaging is available only to configured research users.")
     return user
 
