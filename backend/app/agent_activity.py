@@ -57,6 +57,8 @@ NODES = [
      "unavailable": PLANNED},
     {"id": "followup_planner", "step": None, "kind": "ai", "label": "Follow-up planner (agent)", "deps": ["findings_review"], "ai_node": True,
      "role": "A model (Gemini) drafts suggestions for the clinician to consider, each tied to a limitation or flag. No medication, treatment, referral or urgency. The clinician accepts or rejects each one.", "unavailable": PLANNED},
+    {"id": "family_summary", "step": None, "kind": "ai", "label": "Family summary (agent)", "deps": ["clinician_review"], "ai_node": True,
+     "role": "A model (Gemini) drafts a gentle, plain summary for an authorised family member. It is released only by a clinician, only with the participant's consent and the family member's authorisation, and hidden when any of these ends.", "unavailable": PLANNED},
     {"id": "evidence_explanation", "step": None, "kind": "ai", "label": "Evidence explanation (agent)", "deps": ["report"], "ai_node": True,
      "role": "A language model (Gemini) drafts an explanation of the measured changes. Every sentence cites numbered facts and a rule-based checker refuses added numbers or claims. English only so far; a draft for clinician review.", "unavailable": PLANNED},
     {"id": "report_review_ai", "step": None, "kind": "ai", "label": "Report review (agent)", "deps": ["evidence_explanation"], "ai_node": True,
