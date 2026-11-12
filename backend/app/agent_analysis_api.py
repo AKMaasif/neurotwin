@@ -11,6 +11,8 @@ from . import agent_analysis as A
 from . import agent_explainer as X
 from . import agent_ledger as L
 from . import agent_runtime as R
+from . import agent_visual as V
+from . import agent_visual_ai as VA
 from . import oasis2_api as O
 from . import services
 from .imaging import HEADERS, research_access
@@ -107,6 +109,23 @@ def ai_explain(run_id: str, _: User = Depends(research_access)):
         raise HTTPException(409, str(e)) from None
 
 
+@router.get("/runs/{run_id}/ai/visual")
+def ai_visual_result(run_id: str, _: User = Depends(research_access)):
+    _get(run_id)
+    return _out({"result": VA.load(A.runs_root() / run_id), "images_allowed": R.images_allowed(), "mode": R.mode()})
+
+
+@router.post("/runs/{run_id}/ai/visual")
+def ai_visual(run_id: str, _: User = Depends(research_access)):
+    run = _get(run_id)
+    if run["state"] in ("queued", "running", "aligned"):
+        raise HTTPException(409, "Wait for the analysis to finish.")
+    try:
+        return _out(VA.observe(run, A.runs_root() / run_id))
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
+
+
 @router.post("/runs/{run_id}/cancel")
 def cancel(run_id: str, _: User = Depends(research_access)):
     _get(run_id)
@@ -138,8 +157,6 @@ def activity(run_id: str, after: int = 0, _: User = Depends(research_access)):
 
 @router.get("/runs/{run_id}/slice.png")
 def slice_png(run_id: str, layer: str = "earlier", axis: int = 2, index: int = 0, _: User = Depends(research_access)):
-    import numpy as np
-    from PIL import Image
     if layer not in ("earlier", "later_original", "later_aligned") or axis not in AXES:
         raise HTTPException(422, "Unknown layer or axis.")
     run = _get(run_id)
@@ -148,19 +165,7 @@ def slice_png(run_id: str, layer: str = "earlier", axis: int = 2, index: int = 0
         raise HTTPException(404, "This layer is not available for this run.")
     if not 0 <= index < data.shape[axis]:
         raise HTTPException(422, f"index must be between 0 and {data.shape[axis] - 1}.")
-    ref = A.layer_volume(run, "earlier")  # one display range for every layer so brightness is comparable
-    lo, hi = (float(v) for v in np.percentile(ref[ref > 0], [1, 99]))
-    gray = np.clip((np.take(data, index, axis=axis) - lo) / max(hi - lo, 1e-6), 0, 1) * 255
-    buf = io.BytesIO()
-    image = Image.fromarray(np.rot90(gray).astype(np.uint8), mode="L")
-    zooms = run["validation"]["checks"]["earlier"]["voxel_mm"]
-    i, j = [k for k in range(3) if k != axis]
-    zi, zj = zooms[i] or 1.0, zooms[j] or 1.0
-    if abs(zi - zj) > 1e-3:  # true proportions when voxels are not cubes
-        m = min(zi, zj)
-        image = image.resize((max(1, round(image.width * zi / m)), max(1, round(image.height * zj / m))), Image.BILINEAR)
-    image.save(buf, format="PNG")
-    return Response(buf.getvalue(), media_type="image/png", headers=HEADERS)
+    return Response(V.png(V.render_slice(run, layer, axis, index)), media_type="image/png", headers=HEADERS)
 
 
 PALETTE = [(230, 25, 75), (60, 180, 75), (255, 225, 25), (0, 130, 200), (245, 130, 48), (145, 30, 180), (70, 240, 240), (240, 50, 230),

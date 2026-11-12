@@ -62,9 +62,11 @@ class GeminiClient:
         except (httpx.HTTPError, KeyError, ValueError) as e:
             _raise("Gemini", e)
 
-    def complete(self, system: str, user: str, json_mode: bool = False) -> Reply:
+    def complete(self, system: str, user: str, json_mode: bool = False, images: list[bytes] | None = None) -> Reply:
+        """`images` are PNG bytes sent after the text, in order (inline data). The image request shape is unverified until a live call has been made."""
+        parts = [{"text": user}] + [{"inline_data": {"mime_type": "image/png", "data": base64.b64encode(b).decode()}} for b in images or []]
         body = {"system_instruction": {"parts": [{"text": system}]},
-                "contents": [{"role": "user", "parts": [{"text": user}]}],
+                "contents": [{"role": "user", "parts": parts}],
                 "generationConfig": {"temperature": 0.2}}
         if json_mode:
             body["generationConfig"]["responseMimeType"] = "application/json"
@@ -114,9 +116,12 @@ class MetaClient:
         except (httpx.HTTPError, KeyError, ValueError) as e:
             _raise("Meta", e)
 
-    def complete(self, system: str, user: str, json_mode: bool = False) -> Reply:
+    def complete(self, system: str, user: str, json_mode: bool = False, images: list[bytes] | None = None) -> Reply:
+        """`images` are PNG bytes sent as data-URI image parts after the text (OpenAI style). Unverified until a live call has been made."""
+        content = user if not images else [{"type": "text", "text": user}] + [
+            {"type": "image_url", "image_url": {"url": "data:image/png;base64," + base64.b64encode(b).decode()}} for b in images]
         body = {"model": self.model, "temperature": 0.2,
-                "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
+                "messages": [{"role": "system", "content": system}, {"role": "user", "content": content}]}
         if json_mode:
             body["response_format"] = {"type": "json_object"}
         try:

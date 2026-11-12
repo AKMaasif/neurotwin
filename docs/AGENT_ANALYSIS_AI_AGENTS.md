@@ -304,3 +304,8 @@ The owner asked for the agent to give an early prediction and the health stage o
   The result is stored in `ai.json`, labelled "AI draft, not reviewed", and the two AI nodes of the Agent Activity graph show their real status. English only.
   Without a provider the agent is "unavailable"; scripted mock text is always labelled and its cross-check is never counted as real. Tested with stand-in clients only;
   no live Gemini or Meta call has been made yet. A8's model part is A4's judgement; a separate Meta pass over the whole report is not built.
+- **Step 4 done: A9 visual comparison** (`agent_visual.py`, `agent_visual_ai.py`). Rules choose key slices (two per viewing direction: the largest labelled-boundary difference, and the middle),
+  export the earlier and aligned-later PNGs, and a model (Gemini) lists visible differences with a position and a measured region. Rules refuse pointers off tissue, outside the picture,
+  with forbidden wording or any number, or citing no measured region; a pointer is `supported` only if its region is among the five largest measured differences (percent or mm3), else it is listed and not drawn.
+  A second model (Meta) marks each agreed / disputed / not visible; a disputed pointer is not drawn. Pointers are drawn on the aligned later image in their own layer, apart from the measured-change overlay, labelled "not measured".
+  Images leave the server only with `NEUROTWIN_AGENTS_SEND_IMAGES=1` and the user's tick box; each image is named in `egress.jsonl`. The request shapes for images are unverified until a live call is made. Viewing directions are called "voxel axis" because the file orientation is not assumed.

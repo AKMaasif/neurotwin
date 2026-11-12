@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api, AgentAi, AgentAiStatus, AgentPair, AgentRegion, AgentRun, AgentSaved } from "../api";
+import { api, AgentAi, AgentVisual, AgentAiStatus, AgentPair, AgentRegion, AgentRun, AgentSaved } from "../api";
 import AgentActivity from "./AgentActivity";
 import AgentCharts, { AlignmentFit } from "./AgentCharts";
 
@@ -19,6 +19,8 @@ export default function AgentAnalysis() {
   const [run, setRun] = useState<AgentRun | null>(null), [liveSignal, setLiveSignal] = useState(0), [replaySignal, setReplaySignal] = useState(0);
   const [recorded, setRecorded] = useState(false), [reveal, setReveal] = useState(4);
   const revealTimer = useRef<number>();
+  const [vis, setVis] = useState<AgentVisual | null>(null), [visInfo, setVisInfo] = useState<{ images_allowed: boolean; mode: string } | null>(null), [visBusy, setVisBusy] = useState(false), [visOk, setVisOk] = useState(false);
+  const [showMeasured, setShowMeasured] = useState(true), [showModel, setShowModel] = useState(true);
   const [ai, setAi] = useState<AgentAi | null>(null), [aiStatus, setAiStatus] = useState<AgentAiStatus | null>(null), [aiBusy, setAiBusy] = useState(false), [aiTick, setAiTick] = useState(0);
   const [axis, setAxis] = useState(2), [index, setIndex] = useState(64), [layers, setLayers] = useState<string[]>(["original"]);
   const [opacity, setOpacity] = useState(0.6), [zoom, setZoom] = useState(1), [region, setRegion] = useState(0), [later, setLater] = useState("later_aligned");
@@ -58,6 +60,14 @@ export default function AgentAnalysis() {
     setAi(null);
     if (run?.report) api.agentAi(run.run_id).then(r => { setAi(r.result); setAiStatus(r.status); }).catch(() => undefined);
   }, [run?.run_id, !!run?.report]);
+  useEffect(() => {
+    setVis(null);
+    if (run?.report) api.agentVisual(run.run_id).then(r => { setVis(r.result); setVisInfo({ images_allowed: r.images_allowed, mode: r.mode }); }).catch(() => undefined);
+  }, [run?.run_id, !!run?.report]);
+  const look = async () => {
+    if (!run) return; setVisBusy(true); setError("");
+    try { setVis(await api.agentLook(run.run_id)); setAiTick(n => n + 1); } catch (e) { setError((e as Error).message); } finally { setVisBusy(false); }
+  };
   const explain = async () => {
     if (!run) return; setAiBusy(true); setError("");
     try { setAi(await api.agentExplain(run.run_id)); setAiTick(n => n + 1); } catch (e) { setError((e as Error).message); } finally { setAiBusy(false); }
@@ -218,6 +228,32 @@ export default function AgentAnalysis() {
         <ul className="ag-ai-checks">{ai.qa.checks.map(c => <li key={c.name}><strong>{c.ok ? (c.warning ? "Warning" : "Passed") : "Failed"}</strong> {c.name}: {c.detail}</li>)}</ul>
         <p className="cmp-note-plain">Drafted by {ai.explanation.model ?? "no model"}{ai.cross_check.model ? `, checked by ${ai.cross_check.model}` : ""}. {ai.note}</p>
         <div className="ag-actions"><button onClick={explain} disabled={aiBusy}>{aiBusy ? "Drafting and checking…" : "Draft again"}</button></div></div>}
+    </section>}
+
+    {run?.report && shown(4) && <section className="ag-ai ag-vis" id="ag-vis" aria-label="AI visual comparison"><h2>AI visual comparison <small>impressions, not measured</small></h2>
+      <p className="cmp-note-plain">Optional. A model (Gemini) looks at the same slices of both scans and points at places where the pictures seem to differ; a second model (Meta) reads them too, and rules refuse pointers on empty background or with forbidden wording. A pointer is drawn only if it matches one of the largest measured differences. These are unvalidated impressions, not findings, not a diagnosis.</p>
+      {!vis && <div className="ag-actions">
+        {visInfo?.mode !== "mock" && <label><input type="checkbox" checked={visOk} onChange={e => setVisOk(e.target.checked)} />I agree that key slices (images) of both scans are sent to Gemini and Meta.</label>}
+        <button onClick={look} disabled={visBusy || visInfo?.mode === "off" || (visInfo?.mode !== "mock" && (!visOk || !visInfo?.images_allowed))}>{visBusy ? "Looking and checking…" : "Compare the scans with AI"}</button>
+        {visInfo?.mode === "off" && <span className="cmp-note-plain">No model provider is configured on this server.</span>}
+        {visInfo && visInfo.mode === "live" && !visInfo.images_allowed && <span className="cmp-note-plain">Sending images is switched off on this server (NEUROTWIN_AGENTS_SEND_IMAGES).</span>}</div>}
+      {vis && <div>
+        <p className={`ag-ai-state ${vis.observer.status === "completed" ? "ok" : "blocked"}`} role="status"><strong>{vis.observer.status === "completed" ? `${vis.observations.length} impression(s)` : "No result"}</strong> · AI, not reviewed by a clinician
+          {vis.observer.scripted && " · scripted demo, no image was looked at"}{vis.observer.status !== "completed" && ` · ${vis.observer.reason ?? vis.observer.status}`}</p>
+        <div className="ag-actions"><label><input type="checkbox" checked={showMeasured} onChange={e => setShowMeasured(e.target.checked)} />Measured change (rule-based)</label>
+          <label><input type="checkbox" checked={showModel} onChange={e => setShowModel(e.target.checked)} />Model impressions (not measured)</label></div>
+        {vis.observer.status === "completed" && <div className="ag-vis-grid">{vis.slices.map(sl => { const q = `axis=${sl.axis}&index=${sl.index}`, mine = vis.observations.filter(o => o.slice === sl.id && o.drawn);
+          return <figure key={sl.id}><figcaption><strong>{sl.id} · {sl.view} slice {sl.index}</strong><span>{sl.reason}</span></figcaption>
+            <div className="ag-vis-pair"><div className="ag-vis-img"><img src={`${base(run.run_id)}/slice.png?layer=earlier&${q}`} alt={`Earlier scan, ${sl.view} slice ${sl.index}`} /><em>Earlier</em></div>
+              <div className="ag-vis-img"><img src={`${base(run.run_id)}/slice.png?layer=later_aligned&${q}`} alt={`Later scan aligned, ${sl.view} slice ${sl.index}`} />
+                {showMeasured && <img className="ag-ov" src={`${base(run.run_id)}/overlay.png?layer=change&${q}`} alt="" />}
+                {showModel && <svg className="ag-vis-marks" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">{mine.map(o => <g key={o.index}><ellipse cx={o.x * 100} cy={o.y * 100} rx="5" ry="5" /><text x={o.x * 100 + 6} y={o.y * 100 - 5}>{o.index + 1}</text></g>)}</svg>}
+                <em>Later, aligned</em></div></div></figure>; })}</div>}
+        {vis.observations.length > 0 && <ol className="ag-ai-list">{vis.observations.map(o => <li key={o.index} value={o.index + 1}><span>{o.description || "(no description)"}</span>
+          <small><strong>{o.status === "supported" ? (o.drawn ? "Drawn · matches a large measured difference" : "Matches a measured difference · needs a look") : o.status === "unsupported" ? "Listed, not drawn · not among the largest measured differences" : "Refused by the rules"}</strong>
+            {" · "}{o.slice}{o.cites.length ? ` · cites ${o.cites.join(", ")}` : ""}{o.cross ? ` · second reader: ${o.cross.verdict.replace("_", " ")}${vis.cross_check.scripted ? " (scripted, not checked)" : ""}` : ""}{o.status === "rejected" ? ` · ${o.reason}` : ""}</small></li>)}</ol>}
+        <p className="cmp-note-plain">Second reader: {vis.cross_check.status === "completed" ? `${vis.cross_check.model}` : `not cross-checked (${vis.cross_check.reason ?? vis.cross_check.status})`}. {vis.note}</p>
+        <div className="ag-actions"><button onClick={look} disabled={visBusy}>{visBusy ? "Looking and checking…" : "Compare again"}</button></div></div>}
     </section>}
   </section>;
 }
