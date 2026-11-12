@@ -15,7 +15,7 @@ const write = (k: string, v: string) => { try { localStorage.setItem(k, v); } ca
 /** Two scans of one person: validation, alignment, imported segmentation, volume comparison, review and a draft report. */
 export default function AgentAnalysis() {
   const [saved, setSaved] = useState<AgentSaved[]>([]), [pairs, setPairs] = useState<AgentPair[] | null>(null), [error, setError] = useState(""), [pair, setPair] = useState("");
-  const [run, setRun] = useState<AgentRun | null>(null);
+  const [run, setRun] = useState<AgentRun | null>(null), [liveSignal, setLiveSignal] = useState(0);
   const [axis, setAxis] = useState(2), [index, setIndex] = useState(64), [layers, setLayers] = useState<string[]>(["original"]);
   const [opacity, setOpacity] = useState(0.6), [zoom, setZoom] = useState(1), [region, setRegion] = useState(0), [later, setLater] = useState("later_aligned");
   const [views, setViews] = useState<View[]>([]), [shape, setShape] = useState<number[] | null>(null);
@@ -45,7 +45,12 @@ export default function AgentAnalysis() {
     try {
       if (retry && run) setRun(await api.agentRetry(run.run_id));
       else { const [a, b] = pair.split("|"); setRun(await api.agentStart(a, b)); }
+      setLiveSignal(n => n + 1);  // a new real run: the activity panel opens and follows it
     } catch (e) { setError((e as Error).message); }
+  };
+  const runLive = async (r: AgentSaved) => {
+    setError("");
+    try { setRun(await api.agentStart(r.earlier, r.later)); setLiveSignal(n => n + 1); } catch (e) { setError((e as Error).message); }
   };
   const cancel = async () => { if (run) try { setRun(await api.agentCancel(run.run_id)); } catch (e) { setError((e as Error).message); } };
 
@@ -81,11 +86,13 @@ export default function AgentAnalysis() {
     <header><p className="brain-eyebrow">SAME PERSON · TWO SCANS · RESEARCH</p><h1>Agent Analysis</h1>
       <p>Compares two scans of one person taken about 12, 15 or 18 months apart, from the original volumes. Measured differences only: nothing here is a diagnosis or a prediction.</p></header>
     {saved.length > 0 && <section className="ag-saved" aria-label="Saved analyses"><h2>Saved analyses</h2>
-      <p className="cmp-note-plain">Finished runs on this server. Opening one shows its stored results; nothing is recomputed.</p>
+      <p className="cmp-note-plain">Finished runs on this server. <strong>View saved result</strong> shows what was stored; nothing is recomputed. <strong>Run live</strong> starts a new real analysis of the same two scans and shows each step as it happens.</p>
       <ul>{saved.map(r => <li key={r.run_id}><div><strong>{r.earlier.split("_")[1]} · {r.earlier.split("_").pop()} → {r.later.split("_").pop()}</strong>
         <span>{r.months !== null ? `${r.months} months${r.target_months ? ` (≈${r.target_months})` : ""}` : ""} · {r.segmentation ? `${r.segmentation} segmentation` : "no segmentation yet"}</span></div>
-        <button onClick={() => api.agentRun(r.run_id).then(setRun).catch(e => setError(e.message))} aria-pressed={run?.run_id === r.run_id}>Open</button></li>)}</ul></section>}
-    <AgentActivity runId={run?.run_id ?? null} onCancel={cancel} onOpenResult={openResult} />
+        <div className="ag-saved-actions">
+          <button onClick={() => api.agentRun(r.run_id).then(setRun).catch(e => setError(e.message))} aria-pressed={run?.run_id === r.run_id}>View saved result</button>
+          <button className="ag-live" onClick={() => runLive(r)} disabled={!!run && BUSY.includes(run.state)} title="Starts a new real analysis of these two scans. If this server cannot run a step, that step is shown as unavailable.">Run live</button></div></li>)}</ul></section>}
+    <AgentActivity liveSignal={liveSignal} runId={run?.run_id ?? null} onCancel={cancel} onOpenResult={openResult} />
     {!pairs.length ? (!saved.length && <div className="cmp-empty"><h2>No pair is ready</h2><p>Two visits of one person must be extracted locally first. See <code>docs/OASIS2_COMPARE.md</code>.</p></div>) : <>
       <div className="ag-pick cmp-controls">
         <label>Scan pair<select value={pair} onChange={e => setPair(e.target.value)} disabled={!!run && BUSY.includes(run.state)}>
