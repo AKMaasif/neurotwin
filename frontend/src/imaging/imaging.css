@@ -87,7 +87,7 @@
 .aa-chip{display:inline-flex;gap:.3em;align-items:center;font-size:.75rem;line-height:1.2;padding:.1rem .5rem;border-radius:999px;border:1px solid var(--c);color:var(--t);background:#fff;white-space:nowrap}
 .aa-s-running .aa-chip>span:first-child,.aa-chip.aa-s-running>span:first-child{display:inline-block;animation:aa-spin 1.4s linear infinite}
 @keyframes aa-spin{to{transform:rotate(360deg)}}
-.aa-compact{max-inline-size:34rem;margin-block:1rem;background:#fff;border:1px solid #d5e0e8;border-radius:12px;padding:.6rem .9rem}
+.aa-compact{max-inline-size:min(34rem,calc(100vw - 2rem));margin-block:1rem;background:#fff;border:1px solid #d5e0e8;border-radius:12px;padding:.6rem .9rem}
 .aa-compact header{display:flex;align-items:center;gap:.5rem}.aa-compact h2{margin:0;font-size:1rem;flex:1}
 .aa-quiet{background:none;border:1px solid transparent;padding:.1rem .45rem}
 .aa-badge{font-size:.72rem;border:1px solid #8aa0b2;color:#3d566b;border-radius:999px;padding:.05rem .5rem}.aa-badge.aa-live{border-color:#2f7f95;color:#1f6176;font-weight:600}

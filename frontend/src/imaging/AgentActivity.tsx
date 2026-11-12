@@ -178,7 +178,7 @@ export default function AgentActivity({ runId, onCancel, onOpenResult }: Props) 
 
   const idle = !runId;
   const headline = idle ? "No analysis is running." : active ? `Running: ${active.label}` : act?.live ? "Waiting for the next step." : `${RUN_TEXT[runState] ?? runState}.`;
-  const detail = idle ? "Choose a scan pair and run Agent Analysis. This panel then follows the real steps." : active?.summary ?? (act?.historical ? "Stored record of a finished analysis." : "");
+  const detail = idle ? "Choose a scan pair and run Agent Analysis. This panel then follows the real steps." : active?.summary ?? (act?.historical ? ({ cancelled: "The analysis was cancelled; the steps after it did not run.", failed: "The analysis stopped with an error; the steps after it did not run.", blocked: "The pair did not pass validation, so nothing was run.", partial: "Finished with limits: some steps are unavailable, shown in the graph.", complete: "Stored record of a finished analysis." } as Record<string, string>)[runState] ?? "Stored record of a finished analysis." : "");
   const open_ = (t: string | null) => { if (!t) return; close(); window.setTimeout(() => onOpenResult(t), 50); };
 
   const t0 = act?.started_at ? new Date(act.started_at).getTime() : 0;
