@@ -1,7 +1,7 @@
 # Running a live analysis on your own scans
 
 Agent Analysis compares two scans of one person taken about 12, 15 or 18 months apart. The hosted demo plays real runs that
-were recorded earlier on OASIS-2 scans (**Watch recorded run**). To run the same pipeline live on a new pair, use a computer
+were recorded earlier on OASIS-2 scans (**Run agent**). To run the same pipeline live on a new pair, use a computer
 that meets the requirements below.
 
 Nothing here is a diagnosis or a prediction. Every report is a draft for clinical review.
@@ -27,7 +27,5 @@ Nothing here is a diagnosis or a prediction. Every report is a draft for clinica
 
 ## What the hosted demo does instead
 
-The hosted demo has no live computation. **Watch recorded run** replays the stored events of a real run at 10x speed (real time and
-30x are available), labelled as a replay, then loads the results one section at a time. The recorded timings stay visible in the
-timeline. **Show result now** skips to the stored result. **Run live** is switched off on a server that cannot run it, with the
-reason shown.
+The hosted demo has no live computation. **Run agent** replays the stored events of a real run at 10x speed (real time and 30x are
+available), labelled as a replay, then loads the results one section at a time. The recorded timings stay visible in the timeline.
