@@ -4,8 +4,8 @@ What this module guarantees (the agents themselves come later):
 - A model is called only through `invoke`. Before the call it writes an egress record (what kind of data, which fact ids,
   how many characters, to which provider); after the call it writes a trace record. Both are append-only files in the run folder
   (`egress.jsonl`, `agents.jsonl`) and hold no keys.
-- Only text built by `serialise` leaves: the ledger facts an agent was given. Nothing else of the run is sent. Images are not
-  sent by this module; that needs its own switch (NEUROTWIN_AGENTS_SEND_IMAGES=1) and its own agent.
+- Only text built by `serialise` leaves: the ledger facts an agent was given. Nothing else of the run is sent. Images are sent only
+  when NEUROTWIN_AGENTS_SEND_IMAGES=1 is set, and each image is named in the egress record.
 - Modes (NEUROTWIN_AGENTS_MODE): "live" calls the configured providers, "mock" uses a scripted stand-in that restates facts and
   is labelled as such everywhere, "off" runs nothing. Unset means live when a key is configured, otherwise off. Mock is never
   chosen silently.
@@ -44,7 +44,14 @@ class MockClient:
     def __init__(self, provider: str):
         self.provider = f"mock-{provider}"
 
-    def complete(self, system: str, user: str, json_mode: bool = False) -> llm.Reply:
+    def complete(self, system: str, user: str, json_mode: bool = False, images: list[bytes] | None = None) -> llm.Reply:
+        if "VISUAL_OBSERVER" in system:  # A9: one scripted impression at the centre of the first slice, matched to the first region fact in the prompt
+            ids = [ln.split(":")[0] for ln in user.splitlines() if ln.startswith("F-R")]
+            obs = [{"slice": "S1", "x": 0.5, "y": 0.5, "description": "Scripted demo marker, placed in the middle of the first slice. No image was looked at.", "region": ids[0], "cites": [ids[0]]}] if ids else []
+            return llm.Reply(json.dumps({"observations": obs}), self.provider, self.model)
+        if "VISUAL_CHECKER" in system:
+            n = user.count("Observation ")
+            return llm.Reply(json.dumps({"checks": [{"index": i, "verdict": "agreed", "reason": "Scripted demo: no check was made."} for i in range(n)]}), self.provider, self.model)
         if "independent checker" in system:  # A4: a scripted stand-in cannot judge anything, and says so
             n = user.count("Statement ")
             return llm.Reply(json.dumps({"checks": [{"index": i, "supported": True, "reason": "Scripted demo: no check was made."} for i in range(n)]}), self.provider, self.model)
@@ -129,8 +136,13 @@ def read(run_dir: Path, name: str) -> list[dict]:
     return out
 
 
+def images_allowed(env: dict | None = None) -> bool:
+    env = os.environ if env is None else env
+    return env.get("NEUROTWIN_AGENTS_SEND_IMAGES") == "1"
+
+
 def invoke(run_dir: Path, agent: str, provider: str, system: str, user: str, fact_ids: list[str], json_mode: bool = True,
-           attempt: int = 1, client=None, env: dict | None = None) -> dict:
+           attempt: int = 1, client=None, env: dict | None = None, images: list[tuple[str, bytes]] | None = None) -> dict:
     """One model call with its egress and trace records. Returns {status, text, provider, model, reason}; status is
     completed, unavailable or failed. `client` may be passed in (tests); otherwise it comes from the mode and keys."""
     c = client if client is not None else client_for(provider, env)
@@ -138,16 +150,21 @@ def invoke(run_dir: Path, agent: str, provider: str, system: str, user: str, fac
     if c is None:
         _append(run_dir, TRACE, {**base, "provider": provider, "model": None, "status": "unavailable", "reason": f"No {provider} provider is configured on this server (mode {mode(env)})."})
         return {"status": "unavailable", "text": None, "provider": provider, "model": None, "reason": f"No {provider} provider is configured on this server."}
+    mock0 = c.provider.startswith("mock")
+    if images and not mock0 and not images_allowed(env):  # defence in depth: images never leave unless the owner switched them on
+        _append(run_dir, TRACE, {**base, "provider": c.provider, "model": c.model, "status": "unavailable", "reason": "Sending images to a model is switched off (NEUROTWIN_AGENTS_SEND_IMAGES)."})
+        return {"status": "unavailable", "text": None, "provider": c.provider, "model": c.model, "reason": "Sending scan images to a model is switched off on this server."}
     if not _take_call(env):
         _append(run_dir, TRACE, {**base, "provider": c.provider, "model": c.model, "status": "unavailable", "reason": "Daily agent call limit reached."})
         return {"status": "unavailable", "text": None, "provider": c.provider, "model": c.model, "reason": "Today's limit for agent calls has been reached."}
     mock = c.provider.startswith("mock")
     _append(run_dir, EGRESS, {"agent": agent, "provider": c.provider, "model": c.model, "data": "ledger facts (text)", "fact_ids": fact_ids,
-                              "chars": len(system) + len(user), "images": 0, "sent_outside": not mock})
+                              "chars": len(system) + len(user), "images": len(images or []), "image_names": [n for n, _ in images or []],
+                              "image_bytes": sum(len(b) for _, b in images or []), "sent_outside": not mock})
     t0 = time.monotonic()
     sha = hashlib.sha256((system + "\n" + user).encode()).hexdigest()[:16]
     try:
-        reply = c.complete(system, user, json_mode=json_mode)
+        reply = c.complete(system, user, json_mode=json_mode, **({"images": [b for _, b in images]} if images else {}))
     except llm.ModelError as e:
         _append(run_dir, TRACE, {**base, "provider": c.provider, "model": c.model, "status": "failed", "reason": str(e), "prompt_sha256": sha, "ms": round(1000 * (time.monotonic() - t0))})
         return {"status": "failed", "text": None, "provider": c.provider, "model": c.model, "reason": str(e)}
