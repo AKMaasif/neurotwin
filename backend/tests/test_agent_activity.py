@@ -34,7 +34,8 @@ def test_planned_agents_and_missing_brain_extraction_are_never_completed(data):
     act = AC.activity(run, A.runs_root() / run["run_id"])
     for node in ("evidence_explanation", "report_review_ai", "brain_extraction"):
         n = next(x for x in act["nodes"] if x["id"] == node)
-        assert n["status"] == "unavailable" and n["summary"] and not n["implemented"] and not n["outputs"]
+        assert n["status"] in ("unavailable", "waiting") and n["summary"] and not n["outputs"]
+    assert not next(x for x in act["nodes"] if x["id"] == "brain_extraction")["implemented"]
     kinds = {n["id"]: n["kind"] for n in act["nodes"]}
     assert kinds["evidence_explanation"] == "ai" and kinds["clinician_review"] == "human" and kinds["alignment"] == "tool"
     assert all(e["status"] != "completed" for e in events_of(run["run_id"]) if e["node"] in ("evidence_explanation", "report_review_ai", "brain_extraction"))

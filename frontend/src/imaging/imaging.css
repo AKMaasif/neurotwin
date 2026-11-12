@@ -145,3 +145,6 @@
 .agc-switch{display:inline-flex;gap:.25rem}.agc-switch button{padding:.25rem .6rem;border:1px solid #12304a;background:#fff;color:#12304a;border-radius:.4rem;cursor:pointer}
 .agc-switch button[aria-pressed="true"]{background:#12304a;color:#fff}.agc-fit svg{width:100%;max-width:420px;height:auto}.agc-fit figcaption{display:block}
 @media (forced-colors:active){.agc-bar,.agc-dot{forced-color-adjust:none}}
+
+.ag-ai{margin-top:1.25rem;padding:.75rem 1rem;border:1px dashed #12304a;border-radius:.6rem}.ag-ai h2 small{font-weight:400;font-size:.8rem;color:#52514e}
+.ag-ai-state{padding:.4rem .6rem;border-radius:.4rem;background:#eef3f7}.ag-ai-state.blocked{background:#fbeaea}.ag-ai-list li{margin:.4rem 0}.ag-ai-list small{display:block;color:#52514e}.ag-ai-checks{font-size:.9rem;padding-inline-start:1.1rem}
