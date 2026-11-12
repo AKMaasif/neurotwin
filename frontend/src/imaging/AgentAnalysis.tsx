@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api, AgentPair, AgentRegion, AgentRun } from "../api";
+import { api, AgentPair, AgentRegion, AgentRun, AgentSaved } from "../api";
 
 const base = (id: string) => `/api/imaging/agent/runs/${id}`;
 const KEY = "nt-agent-run", VIEWS = "nt-agent-views-";
@@ -13,7 +13,7 @@ const write = (k: string, v: string) => { try { localStorage.setItem(k, v); } ca
 
 /** Two scans of one person: validation, alignment, imported segmentation, volume comparison, review and a draft report. */
 export default function AgentAnalysis() {
-  const [pairs, setPairs] = useState<AgentPair[] | null>(null), [error, setError] = useState(""), [pair, setPair] = useState("");
+  const [saved, setSaved] = useState<AgentSaved[]>([]), [pairs, setPairs] = useState<AgentPair[] | null>(null), [error, setError] = useState(""), [pair, setPair] = useState("");
   const [run, setRun] = useState<AgentRun | null>(null);
   const [axis, setAxis] = useState(2), [index, setIndex] = useState(64), [layers, setLayers] = useState<string[]>(["original"]);
   const [opacity, setOpacity] = useState(0.6), [zoom, setZoom] = useState(1), [region, setRegion] = useState(0), [later, setLater] = useState("later_aligned");
@@ -22,8 +22,9 @@ export default function AgentAnalysis() {
 
   useEffect(() => {
     api.agentPairs().then(r => { setPairs(r.pairs); setPair(p => p || (r.pairs[0] ? `${r.pairs[0].earlier}|${r.pairs[0].later}` : "")); }).catch(e => setError(e.message));
-    const saved = read(KEY);
-    if (saved) api.agentRun(saved).then(setRun).catch(() => undefined);  // results survive a refresh
+    api.agentSaved().then(r => setSaved(r.runs)).catch(() => undefined);
+    const last = read(KEY);
+    if (last) api.agentRun(last).then(setRun).catch(() => undefined);  // results survive a refresh
   }, []);
   useEffect(() => {
     window.clearTimeout(timer.current);
@@ -34,7 +35,8 @@ export default function AgentAnalysis() {
     if (!run) return;
     write(KEY, run.run_id);
     try { setViews(JSON.parse(read(VIEWS + run.run_id) ?? "[]")); } catch { setViews([]); }
-    if (run.alignment) api.oasis2Info(run.earlier).then(r => { setShape(r.shape); setIndex(i => Math.min(i, r.shape[axis] - 1)); }).catch(() => setShape(null));
+    const sh = run.validation.checks?.earlier?.shape ?? null;  // stored with the run, so saved runs need no original scans
+    setShape(sh); if (sh) setIndex(i => Math.min(i, sh[axis] - 1));
   }, [run?.run_id, run?.alignment !== null]);
 
   const start = async (retry?: boolean) => {
@@ -69,7 +71,12 @@ export default function AgentAnalysis() {
   return <section className="cmp ag">
     <header><p className="brain-eyebrow">SAME PERSON · TWO SCANS · RESEARCH</p><h1>Agent Analysis</h1>
       <p>Compares two scans of one person taken about 12, 15 or 18 months apart, from the original volumes. Measured differences only: nothing here is a diagnosis or a prediction.</p></header>
-    {!pairs.length ? <div className="cmp-empty"><h2>No pair is ready</h2><p>Two visits of one person must be extracted locally first. See <code>docs/OASIS2_COMPARE.md</code>.</p></div> : <>
+    {saved.length > 0 && <section className="ag-saved" aria-label="Saved analyses"><h2>Saved analyses</h2>
+      <p className="cmp-note-plain">Finished runs on this server. Opening one shows its stored results; nothing is recomputed.</p>
+      <ul>{saved.map(r => <li key={r.run_id}><div><strong>{r.earlier.split("_")[1]} · {r.earlier.split("_").pop()} → {r.later.split("_").pop()}</strong>
+        <span>{r.months !== null ? `${r.months} months${r.target_months ? ` (≈${r.target_months})` : ""}` : ""} · {r.segmentation ? `${r.segmentation} segmentation` : "no segmentation yet"}</span></div>
+        <button onClick={() => api.agentRun(r.run_id).then(setRun).catch(e => setError(e.message))} aria-pressed={run?.run_id === r.run_id}>Open</button></li>)}</ul></section>}
+    {!pairs.length ? (!saved.length && <div className="cmp-empty"><h2>No pair is ready</h2><p>Two visits of one person must be extracted locally first. See <code>docs/OASIS2_COMPARE.md</code>.</p></div>) : <>
       <div className="ag-pick cmp-controls">
         <label>Scan pair<select value={pair} onChange={e => setPair(e.target.value)} disabled={!!run && BUSY.includes(run.state)}>
           {pairs.map(p => <option key={p.earlier + p.later} value={`${p.earlier}|${p.later}`}>{p.subject_id} · {p.earlier.split("_").pop()} → {p.later.split("_").pop()} · {p.interval.months.toFixed(1)} months
@@ -141,7 +148,7 @@ export default function AgentAnalysis() {
 
     {run?.report && <section className="ag-report"><h2>Report <small>{run.report.status}</small></h2>
       <p className="cmp-note-plain">Written by a {run.report.author}. It restates the measurements above and adds nothing.</p>
-      {Object.entries(run.report.sections).map(([k, items]) => <div key={k}><h3>{{ measured: "Largest measured differences", quality_limitations: "Quality limitations", processing: "Processing", needs_clinical_review: "Needs clinical review" }[k] ?? k}</h3>
+      {Object.entries(run.report.sections).map(([k, items]) => <div key={k}><h3>{{ measured: "Largest measured differences", quality_limitations: "Quality limitations", processing: "Processing", suggested_follow_up: "Suggested follow-up for clinician consideration", needs_clinical_review: "Needs clinical review" }[k] ?? k}</h3>
         <ul>{items.map(i => <li key={i}>{i}</li>)}</ul></div>)}</section>}
   </section>;
 }

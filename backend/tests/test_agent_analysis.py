@@ -101,7 +101,7 @@ def test_alignment_improves_similarity_and_keeps_originals(data):
     out = A.align(run["run_id"])
     assert img.read_bytes() == before
     assert out["state"] == "aligned" and out["alignment"]["correlation_after"] >= out["alignment"]["correlation_before"]
-    assert (A.runs_root() / run["run_id"] / "later_aligned.npy").is_file()
+    assert (A.runs_root() / run["run_id"] / "later_aligned.npz").is_file()
     assert A.load_run(run["run_id"])["alignment"] is not None  # persisted
 
 
@@ -224,3 +224,30 @@ def test_segmentation_missing_part_of_the_scan_is_refused(data):
         (d / "tool.json").write_text(json.dumps({"tool": "SynthSeg", "version": "1.0"}))
     out = A.run_all(A.create_run("OAS2_0001_MR1", "OAS2_0001_MR2")["run_id"])
     assert out["state"] == "failed" and "field of view" in out["steps"][3]["detail"]
+
+
+def test_completed_run_is_self_contained_and_listed(client, login, data):
+    pytest.importorskip("ants")
+    write_seg(data, "OAS2_0001_MR1")
+    write_seg(data, "OAS2_0001_MR2", labels_shift=-2)
+    out = A.run_all(A.create_run("OAS2_0001_MR1", "OAS2_0001_MR2")["run_id"])
+    assert out["state"] == "complete"
+    assert "suggested_follow_up" in out["report"]["sections"] and "alzheimer" not in json.dumps(out["report"]).lower()
+    import shutil
+    shutil.rmtree(data / "extracted")  # a saved run must open without the original scans
+    oasis2_api._volume.cache_clear()
+    h = login("demo-dr-layla")
+    listed = client.get("/api/imaging/agent/saved", headers=h).json()["runs"]
+    assert [r["run_id"] for r in listed] == [out["run_id"]] and listed[0]["target_months"] == 15
+    rid = out["run_id"]
+    for url in (f"slice.png?layer=earlier&axis=0&index=3", "slice.png?layer=later_aligned&axis=2&index=5", "slice.png?layer=later_original&axis=1&index=4",
+                "overlay.png?layer=regions&axis=2&index=10", "overlay.png?layer=change&axis=2&index=10"):
+        assert client.get(f"/api/imaging/agent/runs/{rid}/{url}", headers=h).status_code == 200, url
+
+
+def test_saved_list_skips_blocked_and_duplicate_pairs(data):
+    pytest.importorskip("ants")
+    A.create_run("OAS2_0001_MR1", "OAS2_0002_MR2")  # blocked
+    first = A.run_all(A.create_run("OAS2_0001_MR1", "OAS2_0001_MR2")["run_id"])
+    second = A.run_all(A.create_run("OAS2_0001_MR1", "OAS2_0001_MR2")["run_id"])
+    assert [r["run_id"] for r in A.list_runs()] == [second["run_id"]] and first["run_id"] != second["run_id"]
