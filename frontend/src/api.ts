@@ -128,7 +128,20 @@ export type AgentRun = {
 export type AgentSaved = { run_id: string; earlier: string; later: string; state: string; months: number | null; target_months: number | null; segmentation: string | null; saved_at: number };
 export type AgentPair = { subject_id: string; earlier: string; later: string; segmented: boolean; interval: { months: number; nearest_target_months: number | null; within_requested_window: boolean } };
 
+export type ActNode = {
+  id: string; label: string; kind: "tool" | "ai" | "human"; role: string; deps: string[]; implemented: boolean; status: string; summary: string | null;
+  tool: string | null; inputs: string[]; outputs: { label: string; target: string | null }[]; warnings: string[];
+  started_at: string | null; ended_at: string | null; duration_ms: number | null;
+};
+export type ActEvent = { seq: number; id: string; run_id: string; node: string; type: "status" | "run" | "tool_call" | "handoff"; ts: string; status: string; summary: string; tool?: string | null; to?: string[] };
+export type Activity = {
+  run_id: string | null; state: string; parent_run_id?: string | null; live: boolean; historical: boolean; has_events: boolean; cancel_supported: boolean;
+  note: string | null; nodes: ActNode[]; events: ActEvent[]; last_seq: number; started_at: string | null;
+};
+
 export const api = {
+  agentWorkflow: () => get<Activity>("/api/imaging/agent/workflow"),
+  agentActivity: (id: string, after: number) => get<Activity>(`/api/imaging/agent/runs/${id}/activity?after=${after}`),
   agentSaved: () => get<{ runs: AgentSaved[] }>("/api/imaging/agent/saved"),
   agentPairs: () => get<{ pairs: AgentPair[] }>("/api/imaging/agent/pairs"),
   agentStart: (earlier: string, later: string) => post<AgentRun>("/api/imaging/agent/runs", { earlier, later }),
