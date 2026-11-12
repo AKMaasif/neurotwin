@@ -15,14 +15,22 @@ Agent Analysis pipeline really did. It does not connect, start or simulate any A
 - Three kinds of node are drawn differently and labelled in words: **Tool** (ordinary software step), **AI agent**, and **Human
   review**. Not built means dashed and labelled Unavailable.
 
-## Saved results and live runs
+## Recorded runs and live runs
 
-Each saved analysis has two buttons. **View saved result** opens the stored result at once, labelled "Historical record"; nothing is
-recomputed and the live panel stays closed. **Run live** starts a new real analysis of the same two scans. The Agent Activity panel
-opens by itself with "Follow active step" on, shows each step as it runs, and the results appear only as each step finishes. A
-step this server cannot run is shown as Unavailable with the reason. Where alignment is not installed (for example on Windows
-with Python 3.14), a live run stops at alignment and says so. The "Run Agent Analysis" button behaves the same way. Replay is
-labelled "Replay a recorded run (no processing)".
+Each saved analysis has three buttons.
+
+- **Watch recorded run** opens the Agent Activity panel and plays the stored events of a real run from the beginning, labelled
+  "Replay of a recorded run" and "Nothing is being computed now". The speed is 10x by default (real time and 30x are available) and the
+  recorded timings stay in the timeline. While it plays no result is shown. When it ends the panel closes and the page loads the
+  results one section at a time (viewer, regional table, findings review, report), scrolling to each. **Skip to result** jumps to the end.
+- **Show result now** opens the stored result at once with no panel.
+- **Run live** starts a new real analysis of the same two scans. The panel opens by itself, follows the running step, and results
+  appear only as each step finishes. It is switched off, with the reason shown, on a server that has no alignment tool or no
+  copy of the scans. This is how the hosted demo behaves: it replays real recordings and never pretends to compute.
+
+A run saved before event recording existed has nothing to play: "Watch recorded run" shows its stored result and says that no
+events were recorded. Requirements and steps for running live on new scans are in `docs/LIVE_RUN_GUIDE.md`, and a short version is
+under the saved list in the app.
 
 ## What is real
 
