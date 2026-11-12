@@ -9,7 +9,7 @@ Withdrawing consent or the grant, or reopening the review, hides the summary at 
 
 The text is drafted by a model (Gemini) from a small set of facts: the interval, the uncertainty statement and at most two facts the clinician chose.
 Rules refuse numbers that are not in those facts, technical jargon, condition names, "normal", reassurance and alarm; the draft must say that uncertainty is not
-estimated and must invite the family to talk with the clinician. English only so far; Arabic needs a native clinical reader before use.
+estimated and must invite the family to talk with the clinician. English, or Arabic (fixed glossary, back-translation parity, and a clinician who reads Arabic must confirm at release); Arabic needs a native clinical reader before it is relied on.
 """
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from . import agent_activity as AC
 from . import agent_analysis as A
+from . import agent_glossary as G
 from . import agent_ledger as L
 from . import agent_review as RW
 from . import agent_runtime as R
@@ -38,6 +39,13 @@ ALWAYS = ("F-interval", "F-uncertainty")
 PICKABLE = re.compile(r"^F-(total|vent|R\d+)$")
 JARGON = re.compile(r"\b(?:mm3|mm³|voxels?|segmentation|synthseg|registration|rigid|similarity|percentile)\b", re.I)
 ALARM = re.compile(r"\b(?:serious\w*|worr\w*|alarm\w*|urgent\w*|concern\w*|frighten\w*|scar\w*|grave|severe\w*|critical\w*)\b", re.I)
+AR_JARGON = re.compile(r"(?:فوكسل|مم3|مم³|تجزئة|تسجيل الصور|سينثسيج|نسبة مئوية)")
+AR_ALARM = re.compile(r"(?:خطير|خطيرة|مقلق|مقلقة|عاجل|عاجلة|قلق|خوف|مخيف|شديد|شديدة|حرج|حرجة)")
+AR_INVITE = re.compile(r"(?:الطبيب|الطبيبة|الفريق الطبي|الفريق المعالج|الطاقم الطبي)")
+AR_ADDENDUM = """
+ARABIC_OUTPUT: Write every statement in simple Modern Standard Arabic for a family reader, in the same gentle, neutral tone. "cites" keeps the fact ids as written (e.g. F-interval).
+Say "الطبيب" (the clinician) when inviting the family to talk it through.
+{glossary}"""
 INVITE = re.compile(r"\b(?:clinician|doctor|care team)\b", re.I)
 
 SYSTEM = """Role: FAMILY_SUMMARY. You write a short, gentle summary for a family member of an older adult, after a clinician has reviewed a comparison of two brain scans.
@@ -105,26 +113,27 @@ def preconditions(db: Session, run_dir: Path, family_id: str | None = None) -> l
     return out
 
 
-def check_draft(sts: list[V.Statement], facts: list[V.Fact]) -> V.Verdict:
+def check_draft(sts: list[V.Statement], facts: list[V.Fact], language: str = "en") -> V.Verdict:
     v = V.check(sts, facts)
+    ar = language == "ar"
     probs = list(v.problems)
     if not 3 <= len(sts) <= 5:
         probs.append(V.Problem(-1, "count", "Give 3 to 5 statements."))
     if not any("F-uncertainty" in s.cites for s in sts):
         probs.append(V.Problem(-1, "uncertainty_dropped", "The draft must say that reliability is not known."))
-    if not any(INVITE.search(s.text) for s in sts):
+    if not any((AR_INVITE if ar else INVITE).search(s.text) for s in sts):
         probs.append(V.Problem(-1, "no_invitation", "The draft must invite the family to talk with the clinician."))
     for i, s in enumerate(sts):
         if len(s.text) > 250:
             probs.append(V.Problem(i, "too_long", "Keep each statement under 250 characters."))
-        if JARGON.search(s.text):
+        if (AR_JARGON if ar else JARGON).search(s.text):
             probs.append(V.Problem(i, "jargon", "It uses technical terms."))
-        if ALARM.search(s.text):
+        if (AR_ALARM if ar else ALARM).search(s.text):
             probs.append(V.Problem(i, "tone", "It uses alarming wording."))
     return V.Verdict(not probs, probs)
 
 
-def draft(run: dict, run_dir: Path, selected: list[str], client=None, env: dict | None = None) -> dict:
+def draft(run: dict, run_dir: Path, selected: list[str], client=None, env: dict | None = None, language: str = "en", bt_client=None) -> dict:
     """Draft the family text from the interval, the uncertainty statement and up to two facts the clinician chose."""
     ledger = L.build(run)
     if not ledger["complete"]:
@@ -134,25 +143,29 @@ def draft(run: dict, run_dir: Path, selected: list[str], client=None, env: dict 
     have = {f["id"] for f in ledger["facts"]}
     if any(s not in have for s in selected):
         raise ValueError("A chosen fact is not in this run.")
+    if language not in ("en", "ar"):
+        raise ValueError("Only English and Arabic are built.")
+    ar = language == "ar"
     ids_ = list(ALWAYS) + selected
     listing, ids = R.serialise(ledger, ids_)
     facts = [V.Fact.of(f["id"], f["text"]) for f in ledger["facts"] if f["id"] in ids_]
+    system = SYSTEM + AR_ADDENDUM.format(glossary=G.prompt_block([f for f in ledger["facts"] if f["id"] in ids_])) if ar else SYSTEM
     AC.log(run_dir, "family_summary", "running", "Drafting a plain-language summary for the family from the chosen facts.", tool="A7 Family Summary")
     user, n, out, sts, verdict = listing, 0, None, None, V.Verdict(False, [V.Problem(-1, "bad_format", "The reply was not the requested JSON.")])
     while n < 2:
         n += 1
-        out = R.invoke(run_dir, "A7", "gemini", SYSTEM, user, ids, attempt=n, client=client, env=env)
+        out = R.invoke(run_dir, "A7", "gemini", system, user, ids, attempt=n, client=client, env=env)
         if out["status"] != "completed":
             break
         d = _json(out["text"])
         sts = _statements(d.get("statements")) if isinstance(d, dict) else None
-        verdict = check_draft(sts, facts) if sts is not None else V.Verdict(False, [V.Problem(-1, "bad_format", "The reply was not the requested JSON.")])
+        verdict = check_draft(sts, facts, language) if sts is not None else V.Verdict(False, [V.Problem(-1, "bad_format", "The reply was not the requested JSON.")])
         if verdict.ok:
             break
         why = "\n".join(f"- {p.code}: {p.detail}" for p in verdict.problems[:10])
         user = f"{listing}\n\nYour previous reply was refused for these reasons:\n{why}\nWrite it again, following every rule."
     prev = _read(run_dir / FILE) or {}
-    rec = {"version": VERSION, "run_id": run["run_id"], "created_at": _now(), "selected_facts": selected, "language": "en", "release": prev.get("release"),
+    rec = {"version": VERSION, "run_id": run["run_id"], "created_at": _now(), "selected_facts": selected, "language": language, "release": prev.get("release"),
            "releases_history": prev.get("releases_history", []), "review_state": "ai_draft_not_reviewed",
            "note": "AI draft for the family. Not released until a clinician releases it. Not a diagnosis."}
     if out["status"] != "completed":
@@ -162,6 +175,12 @@ def draft(run: dict, run_dir: Path, selected: list[str], client=None, env: dict 
         sc = out["provider"].startswith("mock")
         rec.update(status="completed" if verdict.ok else "refused", provider=out["provider"], model=out["model"], scripted=sc, attempts=n,
                    statements=[{"text": s.text, "cites": s.cites} for s in (sts or [])], validator=verdict.as_dict())
+        if ar and verdict.ok:
+            bt = G.back_translate(run_dir, sts, [f for f in ledger["facts"] if f["id"] in ids_], client=bt_client, env=env)
+            rec["arabic"] = {"glossary_status": G.STATUS, "glossary_note": G.STATUS_NOTE, "back_translation": bt}
+            if bt["status"] != "completed" or (not bt.get("scripted") and any(not i["ok"] for i in bt["items"])):
+                rec["status"] = "refused"
+                rec["reason"] = "The Arabic could not be confirmed by back-translation." if bt["status"] != "completed" else "The back-translation differs from the Arabic: " + "; ".join(f"statement {i['index'] + 1}: {', '.join(i['flags'])}" for i in bt["items"] if not i["ok"])
         AC.log(run_dir, "family_summary", "completed" if verdict.ok else "blocked",
                "Draft ready for the clinician to read; nothing is shared yet." if verdict.ok else "The checker refused the draft; nothing is shared.", tool="A7 Family Summary")
     # a new draft replaces the text, so any earlier release no longer matches it
@@ -175,17 +194,19 @@ def text_hash(statements: list[dict]) -> str:
     return hashlib.sha256("\n".join(s["text"].strip() for s in statements).encode()).hexdigest()[:16]
 
 
-def release(db: Session, run_dir: Path, clinician: User, family_id: str) -> dict:
+def release(db: Session, run_dir: Path, clinician: User, family_id: str, arabic_confirmed: bool = False) -> dict:
     """The clinician's explicit release of the current draft to one family member."""
     rec = _read(run_dir / FILE)
     if not rec or rec.get("status") != "completed":
         raise ValueError("There is no checked draft to release.")
+    if rec.get("language") == "ar" and not arabic_confirmed:
+        raise ValueError("This summary is in Arabic. A clinician who reads Arabic must confirm they have read it before it is released.")
     checks = preconditions(db, run_dir, family_id)
     failed = [c for c in checks if not c["ok"]]
     if failed:
         raise ValueError("Not released: " + "; ".join(c["detail"] for c in failed))
     lk = _read(run_dir / LINK)
-    rec["release"] = {"family_id": family_id, "participant_id": lk["participant_id"], "by": clinician.id, "at": _now(), "text_hash": text_hash(rec["statements"]),
+    rec["release"] = {"family_id": family_id, "participant_id": lk["participant_id"], "by": clinician.id, "at": _now(), "text_hash": text_hash(rec["statements"]), "language": rec.get("language", "en"), "arabic_confirmed": bool(arabic_confirmed) if rec.get("language") == "ar" else None,
                       "review_fingerprint": RW.view(run_dir)["approval"]["fingerprint"]}
     _write(run_dir / FILE, rec)
     S.audit(db, clinician.id, "imaging.family_released", lk["participant_id"], f"run:{run_dir.name}:family:{family_id}")
@@ -223,7 +244,7 @@ def family_summaries(db: Session, user: User) -> list[dict]:
         v = RW.view(d)
         ok = ok and v["state"] == "approved" and v["approval"]["fingerprint"] == rel["review_fingerprint"] and rel["text_hash"] == text_hash(rec["statements"])
         if ok:
-            entry.update(active=True, statements=[s["text"] for s in rec["statements"]],
+            entry.update(active=True, language=rec.get("language", "en"), statements=[s["text"] for s in rec["statements"]],
                          note="Written with AI help and released by a clinician. It is not a diagnosis. Please talk it through with the clinician.")
             S.audit(db, user.id, "family.viewed_imaging_summary", pid, f"run:{d.name}")
         else:

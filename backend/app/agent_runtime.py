@@ -37,6 +37,19 @@ def mode(env: dict | None = None) -> str:
     return "live" if (env.get("GEMINI_API_KEY") or env.get("META_API_KEY")) else "off"
 
 
+SCRIPTED_EXPLAIN_AR = [("تمت مقارنة فحصين للشخص نفسه. نص تجريبي مبرمج.", "F-interval"), ("لم تُقدَّر بعدُ درجة عدم اليقين في القياسات. نص تجريبي مبرمج.", "F-uncertainty")]
+SCRIPTED_FAMILY_AR = [("تمت مقارنة فحصين للشخص نفسه، أُجريا بفارق زمني بينهما.", "F-interval"),
+                       ("لا نعرف بعدُ مدى دقة القياسات.", "F-uncertainty"),
+                       ("سيشرح لكم الطبيب معنى ذلك. نص تجريبي مبرمج.", "F-uncertainty")]
+SCRIPTED_AR = {
+    SCRIPTED_EXPLAIN_AR[0][0]: "Two scans of the same person were compared. Scripted demo text.",
+    SCRIPTED_EXPLAIN_AR[1][0]: "How reliable the measurements are has not been estimated yet. Scripted demo text.",
+    SCRIPTED_FAMILY_AR[0][0]: "Two scans of the same person were compared, taken some time apart.",
+    SCRIPTED_FAMILY_AR[1][0]: "We do not yet know how accurate the measurements are.",
+    SCRIPTED_FAMILY_AR[2][0]: "The doctor will explain what this means. Scripted demo text.",
+}
+
+
 class MockClient:
     """Scripted stand-in for demos without keys. It restates the first facts it is given and says so; it understands nothing."""
     model = "scripted-demo"
@@ -53,6 +66,12 @@ class MockClient:
             c = [i for i in ("F-uncertainty", "F-total") if i in ids] or ids[:1]
             return llm.Reply(json.dumps({"doubts": [{"text": f"Scripted demo doubt {chr(97 + k)}: see fact {i}.", "cites": [i]} for k, i in enumerate((c * 3)[:3])],
                                          "questions": [{"text": f"Scripted demo question {chr(97 + k)}: what does fact {i} leave open?", "cites": [i]} for k, i in enumerate((c * 2)[:2])]}), self.provider, self.model)
+        if "BACK_TRANSLATOR" in system:  # scripted: only the scripted Arabic lines below are known; nothing is really translated
+            n = user.count("Statement ")
+            return llm.Reply(json.dumps({"texts": [SCRIPTED_AR.get(ln.split(": ", 1)[1].strip(), "Scripted demo: no translation was made.")
+                                                    for ln in user.splitlines() if ln.startswith("Statement ") and ": " in ln][:n]}), self.provider, self.model)
+        if "FAMILY_SUMMARY" in system and "ARABIC_OUTPUT" in system:
+            return llm.Reply(json.dumps({"statements": [{"text": t, "cites": [c]} for t, c in SCRIPTED_FAMILY_AR]}), self.provider, self.model)
         if "FAMILY_SUMMARY" in system:
             return llm.Reply(json.dumps({"statements": [
                 {"text": "Two scans of the same person, taken some time apart, were compared by the care team.", "cites": ["F-interval"]},
@@ -75,6 +94,9 @@ class MockClient:
         if "independent checker" in system:  # A4: a scripted stand-in cannot judge anything, and says so
             n = user.count("Statement ")
             return llm.Reply(json.dumps({"checks": [{"index": i, "supported": True, "reason": "Scripted demo: no check was made."} for i in range(n)]}), self.provider, self.model)
+        if "ARABIC_OUTPUT" in system:
+            keep = [i for i in ("F-interval", "F-uncertainty") if i in ids]
+            return llm.Reply(json.dumps({"statements": [{"text": t, "cites": [c]} for t, c in SCRIPTED_EXPLAIN_AR if c in keep]}), self.provider, self.model)
         rows = [ln.split(": ", 1) for ln in user.splitlines() if ln.startswith("F-") and ": " in ln]
         picks = [r for r in rows if r[0] in ("F-interval", "F-total", "F-uncertainty") or r[0].startswith("F-R")][:4]
         body = json.dumps({"statements": [{"text": t[:380], "cites": [i]} for i, t in picks]})
