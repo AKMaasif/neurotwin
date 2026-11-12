@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, AgentPair, AgentRegion, AgentRun, AgentSaved } from "../api";
 import AgentActivity from "./AgentActivity";
+import AgentCharts, { AlignmentFit } from "./AgentCharts";
 
 const base = (id: string) => `/api/imaging/agent/runs/${id}`;
 const KEY = "nt-agent-run", VIEWS = "nt-agent-views-";
@@ -16,7 +17,7 @@ const write = (k: string, v: string) => { try { localStorage.setItem(k, v); } ca
 export default function AgentAnalysis() {
   const [saved, setSaved] = useState<AgentSaved[]>([]), [pairs, setPairs] = useState<AgentPair[] | null>(null), [error, setError] = useState(""), [pair, setPair] = useState("");
   const [run, setRun] = useState<AgentRun | null>(null), [liveSignal, setLiveSignal] = useState(0), [replaySignal, setReplaySignal] = useState(0);
-  const [recorded, setRecorded] = useState(false), [reveal, setReveal] = useState(4), [tools, setTools] = useState<{ available: boolean; needs: string | null } | null>(null);
+  const [recorded, setRecorded] = useState(false), [reveal, setReveal] = useState(4);
   const revealTimer = useRef<number>();
   const [axis, setAxis] = useState(2), [index, setIndex] = useState(64), [layers, setLayers] = useState<string[]>(["original"]);
   const [opacity, setOpacity] = useState(0.6), [zoom, setZoom] = useState(1), [region, setRegion] = useState(0), [later, setLater] = useState("later_aligned");
@@ -26,7 +27,6 @@ export default function AgentAnalysis() {
   useEffect(() => {
     api.agentPairs().then(r => { setPairs(r.pairs); setPair(p => p || (r.pairs[0] ? `${r.pairs[0].earlier}|${r.pairs[0].later}` : "")); }).catch(e => setError(e.message));
     api.agentSaved().then(r => setSaved(r.runs)).catch(() => undefined);
-    api.agentTools().then(t => setTools(t.alignment)).catch(() => undefined);
     const last = read(KEY);
     if (last) api.agentRun(last).then(setRun).catch(() => undefined);  // results survive a refresh
   }, []);
@@ -51,10 +51,6 @@ export default function AgentAnalysis() {
       setLiveSignal(n => n + 1);  // a new real run: the activity panel opens and follows it
     } catch (e) { setError((e as Error).message); }
   };
-  const runLive = async (r: AgentSaved) => {
-    setError(""); stopReveal(); setRecorded(false);
-    try { setRun(await api.agentStart(r.earlier, r.later)); setLiveSignal(n => n + 1); } catch (e) { setError((e as Error).message); }
-  };
   const cancel = async () => { if (run) try { setRun(await api.agentCancel(run.run_id)); } catch (e) { setError((e as Error).message); } };
 
   const stopReveal = () => window.clearInterval(revealTimer.current);
@@ -76,10 +72,7 @@ export default function AgentAnalysis() {
       if (k >= SECTIONS.length) { window.clearInterval(revealTimer.current); setRecorded(false); }
     }, 1000);
   };
-  const showNow = (r: AgentSaved) => { stopReveal(); setRecorded(false); api.agentRun(r.run_id).then(setRun).catch(e => setError(e.message)); };
   const shown = (n: number) => !recorded || reveal >= n;
-  const canLive = (r: AgentSaved) => !!tools?.available && !!pairs?.some(p => p.earlier === r.earlier && p.later === r.later);
-  const whyNoLive = tools && !tools.available ? `This server cannot run live analyses: it needs ${tools.needs ?? "the alignment tool"}.` : "The original scans for this pair are not on this server.";
 
   const openResult = (target: string) => {
     const id = { viewer: "ag-viewer", measurements: "ag-table", review: "ag-review", report: "ag-report" }[target];
@@ -113,15 +106,12 @@ export default function AgentAnalysis() {
     <header><p className="brain-eyebrow">SAME PERSON · TWO SCANS · RESEARCH</p><h1>Agent Analysis</h1>
       <p>Compares two scans of one person taken about 12, 15 or 18 months apart, from the original volumes. Measured differences only: nothing here is a diagnosis or a prediction.</p></header>
     {saved.length > 0 && <section className="ag-saved" aria-label="Saved analyses"><h2>Saved analyses</h2>
-      <p className="cmp-note-plain">Finished runs on this server. <strong>Watch recorded run</strong> plays a real run from the beginning, then loads its results one by one; nothing is computed now. <strong>Show result now</strong> skips straight to the stored result. <strong>Run live</strong> starts a new real analysis of the same two scans and shows each step as it happens.</p>
+      <p className="cmp-note-plain"><strong>Run agent</strong> plays a real run from the beginning, step by step, then loads its results one section at a time. It replays a run recorded earlier on this server; nothing is computed now.</p>
       <ul>{saved.map(r => <li key={r.run_id}><div><strong>{r.earlier.split("_")[1]} · {r.earlier.split("_").pop()} → {r.later.split("_").pop()}</strong>
         <span>{r.months !== null ? `${r.months} months${r.target_months ? ` (≈${r.target_months})` : ""}` : ""} · {r.segmentation ? `${r.segmentation} segmentation` : "no segmentation yet"}</span></div>
         <div className="ag-saved-actions">
-          <button className="ag-watch" onClick={() => watchRecorded(r)} disabled={!!run && BUSY.includes(run.state)} title="Plays the recorded run from the beginning, then loads the results one by one. Nothing is computed.">Watch recorded run</button>
-          <button onClick={() => showNow(r)} aria-pressed={run?.run_id === r.run_id && !recorded}>Show result now</button>
-          <button className="ag-live" onClick={() => runLive(r)} disabled={!canLive(r) || (!!run && BUSY.includes(run.state))} title={canLive(r) ? "Starts a new real analysis of these two scans." : whyNoLive}>Run live</button></div></li>)}</ul>
-      {tools && !pairs?.length && <p className="cmp-note-plain">Run live is off on this server: {whyNoLive} The recorded runs above are real runs made earlier on the same scans.</p>}
-      <details className="ag-guide"><summary>Run live on your own scans: what you need</summary>
+          <button className="ag-watch" onClick={() => watchRecorded(r)} disabled={!!run && BUSY.includes(run.state)} title="Plays the recorded run from the beginning, then loads the results one by one. Nothing is computed.">Run agent</button></div></li>)}</ul>
+      <details className="ag-guide"><summary>Analyse your own scans: what you need</summary>
         <ul>
           <li><strong>Two scans of one person</strong> taken about 12, 15 or 18 months apart, as NIfTI or Analyze files, with the time between them recorded.</li>
           <li><strong>A computer with at least 2 CPU cores and 4 GB of memory.</strong> On a 2-core machine the alignment of one 256×256×128 pair took about 33 seconds and used about 0.8 GB; the rest of the analysis takes a few seconds.</li>
@@ -175,7 +165,7 @@ export default function AgentAnalysis() {
       <p className="cmp-note-plain">Rotation: only switching the slice direction is offered; no 3D rotation of these volumes.</p>
       <div className="ag-actions"><button onClick={saveView}>Save this view</button>
         {views.map((v, i) => <button key={i} onClick={() => open(v)}>View {i + 1}: axis {v.axis + 1}, slice {v.index}{v.region ? `, ${regions.find(r => r.label === v.region)?.name ?? ""}` : ""}</button>)}</div>
-      <div className="ag-align"><h3>Alignment</h3><p>{run.alignment.method} ({run.alignment.tool}). Similarity {run.alignment.correlation_before} → {run.alignment.correlation_after};
+      <div className="ag-align"><h3>Alignment</h3><AlignmentFit before={run.alignment.correlation_before} after={run.alignment.correlation_after} /><p>{run.alignment.method} ({run.alignment.tool}). Similarity {run.alignment.correlation_before} → {run.alignment.correlation_after};
         estimated head movement {run.alignment.rotation_deg}° and {run.alignment.shift_mm_voxel_frame} mm. Measured over {run.alignment.mask}.</p></div>
     </section>}
 
@@ -189,6 +179,8 @@ export default function AgentAnalysis() {
           <td><button onClick={() => { setRegion(r.label === region ? 0 : r.label); if (!layers.includes("regions")) toggle("regions"); }}>{r.name}</button></td>
           <td>{r.earlier_mm3}</td><td>{r.later_mm3}</td><td>{r.difference_mm3} ({r.difference_pct === null ? "n/a" : `${r.difference_pct}%`})</td><td>not estimated</td><td>{r.status}</td></tr>)}
       </tbody></table></div>
+      <AgentCharts regions={regions} months={run!.validation.interval?.months ?? null} selected={region} totals={{ earlier: run!.measurements!.earlier_total_mm3, later: run!.measurements!.later_total_mm3 }}
+        onSelect={l => { setRegion(l); if (l && !layers.includes("regions")) toggle("regions"); }} />
       {picked && <aside className="ag-evidence" aria-label="Evidence"><h3>Evidence: {picked.name}</h3>
         <p>{picked.earlier_voxels} voxels earlier, {picked.later_voxels} later; {picked.earlier_mm3} → {picked.later_mm3} mm³ ({picked.difference_mm3} mm³).
           Source: voxel counts of the {run!.segmentation_tool?.tool} {run!.segmentation_tool?.version} segmentation. Earlier value, recent value, difference and uncertainty are as listed above.</p>
