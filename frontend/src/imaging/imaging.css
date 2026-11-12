@@ -128,3 +128,5 @@
   .aa-graph{border-inline-end:0}.aa-detail{border-block-start:1px solid #d5e0e8}.aa-timeline button{grid-template-columns:8rem 1fr}.aa-tl-time{grid-column:1 / -1}.aa-axis{padding-inline:0}.aa-mini{display:none}.aa-compact{max-inline-size:none}}
 
 .ag-saved li .ag-saved-actions{display:flex;gap:.5rem;flex-wrap:wrap}.ag-saved .ag-live{background:#12304a;color:#fff;border-color:#12304a}.ag-saved .ag-live:disabled{opacity:.5}
+.ag-saved .ag-watch{background:#12304a;color:#fff;border-color:#12304a}.ag-saved .ag-live{background:#fff;color:#12304a}.ag-guide{margin-top:.75rem;font-size:.9rem}.ag-guide ul{padding-inline-start:1.2rem}.ag-guide summary{cursor:pointer}.aa-check select{margin-inline-start:.3rem}
+.aa-replay span{white-space:nowrap}
