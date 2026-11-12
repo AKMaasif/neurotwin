@@ -125,6 +125,13 @@ export type AgentRun = {
   review?: { flags: string[]; note: string };
   report?: { status: string; author: string; sections: Record<string, string[]> };
 };
+export type AgentAiStatus = { mode: string; providers: Record<string, { role: string; available: boolean; provider: string | null; model: string | null }> };
+export type AgentAi = {
+  review_state: string; note: string; created_at: string;
+  explanation: { status: string; reason?: string; provider: string | null; model: string | null; scripted?: boolean; attempts: number; statements: { text: string; cites: string[] }[]; validator?: { ok: boolean; problems: { index: number; code: string; detail: string }[] } };
+  cross_check: { status: string; reason?: string; provider?: string; model?: string; scripted?: boolean; items: { index: number; supported: boolean; reason: string }[] };
+  qa: { passed: boolean; checks: { name: string; ok: boolean; required: boolean; warning?: boolean; detail: string }[] };
+};
 export type AgentSaved = { run_id: string; earlier: string; later: string; state: string; months: number | null; target_months: number | null; segmentation: string | null; saved_at: number };
 export type AgentPair = { subject_id: string; earlier: string; later: string; segmented: boolean; interval: { months: number; nearest_target_months: number | null; within_requested_window: boolean } };
 
@@ -148,6 +155,8 @@ export const api = {
   agentStart: (earlier: string, later: string) => post<AgentRun>("/api/imaging/agent/runs", { earlier, later }),
   agentRun: (id: string) => get<AgentRun>(`/api/imaging/agent/runs/${id}`),
   agentCancel: (id: string) => post<AgentRun>(`/api/imaging/agent/runs/${id}/cancel`),
+  agentAi: (id: string) => get<{ result: AgentAi | null; status: AgentAiStatus }>(`/api/imaging/agent/runs/${id}/ai`),
+  agentExplain: (id: string) => post<AgentAi>(`/api/imaging/agent/runs/${id}/ai/explain`),
   agentRetry: (id: string) => post<AgentRun>(`/api/imaging/agent/runs/${id}/retry`),
   oasis2Info: (mri: string) => get<{ shape: number[]; voxel_mm: number[]; frame: string }>(`/api/imaging/oasis2/visits/${mri}/info`),
   oasis2Subjects: () => get<{ subjects: Oasis2Subject[]; summary: Record<string, number> }>("/api/imaging/oasis2/subjects"),
