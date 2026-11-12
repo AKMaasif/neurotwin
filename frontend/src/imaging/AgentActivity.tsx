@@ -58,10 +58,10 @@ function Chip({ status }: { status: string }) {
   return <span className={`aa-chip aa-s-${status}`}><span aria-hidden="true">{s.icon}</span> {s.text}</span>;
 }
 
-type Props = { runId: string | null; onCancel: () => void; onOpenResult: (target: string) => void };
+type Props = { liveSignal?: number; runId: string | null; onCancel: () => void; onOpenResult: (target: string) => void };
 
 /** Agent Activity: a compact status card that opens into the real workflow graph, event list and timeline of one run. */
-export default function AgentActivity({ runId, onCancel, onOpenResult }: Props) {
+export default function AgentActivity({ liveSignal = 0, runId, onCancel, onOpenResult }: Props) {
   const [act, setAct] = useState<Activity | null>(null), [events, setEvents] = useState<ActEvent[]>([]), [lost, setLost] = useState(false), [error, setError] = useState("");
   const [open, setOpen] = useState(false), [folded, setFolded] = useState(false), [sel, setSel] = useState<string | null>(null), [view, setView] = useState<View | null>(null);
   const [follow, setFollow] = useState(false), [tab, setTab] = useState<"timeline" | "events">("timeline"), [onlySel, setOnlySel] = useState(false);
@@ -100,7 +100,7 @@ export default function AgentActivity({ runId, onCancel, onOpenResult }: Props) 
   const geo = useMemo(() => nodes.length ? layout(nodes) : null, [nodes.length]);  // eslint-disable-line react-hooks/exhaustive-deps
   const byId = useMemo(() => new Map(nodes.map(n => [n.id, n])), [nodes]);
   const active = nodes.find(n => n.status === "running") ?? null;
-  const selected = sel ? byId.get(sel) ?? null : null;
+  const selected = sel ? byId.get(sel) ?? null : follow && active ? active : null;  // following a live run shows the running step's details
   const done = nodes.filter(n => DONE.includes(n.status)).length, notRun = nodes.filter(n => NOT_RUN.includes(n.status)).length;
   const remaining = nodes.length - done - notRun;
   const runState = act?.state ?? "idle";
@@ -147,6 +147,9 @@ export default function AgentActivity({ runId, onCancel, onOpenResult }: Props) 
     return () => window.clearTimeout(t);
   }, [playing, replay, events.length, fast]);
 
+  // Starting a real run opens the panel and follows the running step; nothing opens for saved results.
+  useEffect(() => { if (liveSignal > 0) { setOpen(true); setFollow(true); setView(null); setTab("timeline"); } }, [liveSignal]);
+
   const close = () => { setOpen(false); window.setTimeout(() => expandBtn.current?.focus(), 0); };
   useEffect(() => { if (open) dialog.current?.querySelector<HTMLElement>("[data-first]")?.focus(); }, [open]);
   useEffect(() => {  // Escape minimizes even when focus has not reached the panel yet
@@ -178,7 +181,7 @@ export default function AgentActivity({ runId, onCancel, onOpenResult }: Props) 
 
   const idle = !runId;
   const headline = idle ? "No analysis is running." : active ? `Running: ${active.label}` : act?.live ? "Waiting for the next step." : `${RUN_TEXT[runState] ?? runState}.`;
-  const detail = idle ? "Choose a scan pair and run Agent Analysis. This panel then follows the real steps." : active?.summary ?? (act?.historical ? ({ cancelled: "The analysis was cancelled; the steps after it did not run.", failed: "The analysis stopped with an error; the steps after it did not run.", blocked: "The pair did not pass validation, so nothing was run.", partial: "Finished with limits: some steps are unavailable, shown in the graph.", complete: "Stored record of a finished analysis." } as Record<string, string>)[runState] ?? "Stored record of a finished analysis." : "");
+  const detail = idle ? "Press Run live on a saved analysis, or choose a pair below and run Agent Analysis. This panel then opens and follows the real steps." : active?.summary ?? (act?.historical ? ({ cancelled: "The analysis was cancelled; the steps after it did not run.", failed: "The analysis stopped with an error; the steps after it did not run.", blocked: "The pair did not pass validation, so nothing was run.", partial: "Finished with limits: some steps are unavailable, shown in the graph.", complete: "Stored record of a finished analysis." } as Record<string, string>)[runState] ?? "Stored record of a finished analysis." : "");
   const open_ = (t: string | null) => { if (!t) return; close(); window.setTimeout(() => onOpenResult(t), 50); };
 
   const t0 = act?.started_at ? new Date(act.started_at).getTime() : 0;
@@ -280,7 +283,7 @@ export default function AgentActivity({ runId, onCancel, onOpenResult }: Props) 
           <button role="tab" aria-selected={tab === "timeline"} onClick={() => setTab("timeline")}>Timeline</button>
           <button role="tab" aria-selected={tab === "events"} onClick={() => setTab("events")}>Events ({events.length})</button>
           {act.has_events && !act.live && <span className="aa-replay">
-            {!replaying ? <button onClick={() => { setReplay(0); setPlaying(true); }}>Replay recorded events</button> : <>
+            {!replaying ? <button onClick={() => { setReplay(0); setPlaying(true); }}>Replay a recorded run (no processing)</button> : <>
               <button onClick={() => setPlaying(p => !p)}>{playing ? "Pause" : "Play"}</button>
               <input type="range" min={0} max={events.length} value={replay!} onChange={e => { setPlaying(false); setReplay(+e.target.value); }} aria-label="Replay position" />
               <span>{replay} / {events.length}</span><label className="aa-check"><input type="checkbox" checked={fast} onChange={e => setFast(e.target.checked)} />Faster</label>
