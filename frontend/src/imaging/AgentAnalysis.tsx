@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api, AgentAi, AgentVisual, AgentAiStatus, AgentPair, AgentRegion, AgentRun, AgentSaved } from "../api";
+import { api, AgentAi, AgentChat, AgentReview, AgentVisual, AgentAiStatus, AgentPair, AgentRegion, AgentRun, AgentSaved } from "../api";
 import AgentActivity from "./AgentActivity";
 import AgentCharts, { AlignmentFit } from "./AgentCharts";
 
@@ -19,6 +19,7 @@ export default function AgentAnalysis() {
   const [run, setRun] = useState<AgentRun | null>(null), [liveSignal, setLiveSignal] = useState(0), [replaySignal, setReplaySignal] = useState(0);
   const [recorded, setRecorded] = useState(false), [reveal, setReveal] = useState(4);
   const revealTimer = useRef<number>();
+  const [rev, setRev] = useState<AgentReview | null>(null), [chat, setChat] = useState<AgentChat[]>([]), [revBusy, setRevBusy] = useState(false), [question, setQuestion] = useState(""), [askBusy, setAskBusy] = useState(false), [revMode, setRevMode] = useState("off");
   const [vis, setVis] = useState<AgentVisual | null>(null), [visInfo, setVisInfo] = useState<{ images_allowed: boolean; mode: string } | null>(null), [visBusy, setVisBusy] = useState(false), [visOk, setVisOk] = useState(false);
   const [showMeasured, setShowMeasured] = useState(true), [showModel, setShowModel] = useState(true);
   const [ai, setAi] = useState<AgentAi | null>(null), [aiStatus, setAiStatus] = useState<AgentAiStatus | null>(null), [aiBusy, setAiBusy] = useState(false), [aiTick, setAiTick] = useState(0);
@@ -64,6 +65,18 @@ export default function AgentAnalysis() {
     setVis(null);
     if (run?.report) api.agentVisual(run.run_id).then(r => { setVis(r.result); setVisInfo({ images_allowed: r.images_allowed, mode: r.mode }); }).catch(() => undefined);
   }, [run?.run_id, !!run?.report]);
+  useEffect(() => {
+    setRev(null); setChat([]);
+    if (run?.report) api.agentReview(run.run_id).then(r => { setRev(r.result); setChat(r.chat); setRevMode(r.mode); }).catch(() => undefined);
+  }, [run?.run_id, !!run?.report]);
+  const runReview = async () => {
+    if (!run) return; setRevBusy(true); setError("");
+    try { setRev(await api.agentRunReview(run.run_id)); setAiTick(n => n + 1); } catch (e) { setError((e as Error).message); } finally { setRevBusy(false); }
+  };
+  const ask = async () => {
+    if (!run || !question.trim()) return; setAskBusy(true); setError("");
+    try { const a = await api.agentAsk(run.run_id, question.trim()); setChat(c => [...c, a]); setQuestion(""); setAiTick(n => n + 1); } catch (e) { setError((e as Error).message); } finally { setAskBusy(false); }
+  };
   const look = async () => {
     if (!run) return; setVisBusy(true); setError("");
     try { setVis(await api.agentLook(run.run_id)); setAiTick(n => n + 1); } catch (e) { setError((e as Error).message); } finally { setVisBusy(false); }
@@ -254,6 +267,31 @@ export default function AgentAnalysis() {
             {" · "}{o.slice}{o.cites.length ? ` · cites ${o.cites.join(", ")}` : ""}{o.cross ? ` · second reader: ${o.cross.verdict.replace("_", " ")}${vis.cross_check.scripted ? " (scripted, not checked)" : ""}` : ""}{o.status === "rejected" ? ` · ${o.reason}` : ""}</small></li>)}</ol>}
         <p className="cmp-note-plain">Second reader: {vis.cross_check.status === "completed" ? `${vis.cross_check.model}` : `not cross-checked (${vis.cross_check.reason ?? vis.cross_check.status})`}. {vis.note}</p>
         <div className="ag-actions"><button onClick={look} disabled={visBusy}>{visBusy ? "Looking and checking…" : "Compare again"}</button></div></div>}
+    </section>}
+
+    {run?.report && shown(4) && <section className="ag-ai ag-rev" id="ag-rev" aria-label="AI review and questions"><h2>AI review and questions <small>drafts, not reviewed</small></h2>
+      <p className="cmp-note-plain">Optional. A quality reviewer says whether the pair is fit to compare (a fixed rule sets the least cautious answer it may give); a challenger lists reasons a difference may be noise and questions to ask. You can also ask a question: it is answered only from numbered facts of this run, and questions about diagnosis, prediction, normal ranges or treatment are refused. Drafts by Gemini; not a diagnosis.</p>
+      {!rev && <div className="ag-actions"><button onClick={runReview} disabled={revBusy || revMode === "off"}>{revBusy ? "Reviewing…" : "Run the AI review"}</button>
+        {revMode === "off" && <span className="cmp-note-plain">No model provider is configured on this server.</span>}</div>}
+      {rev && <div>
+        <h3>Quality reviewer <small>{rev.quality.status === "completed" ? "" : rev.quality.status}</small></h3>
+        <p className={`ag-ai-state ${rev.quality.verdict === "proceed" ? "ok" : "blocked"}`} role="status"><strong>{(rev.quality.verdict ?? rev.quality.gate).replace(/_/g, " ")}</strong>
+          {rev.quality.overridden_by_gate ? ` · the model said ${rev.quality.model_verdict?.replace(/_/g, " ")}, but the rules require at least ${rev.quality.gate.replace(/_/g, " ")}` : ""}{rev.quality.scripted ? " · scripted demo text" : ""}{rev.quality.status !== "completed" && ` · ${rev.quality.reason ?? "the claim checker refused the draft"} (rule gate: ${rev.quality.gate.replace(/_/g, " ")})`}</p>
+        {rev.quality.gate_reasons.length > 0 && <p className="cmp-note-plain">Rule gate: {rev.quality.gate_reasons.join(" ")}</p>}
+        <ul className="ag-ai-list">{rev.quality.statements.map((x, i) => <li key={i}><span>{x.text}</span> <small>cites {x.cites.join(", ")}</small></li>)}</ul>
+        <h3>Findings challenger <small>{rev.challenge.status === "completed" ? "" : rev.challenge.status}</small></h3>
+        {rev.challenge.doubts.length > 0 && <><h4>Reasons to doubt</h4><ul className="ag-ai-list">{rev.challenge.doubts.map((x, i) => <li key={i}><span>{x.text}</span> <small>cites {x.cites.join(", ")}</small></li>)}</ul></>}
+        {rev.challenge.questions.length > 0 && <><h4>Questions to ask</h4><ul className="ag-ai-list">{rev.challenge.questions.map((x, i) => <li key={i}><span>{x.text}</span> <small>cites {x.cites.join(", ")}</small></li>)}</ul></>}
+        {rev.challenge.status !== "completed" && <p className="cmp-note-plain">{rev.challenge.reason ?? rev.challenge.validator?.problems.map(p => p.detail).join(" ") ?? ""}</p>}
+        <p className="cmp-note-plain">{rev.note}</p>
+        <div className="ag-actions"><button onClick={runReview} disabled={revBusy}>{revBusy ? "Reviewing…" : "Review again"}</button></div></div>}
+      <h3>Ask the evidence</h3>
+      <form className="ag-ask" onSubmit={e => { e.preventDefault(); ask(); }}>
+        <label>Your question about this run<input value={question} maxLength={300} onChange={e => setQuestion(e.target.value)} placeholder="For example: why is the right amygdala marked small?" disabled={askBusy || revMode === "off"} /></label>
+        <button type="submit" disabled={askBusy || !question.trim() || revMode === "off"}>{askBusy ? "Looking it up…" : "Ask"}</button></form>
+      <ol className="ag-chat" aria-label="Questions and answers">{chat.map((c, i) => <li key={i}><p><strong>Q:</strong> {c.question}</p>
+        {c.answer.length > 0 ? <ul className="ag-ai-list">{c.answer.map((x, j) => <li key={j}><span>{x.text}</span> <small>cites {x.cites.join(", ")}</small></li>)}</ul> : <p className="cmp-note-plain">{c.note || c.status.replace(/_/g, " ")}</p>}
+        <small>{c.tools.length ? `Looked up: ${c.tools.map(t => t.name + (t.arg ? ` (${t.arg})` : "")).join(", ")}. ` : ""}{c.status === "refused" ? "Refused before any model was called. " : ""}{c.scripted ? "Scripted demo text. " : ""}AI draft, not reviewed.</small></li>)}</ol>
     </section>}
   </section>;
 }
