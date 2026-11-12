@@ -4,7 +4,13 @@ All notable changes, newest first. Versions follow `0.x` while NeuroTwin is a re
 
 ## Unreleased
 
+### Changed
+- Saved analyses have a single **Run agent** button (the recorded replay); "Show result now" and "Run live" were removed.
+  A new real run starts from **Run Agent Analysis** as before.
+
 ### Added
+- Charts in Agent Analysis: change per region (percent or mm³), left against right, tissue-group shares and alignment fit.
+  They redraw the table only, show direction without good/bad meaning, and have table views.
 - Agent Activity panel in Brain Analytics, Agent Analysis: a compact status card that expands into the real workflow
   graph, step details, timeline and event list, with live updates, saved-run history and replay. Planned agents and the
   missing brain-extraction step are shown as unavailable. See `docs/AGENT_ACTIVITY.md`.

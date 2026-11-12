@@ -15,6 +15,27 @@ Agent Analysis pipeline really did. It does not connect, start or simulate any A
 - Three kinds of node are drawn differently and labelled in words: **Tool** (ordinary software step), **AI agent**, and **Human
   review**. Not built means dashed and labelled Unavailable.
 
+## Recorded runs and live runs
+
+Each saved analysis has one button, **Run agent**. It opens the Agent Activity panel and plays the stored events of a real run from the
+beginning, labelled "Replay of a recorded run" and "Nothing is being computed now". The speed is 10x by default (real time and 30x are
+available) and the recorded timings stay in the timeline. While it plays no result is shown. When it ends the panel closes and the page
+loads the results one section at a time (viewer, regional table with charts, findings review, report), scrolling to each. **Skip to result**
+jumps to the end. A new real analysis of two scans is started with **Run Agent Analysis** under "Scan pair", on a server that has the
+alignment tool and the original scans. The hosted demo replays real recordings and never pretends to compute.
+
+## Charts
+
+The regional section draws charts from the table's numbers only (`AgentCharts.tsx`): percentage or cubic-millimetre change per region
+(ranked bars from a zero line, hollow bars for structures under 1,500 mm³), left against right per paired structure (dumbbell), share of
+measured volume by tissue group (two segmented bars) and, under Alignment, image similarity before and after. Colour shows direction only;
+no error bars or normal ranges are drawn because uncertainty is not estimated. Each chart has a legend, a table view, keyboard focus and
+selecting a bar shows that region on the scans.
+
+A run saved before event recording existed has nothing to play: "Run agent" shows its stored result and says that no
+events were recorded. Requirements and steps for running live on new scans are in `docs/LIVE_RUN_GUIDE.md`, and a short version is
+under the saved list in the app.
+
 ## What is real
 
 | Node | Kind | Status today |
