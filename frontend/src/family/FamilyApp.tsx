@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { LogOut, PenLine, UserRound, Users } from "lucide-react";
-import { api, FamilyEntry, User } from "../api";
+import { api, FamilyEntry, FamilyImaging, User } from "../api";
 import { useT } from "../i18n";
 import { Brand, ErrorNote, LangSwitch, Status } from "../ui";
 import Account from "../Account";
@@ -16,9 +16,11 @@ export default function FamilyApp({ user, onSignOut }: { user: User; onSignOut: 
   const [error, setError] = useState<unknown>(null);
   const [view, setView] = useState<View>("people");
   const [who, setWho] = useState<string | null>(null);
+  const [sums, setSums] = useState<FamilyImaging[]>([]);
 
   const load = useCallback(() => { setError(null); api.familyShared().then(setEntries).catch(setError); }, []);
   useEffect(load, [load]);
+  useEffect(() => { api.familyImaging().then(setSums).catch(() => setSums([])); }, []);
 
   const active = (entries ?? []).filter((e) => e.active);
   const target = active.find((e) => e.participant_id === who) ?? active[0];
@@ -56,6 +58,9 @@ export default function FamilyApp({ user, onSignOut }: { user: User; onSignOut: 
         {view === "people" && (
           <>
             {entries?.length === 0 && <p className="fam-card fam-muted">{t("familyNone")}</p>}
+            {sums.length > 0 && <section className="fam-card" aria-label={t("famSumTitle")}><h2>{t("famSumTitle")}</h2><p className="fam-muted">{t("famSumNote")}</p>
+              {sums.map((x) => <div key={x.run_id}><h3>{x.display_name}</h3>
+                {x.active ? <div lang="en" dir="ltr">{x.statements.map((st, i) => <p key={i}>{st}</p>)}</div> : <p className="fam-muted" lang="en" dir="ltr">{x.note}</p>}</div>)}</section>}
             <div className="fam-grid">
               {entries?.map((e) => {
                 const done = e.recent.filter((r) => r.status === "completed").length;
