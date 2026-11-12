@@ -15,6 +15,15 @@ Agent Analysis pipeline really did. It does not connect, start or simulate any A
 - Three kinds of node are drawn differently and labelled in words: **Tool** (ordinary software step), **AI agent**, and **Human
   review**. Not built means dashed and labelled Unavailable.
 
+## Saved results and live runs
+
+Each saved analysis has two buttons. **View saved result** opens the stored result at once, labelled "Historical record"; nothing is
+recomputed and the live panel stays closed. **Run live** starts a new real analysis of the same two scans. The Agent Activity panel
+opens by itself with "Follow active step" on, shows each step as it runs, and the results appear only as each step finishes. A
+step this server cannot run is shown as Unavailable with the reason. Where alignment is not installed (for example on Windows
+with Python 3.14), a live run stops at alignment and says so. The "Run Agent Analysis" button behaves the same way. Replay is
+labelled "Replay a recorded run (no processing)".
+
 ## What is real
 
 | Node | Kind | Status today |
