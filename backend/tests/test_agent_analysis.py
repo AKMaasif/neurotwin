@@ -251,3 +251,34 @@ def test_saved_list_skips_blocked_and_duplicate_pairs(data):
     first = A.run_all(A.create_run("OAS2_0001_MR1", "OAS2_0001_MR2")["run_id"])
     second = A.run_all(A.create_run("OAS2_0001_MR1", "OAS2_0001_MR2")["run_id"])
     assert [r["run_id"] for r in A.list_runs()] == [second["run_id"]] and first["run_id"] != second["run_id"]
+
+
+def test_cancel_stops_the_worker_process(monkeypatch, tmp_path):
+    import subprocess
+    import sys
+    import threading
+    import time
+    real = subprocess.Popen
+    started = []
+
+    def slow(cmd, **kw):
+        p = real([sys.executable, "-c", "import time; time.sleep(60)"])
+        started.append(p)
+        return p
+    monkeypatch.setattr(A.subprocess, "Popen", slow)
+    cancel = threading.Event()
+    threading.Timer(0.5, cancel.set).start()
+    t0 = time.time()
+    with pytest.raises(A.Cancelled):
+        A._worker("register", tmp_path, cancel)
+    assert time.time() - t0 < 5 and started[0].poll() is not None  # stopped, not left running
+
+
+def test_failed_worker_reports_failure(monkeypatch, tmp_path):
+    import subprocess
+    import sys
+    real = subprocess.Popen
+    monkeypatch.setattr(A.subprocess, "Popen", lambda cmd, **kw: real([sys.executable, "-c", "import sys; sys.exit(3)"], stderr=subprocess.PIPE))
+    import threading
+    with pytest.raises(RuntimeError):
+        A._worker("register", tmp_path, threading.Event())

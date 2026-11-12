@@ -2,6 +2,18 @@
 
 All notable changes, newest first. Versions follow `0.x` while NeuroTwin is a research prototype.
 
+## Unreleased
+
+### Added
+- Agent Activity panel in Brain Analytics, Agent Analysis: a compact status card that expands into the real workflow
+  graph, step details, timeline and event list, with live updates, saved-run history and replay. Planned agents and the
+  missing brain-extraction step are shown as unavailable. See `docs/AGENT_ACTIVITY.md`.
+- Execution events per run (`events.jsonl`) and the `/workflow` and `/runs/{id}/activity` endpoints.
+
+### Fixed
+- Alignment and label warping run in a separate process. Before, the server stopped answering for the ~40 s of the
+  registration, and Cancel could not take effect until it finished.
+
 ## 0.3.0 - 11 November 2026
 
 ### Added
