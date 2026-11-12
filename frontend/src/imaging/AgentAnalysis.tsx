@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, AgentPair, AgentRegion, AgentRun, AgentSaved } from "../api";
+import AgentActivity from "./AgentActivity";
 
 const base = (id: string) => `/api/imaging/agent/runs/${id}`;
 const KEY = "nt-agent-run", VIEWS = "nt-agent-views-";
@@ -48,6 +49,14 @@ export default function AgentAnalysis() {
   };
   const cancel = async () => { if (run) try { setRun(await api.agentCancel(run.run_id)); } catch (e) { setError((e as Error).message); } };
 
+  const openResult = (target: string) => {
+    const id = { viewer: "ag-viewer", measurements: "ag-table", review: "ag-review", report: "ag-report" }[target];
+    const el = id ? document.getElementById(id) : null;
+    if (!el) return;
+    el.scrollIntoView({ behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+    el.setAttribute("tabindex", "-1"); (el as HTMLElement).focus({ preventScroll: true });
+  };
+
   if (error && !pairs) return <section className="brain-loading" role="alert"><h1>Agent Analysis is not ready on this server</h1><p>{error}</p></section>;
   if (!pairs) return <section className="brain-loading" role="status"><h1>Looking for scan pairs</h1><progress aria-label="Loading" /></section>;
 
@@ -76,6 +85,7 @@ export default function AgentAnalysis() {
       <ul>{saved.map(r => <li key={r.run_id}><div><strong>{r.earlier.split("_")[1]} · {r.earlier.split("_").pop()} → {r.later.split("_").pop()}</strong>
         <span>{r.months !== null ? `${r.months} months${r.target_months ? ` (≈${r.target_months})` : ""}` : ""} · {r.segmentation ? `${r.segmentation} segmentation` : "no segmentation yet"}</span></div>
         <button onClick={() => api.agentRun(r.run_id).then(setRun).catch(e => setError(e.message))} aria-pressed={run?.run_id === r.run_id}>Open</button></li>)}</ul></section>}
+    <AgentActivity runId={run?.run_id ?? null} onCancel={cancel} onOpenResult={openResult} />
     {!pairs.length ? (!saved.length && <div className="cmp-empty"><h2>No pair is ready</h2><p>Two visits of one person must be extracted locally first. See <code>docs/OASIS2_COMPARE.md</code>.</p></div>) : <>
       <div className="ag-pick cmp-controls">
         <label>Scan pair<select value={pair} onChange={e => setPair(e.target.value)} disabled={!!run && BUSY.includes(run.state)}>
@@ -99,7 +109,7 @@ export default function AgentAnalysis() {
       <details><summary>Limitations of this pair ({run.validation.limitations.length})</summary><ul className="cmp-limits">{run.validation.limitations.map(l => <li key={l}>{l}</li>)}</ul></details>
     </section>}
 
-    {run?.alignment && <section className="ag-viewer" aria-label="Compare scans">
+    {run?.alignment && <section className="ag-viewer" id="ag-viewer" aria-label="Compare scans">
       <h2>Side-by-side view</h2>
       <div className="cmp-controls">
         <fieldset><legend>Slice along</legend>{[0, 1, 2].map(x => <label key={x}><input type="radio" name="agaxis" checked={axis === x} onChange={() => { setAxis(x); setIndex(Math.floor((shape?.[x] ?? 128) / 2)); }} />Voxel axis {x + 1}</label>)}</fieldset>
@@ -129,7 +139,7 @@ export default function AgentAnalysis() {
     {run && !hasSeg && run.alignment && <section className="ag-need" role="status"><h2>Regional measurements are unavailable</h2>
       <p>{run.steps.find(s => s.key === "anatomical_analysis")?.detail}</p></section>}
 
-    {hasSeg && <section className="ag-table"><h2>Regional volumes <small>{run!.segmentation_tool?.tool} {run!.segmentation_tool?.version}</small></h2>
+    {hasSeg && <section className="ag-table" id="ag-table"><h2>Regional volumes <small>{run!.segmentation_tool?.tool} {run!.segmentation_tool?.version}</small></h2>
       <p className="cmp-note-plain">{run!.measurements!.source}. Uncertainty is not estimated, so every difference is marked uncertain.</p>
       <div className="ag-scroll"><table><thead><tr><th>Region</th><th>Earlier mm³</th><th>Later mm³</th><th>Difference</th><th>Uncertainty</th><th>Status</th></tr></thead><tbody>
         {regions.map(r => <tr key={r.label} className={r.label === region ? "ag-sel" : ""}>
@@ -142,11 +152,11 @@ export default function AgentAnalysis() {
         <ul>{picked.review_notes.map(n => <li key={n}>{n}</li>)}</ul></aside>}
     </section>}
 
-    {run?.review && <section className="ag-review"><h2>Findings review</h2>
+    {run?.review && <section className="ag-review" id="ag-review"><h2>Findings review</h2>
       {run.review.flags.length ? <ul>{run.review.flags.map(f => <li key={f}>{f}</li>)}</ul> : <p>No whole-scan inconsistency was found by the review rules.</p>}
       <p className="cmp-note-plain">{run.review.note}</p></section>}
 
-    {run?.report && <section className="ag-report"><h2>Report <small>{run.report.status}</small></h2>
+    {run?.report && <section className="ag-report" id="ag-report"><h2>Report <small>{run.report.status}</small></h2>
       <p className="cmp-note-plain">Written by a {run.report.author}. It restates the measurements above and adds nothing.</p>
       {Object.entries(run.report.sections).map(([k, items]) => <div key={k}><h3>{{ measured: "Largest measured differences", quality_limitations: "Quality limitations", processing: "Processing", suggested_follow_up: "Suggested follow-up for clinician consideration", needs_clinical_review: "Needs clinical review" }[k] ?? k}</h3>
         <ul>{items.map(i => <li key={i}>{i}</li>)}</ul></div>)}</section>}

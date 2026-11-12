@@ -8,7 +8,11 @@ import json
 import math
 import re
 import shutil
+import subprocess
+import sys
+import tempfile
 import threading
+import time
 import uuid
 from pathlib import Path
 
@@ -146,8 +150,8 @@ def validate_pair(earlier: str, later: str, scan: str = "mpr-1") -> dict:
 def _write(run_dir: Path, run: dict) -> None:
     tmp = run_dir / "run.json.tmp"
     tmp.write_text(json.dumps(run, indent=1))
+    AC.sync(run_dir, run)  # log first: a reader that sees the finished state then also sees every event
     tmp.replace(run_dir / "run.json")
-    AC.sync(run_dir, run)  # the execution log follows what was just recorded
 
 
 def _save(run_dir: Path, name: str, arr) -> None:
@@ -204,6 +208,27 @@ def create_run(earlier: str, later: str, scan: str = "mpr-1", parent: str | None
     return run
 
 
+class Cancelled(Exception):
+    """Raised when a worker process was stopped because the run was cancelled."""
+
+
+def _worker(job: str, work: Path, cancel: threading.Event) -> None:
+    """Run ``app.ants_worker <job>`` in a separate process and wait for it, stopping it at once if the run is cancelled."""
+    proc = subprocess.Popen([sys.executable, "-m", "app.ants_worker", job, str(work)], cwd=Path(__file__).resolve().parent.parent,
+                            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    while proc.poll() is None:
+        if cancel.is_set():
+            proc.terminate()
+            try:
+                proc.wait(10)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+            raise Cancelled()
+        time.sleep(0.25)
+    if proc.returncode != 0:
+        raise RuntimeError("alignment worker failed: " + (proc.stderr.read().decode()[-300:] if proc.stderr else ""))
+
+
 def _angle_deg(matrix) -> float:
     import numpy as np
     r = np.asarray(matrix).reshape(3, 3)
@@ -230,22 +255,22 @@ def align(run_id: str) -> dict:
     try:
         d1, _, _, z = O._load(run["earlier"], run["scan"])
         d2, _, _, _ = O._load(run["later"], run["scan"])
-        fixed = ants.from_numpy(np.ascontiguousarray(d1), spacing=tuple(z))
-        moving = ants.from_numpy(np.ascontiguousarray(d2), spacing=tuple(z))
-        reg = ants.registration(fixed=fixed, moving=moving, type_of_transform="Rigid", aff_metric="mattes")
-        if cancel.is_set():
-            step.update(state="cancelled", detail="Cancelled; the result was discarded.")
-            run["state"] = "cancelled"
-            _write(run_dir, run)
-            return run
-        aligned = reg["warpedmovout"].numpy().astype("float32")
-        mask = d1 > np.percentile(d1, 60)
-        before = float(np.corrcoef(d1[mask], d2[mask])[0, 1])
-        after = float(np.corrcoef(d1[mask], aligned[mask])[0, 1])
-        tx = ants.read_transform(reg["fwdtransforms"][0])
-        params = list(tx.parameters)
-        rot, shift = _angle_deg(params[:9]), float(np.linalg.norm(params[9:12]))
-        shutil.copy(reg["fwdtransforms"][0], run_dir / "later_to_earlier.mat")
+        with tempfile.TemporaryDirectory(dir=run_dir) as tmp:  # the registration runs in its own process (see ants_worker)
+            work = Path(tmp)
+            np.save(work / "fixed.npy", np.ascontiguousarray(d1))
+            np.save(work / "moving.npy", np.ascontiguousarray(d2))
+            (work / "zooms.json").write_text(json.dumps([float(v) for v in z]))
+            try:
+                _worker("register", work, cancel)
+            except Cancelled:
+                step.update(state="cancelled", detail="Cancelled; the registration was stopped and nothing was kept.")
+                run["state"] = "cancelled"
+                _write(run_dir, run)
+                return run
+            res = json.loads((work / "result.json").read_text())
+            aligned = np.load(work / "aligned.npy")
+            shutil.copy(work / "transform.mat", run_dir / "later_to_earlier.mat")
+        before, after, rot, shift = res["before"], res["after"], res["rotation_deg"], res["shift"]
         # The aligned copy is rounded to whole numbers (display only; volumes never use it).
         _save(run_dir, "later_aligned", np.clip(np.rint(aligned), 0, 65535).astype("uint16"))
         flags = []
@@ -253,7 +278,7 @@ def align(run_id: str) -> dict:
             flags.append("Similarity barely improved; check the alignment before using it.")
         if rot > 15 or shift > 40:
             flags.append("Unusually large head movement estimated; check the alignment.")
-        run["alignment"] = {"method": "rigid, mattes mutual information", "tool": f"ANTsPy {ants.__version__}",
+        run["alignment"] = {"method": "rigid, mattes mutual information", "tool": f"ANTsPy {res['ants_version']}",
                             "correlation_before": round(before, 4), "correlation_after": round(after, 4),
                             "rotation_deg": round(rot, 2), "shift_mm_voxel_frame": round(shift, 2), "flags": flags,
                             "mask": "voxels above the earlier scan's 60th intensity percentile (not a brain mask)",
@@ -374,12 +399,19 @@ def analyze(run_id: str) -> dict:
     es = onto_scan_grid(es_native, ea, d1.shape, saff)
     ls = onto_scan_grid(ls_native, la, d1.shape, saff)
     # bring the later labels onto the earlier anatomy with the stored rigid transform (nearest label, never blended)
-    import ants
-    fixed = ants.from_numpy(np.ascontiguousarray(d1), spacing=tuple(zooms))
-    moving = ants.from_numpy(ls.astype("float32"), spacing=tuple(zooms))
-    warped = ants.apply_transforms(fixed=fixed, moving=moving, transformlist=[str(run_dir / "later_to_earlier.mat")], interpolator="genericLabel")
+    with tempfile.TemporaryDirectory(dir=run_dir) as tmp:  # label warping also runs in its own process
+        work = Path(tmp)
+        np.save(work / "fixed.npy", np.ascontiguousarray(d1))
+        np.save(work / "labels.npy", ls.astype("int16"))
+        (work / "zooms.json").write_text(json.dumps([float(v) for v in zooms]))
+        shutil.copy(run_dir / "later_to_earlier.mat", work / "transform.mat")
+        try:
+            _worker("warp", work, _CANCEL.setdefault(run_id, threading.Event()))
+        except Cancelled:
+            return load_run(run_id) or run
+        warped = np.load(work / "warped.npy")
     _save(run_dir, "earlier_seg", es.astype("int8"))
-    _save(run_dir, "later_seg_aligned", np.rint(warped.numpy()).astype("int8"))
+    _save(run_dir, "later_seg_aligned", warped)
     _set(run, "anatomical_analysis", "done",
          f"Segmentation imported from {et['tool']} {et['version']} for both scans; labels carried to the earlier anatomy without blending."
          + (f" Labels outside the known list were ignored: {unknown}." if unknown else ""))
