@@ -142,6 +142,12 @@ export type AgentReview = { review_state: string; note: string;
   quality: { status: string; reason?: string; gate: string; gate_reasons: string[]; verdict?: string; model_verdict?: string | null; overridden_by_gate?: boolean; statements: Cited[]; model: string | null; scripted?: boolean; validator?: { problems: { detail: string }[] } };
   challenge: { status: string; reason?: string; doubts: Cited[]; questions: Cited[]; model: string | null; scripted?: boolean; validator?: { problems: { detail: string }[] } } };
 export type AgentChat = { ts: string; question: string; status: string; tools: { name: string; arg: string }[]; answer: Cited[]; note: string; model: string | null; scripted?: boolean };
+export type AgentReviewItem = { id: string; kind: "explanation" | "followup" | "visual"; text: string; cites: string[]; decision: "accepted" | "rejected" | null };
+export type AgentReviewState = { state: string; items: AgentReviewItem[]; undecided: number; accepted: number; approval_outdated: boolean; note: string;
+  approval: { decision: string; by: string; at: string; comment: string } | null; followup: { status: string; reason?: string; items: unknown[] } | null };
+export type FamilyImaging = { run_id: string; participant_id: string; display_name: string; released_at: string; active: boolean; statements: string[]; note: string };
+export type AgentFamily = { draft: { status: string; reason?: string; statements: { text: string; cites: string[] }[]; scripted?: boolean; model?: string; validator?: { problems: { detail: string }[] }; release: { family_id: string; at: string } | null } | null;
+  preconditions: { name: string; ok: boolean; detail: string }[]; participants: { id: string; name: string }[]; family: { id: string; name: string }[]; link: { participant_id: string } | null };
 export type AgentSaved = { run_id: string; earlier: string; later: string; state: string; months: number | null; target_months: number | null; segmentation: string | null; saved_at: number };
 export type AgentPair = { subject_id: string; earlier: string; later: string; segmented: boolean; interval: { months: number; nearest_target_months: number | null; within_requested_window: boolean } };
 
@@ -172,6 +178,15 @@ export const api = {
   agentReview: (id: string) => get<{ result: AgentReview | null; chat: AgentChat[]; mode: string }>(`/api/imaging/agent/runs/${id}/ai/review`),
   agentRunReview: (id: string) => post<AgentReview>(`/api/imaging/agent/runs/${id}/ai/review`),
   agentAsk: (id: string, question: string) => post<AgentChat>(`/api/imaging/agent/runs/${id}/ai/ask`, { question }),
+  agentFollowup: (id: string) => post<unknown>(`/api/imaging/agent/runs/${id}/ai/followup`),
+  agentReviewState: (id: string) => get<AgentReviewState>(`/api/imaging/agent/runs/${id}/review`),
+  agentDecideItem: (id: string, item: string, decision: string) => post<AgentReviewState>(`/api/imaging/agent/runs/${id}/review/items`, { item, decision }),
+  agentDecide: (id: string, decision: string, comment: string) => post<AgentReviewState>(`/api/imaging/agent/runs/${id}/review/decision`, { decision, comment }),
+  agentFamily: (id: string, familyId?: string) => get<AgentFamily>(`/api/imaging/agent/runs/${id}/family${familyId ? `?family_id=${encodeURIComponent(familyId)}` : ""}`),
+  agentFamilyLink: (id: string, participant_id: string) => post<unknown>(`/api/imaging/agent/runs/${id}/family/link`, { participant_id }),
+  agentFamilyDraft: (id: string, selected: string[]) => post<unknown>(`/api/imaging/agent/runs/${id}/family/draft`, { selected }),
+  agentFamilyRelease: (id: string, family_id: string) => post<unknown>(`/api/imaging/agent/runs/${id}/family/release`, { family_id }),
+  agentFamilyWithdraw: (id: string) => post<unknown>(`/api/imaging/agent/runs/${id}/family/withdraw`),
   agentRetry: (id: string) => post<AgentRun>(`/api/imaging/agent/runs/${id}/retry`),
   oasis2Info: (mri: string) => get<{ shape: number[]; voxel_mm: number[]; frame: string }>(`/api/imaging/oasis2/visits/${mri}/info`),
   oasis2Subjects: () => get<{ subjects: Oasis2Subject[]; summary: Record<string, number> }>("/api/imaging/oasis2/subjects"),
@@ -245,5 +260,6 @@ export const api = {
   audit: (pid: string) => get<AuditRow[]>(`/api/participants/${encodeURIComponent(pid)}/audit`),
 
   clinicianParticipants: () => get<ClinicianParticipant[]>("/api/clinician/participants"),
+  familyImaging: () => get<FamilyImaging[]>("/api/family/imaging-summaries"),
   familyShared: () => get<FamilyEntry[]>("/api/family/shared"),
 };

@@ -10,6 +10,9 @@ from . import agent_activity as AC
 from . import agent_analysis as A
 from . import agent_explainer as X
 from . import agent_ledger as L
+from . import agent_family as FA
+from . import agent_followup as FU
+from . import agent_review as RW
 from . import agent_reviewers as RV
 from . import agent_runtime as R
 from . import agent_visual as V
@@ -155,6 +158,122 @@ def ai_ask(run_id: str, body: AskIn, user: User = Depends(research_access)):
         return _out(RV.ask(run, A.runs_root() / run_id, body.question, who=str(user.id)))
     except ValueError as e:
         raise HTTPException(422, str(e)) from None
+
+
+@router.post("/runs/{run_id}/ai/followup")
+def ai_followup(run_id: str, _: User = Depends(research_access)):
+    run = _get(run_id)
+    if run["state"] in ("queued", "running", "aligned"):
+        raise HTTPException(409, "Wait for the analysis to finish.")
+    try:
+        return _out(FU.plan(run, A.runs_root() / run_id))
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
+
+
+@router.get("/runs/{run_id}/review")
+def review_view(run_id: str, _: User = Depends(research_access)):
+    _get(run_id)
+    d = A.runs_root() / run_id
+    return _out({**RW.view(d), "followup": FU.load(d)})
+
+
+class ItemIn(BaseModel):
+    item: str
+    decision: str
+    note: str = ""
+
+
+class DecisionIn(BaseModel):
+    decision: str
+    comment: str = ""
+
+
+@router.post("/runs/{run_id}/review/items")
+def review_item(run_id: str, body: ItemIn, user: User = Depends(research_access)):
+    _get(run_id)
+    try:
+        return _out(RW.decide_item(A.runs_root() / run_id, body.item, body.decision, user.id, body.note))
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+
+
+@router.post("/runs/{run_id}/review/decision")
+def review_decision(run_id: str, body: DecisionIn, user: User = Depends(research_access)):
+    _get(run_id)
+    try:
+        return _out(RW.decide(A.runs_root() / run_id, body.decision, user.id, body.comment))
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
+
+
+def _candidates(db: Session, user: User, run_dir) -> dict:
+    from sqlalchemy import select
+
+    from .models import AccessGrant
+    from .models import User as U
+    parts = [g.owner_id for g in db.scalars(select(AccessGrant).where(AccessGrant.grantee_id == user.id, AccessGrant.purpose == "clinical_review", AccessGrant.revoked_at.is_(None)))]
+    lk = FA._read(run_dir / FA.LINK)
+    fam = []
+    if lk:
+        fam = [g.grantee_id for g in db.scalars(select(AccessGrant).where(AccessGrant.owner_id == lk["participant_id"], AccessGrant.purpose == "participation_updates", AccessGrant.revoked_at.is_(None)))]
+    name = lambda i: (db.get(U, i).display_name if db.get(U, i) else i)  # noqa: E731
+    return {"participants": [{"id": i, "name": name(i)} for i in parts], "family": [{"id": i, "name": name(i)} for i in fam], "link": lk}
+
+
+@router.get("/runs/{run_id}/family")
+def family_state(run_id: str, family_id: str | None = None, user: User = Depends(research_access), db: Session = Depends(get_db)):
+    _get(run_id)
+    d = A.runs_root() / run_id
+    return _out({"draft": FA._read(d / FA.FILE), "preconditions": FA.preconditions(db, d, family_id), **_candidates(db, user, d)})
+
+
+class LinkIn(BaseModel):
+    participant_id: str
+
+
+class FamilyDraftIn(BaseModel):
+    selected: list[str] = []
+
+
+class ReleaseIn(BaseModel):
+    family_id: str
+
+
+@router.post("/runs/{run_id}/family/link")
+def family_link(run_id: str, body: LinkIn, user: User = Depends(research_access), db: Session = Depends(get_db)):
+    _get(run_id)
+    try:
+        return _out(FA.link(db, A.runs_root() / run_id, user, body.participant_id))
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
+
+
+@router.post("/runs/{run_id}/family/draft")
+def family_draft(run_id: str, body: FamilyDraftIn, _: User = Depends(research_access)):
+    run = _get(run_id)
+    try:
+        return _out(FA.draft(run, A.runs_root() / run_id, body.selected))
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
+
+
+@router.post("/runs/{run_id}/family/release")
+def family_release(run_id: str, body: ReleaseIn, user: User = Depends(research_access), db: Session = Depends(get_db)):
+    _get(run_id)
+    try:
+        return _out(FA.release(db, A.runs_root() / run_id, user, body.family_id))
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
+
+
+@router.post("/runs/{run_id}/family/withdraw")
+def family_withdraw(run_id: str, user: User = Depends(research_access), db: Session = Depends(get_db)):
+    _get(run_id)
+    try:
+        return _out(FA.revoke_release(db, A.runs_root() / run_id, user))
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
 
 
 @router.post("/runs/{run_id}/cancel")

@@ -55,6 +55,10 @@ NODES = [
     {"id": "visual_comparison", "step": None, "kind": "ai", "label": "Visual comparison (agent)", "deps": ["longitudinal_comparison"], "ai_node": True,
      "role": "A model (Gemini) looks at the same slices of both scans and points at visible differences; rules check every pointer and a second model (Meta) cross-checks. Only with image sending switched on. Impressions are drawn apart from measured change.",
      "unavailable": PLANNED},
+    {"id": "followup_planner", "step": None, "kind": "ai", "label": "Follow-up planner (agent)", "deps": ["findings_review"], "ai_node": True,
+     "role": "A model (Gemini) drafts suggestions for the clinician to consider, each tied to a limitation or flag. No medication, treatment, referral or urgency. The clinician accepts or rejects each one.", "unavailable": PLANNED},
+    {"id": "family_summary", "step": None, "kind": "ai", "label": "Family summary (agent)", "deps": ["clinician_review"], "ai_node": True,
+     "role": "A model (Gemini) drafts a gentle, plain summary for an authorised family member. It is released only by a clinician, only with the participant's consent and the family member's authorisation, and hidden when any of these ends.", "unavailable": PLANNED},
     {"id": "evidence_explanation", "step": None, "kind": "ai", "label": "Evidence explanation (agent)", "deps": ["report"], "ai_node": True,
      "role": "A language model (Gemini) drafts an explanation of the measured changes. Every sentence cites numbered facts and a rule-based checker refuses added numbers or claims. English only so far; a draft for clinician review.", "unavailable": PLANNED},
     {"id": "report_review_ai", "step": None, "kind": "ai", "label": "Report review (agent)", "deps": ["evidence_explanation"], "ai_node": True,
@@ -125,7 +129,10 @@ def _current(run: dict, step_state: dict, run_dir: Path | None = None) -> dict:
                 out[nid] = ("completed_with_warnings", "; ".join(problems)) if problems else ("completed", "Headers and intensity ranges read for both scans.")
             continue
         if nid == "clinician_review":
-            if step_state["report"] in ("done", "warning"):
+            logged = next((e for e in reversed(read_events(run_dir)) if e["node"] == nid and e["type"] == "status" and e.get("origin") == "agent"), None) if run_dir is not None else None
+            if logged:
+                out[nid] = (logged["status"], logged["summary"])
+            elif step_state["report"] in ("done", "warning"):
                 out[nid] = ("awaiting_review", "The draft report is waiting for a clinician. No approval has been recorded, and approval is not yet built into this prototype.")
             elif ended_early or state in ("partial",):
                 out[nid] = ("skipped", "Nothing to review: the report was not produced.")

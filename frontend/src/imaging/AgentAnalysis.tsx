@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api, AgentAi, AgentChat, AgentReview, AgentVisual, AgentAiStatus, AgentPair, AgentRegion, AgentRun, AgentSaved } from "../api";
+import { api, AgentFamily, AgentReviewState, AgentAi, AgentChat, AgentReview, AgentVisual, AgentAiStatus, AgentPair, AgentRegion, AgentRun, AgentSaved } from "../api";
 import AgentActivity from "./AgentActivity";
 import AgentCharts, { AlignmentFit } from "./AgentCharts";
 
@@ -19,6 +19,8 @@ export default function AgentAnalysis() {
   const [run, setRun] = useState<AgentRun | null>(null), [liveSignal, setLiveSignal] = useState(0), [replaySignal, setReplaySignal] = useState(0);
   const [recorded, setRecorded] = useState(false), [reveal, setReveal] = useState(4);
   const revealTimer = useRef<number>();
+  const [fam, setFam] = useState<AgentFamily | null>(null), [famBusy, setFamBusy] = useState(false), [famTo, setFamTo] = useState(""), [famPick, setFamPick] = useState<string[]>([]), [famPart, setFamPart] = useState("");
+  const [cr, setCr] = useState<AgentReviewState | null>(null), [crBusy, setCrBusy] = useState(false), [crComment, setCrComment] = useState("");
   const [rev, setRev] = useState<AgentReview | null>(null), [chat, setChat] = useState<AgentChat[]>([]), [revBusy, setRevBusy] = useState(false), [question, setQuestion] = useState(""), [askBusy, setAskBusy] = useState(false), [revMode, setRevMode] = useState("off");
   const [vis, setVis] = useState<AgentVisual | null>(null), [visInfo, setVisInfo] = useState<{ images_allowed: boolean; mode: string } | null>(null), [visBusy, setVisBusy] = useState(false), [visOk, setVisOk] = useState(false);
   const [showMeasured, setShowMeasured] = useState(true), [showModel, setShowModel] = useState(true);
@@ -77,6 +79,12 @@ export default function AgentAnalysis() {
     if (!run || !question.trim()) return; setAskBusy(true); setError("");
     try { const a = await api.agentAsk(run.run_id, question.trim()); setChat(c => [...c, a]); setQuestion(""); setAiTick(n => n + 1); } catch (e) { setError((e as Error).message); } finally { setAskBusy(false); }
   };
+  const loadCr = () => { if (run?.report) api.agentReviewState(run.run_id).then(setCr).catch(() => undefined); };
+  useEffect(() => { setCr(null); loadCr(); }, [run?.run_id, !!run?.report, ai, vis, rev]);  // eslint-disable-line react-hooks/exhaustive-deps
+  const crDo = async (f: () => Promise<unknown>) => { setCrBusy(true); setError(""); try { await f(); loadCr(); setAiTick(n => n + 1); } catch (e) { setError((e as Error).message); } finally { setCrBusy(false); } };
+  const loadFam = (fid = famTo) => { if (run?.report) api.agentFamily(run.run_id, fid || undefined).then(setFam).catch(() => undefined); };
+  useEffect(() => { setFam(null); loadFam(); }, [run?.run_id, !!run?.report, cr?.state]);  // eslint-disable-line react-hooks/exhaustive-deps
+  const famDo = async (f: () => Promise<unknown>) => { setFamBusy(true); setError(""); try { await f(); loadFam(); setAiTick(n => n + 1); } catch (e) { setError((e as Error).message); } finally { setFamBusy(false); } };
   const look = async () => {
     if (!run) return; setVisBusy(true); setError("");
     try { setVis(await api.agentLook(run.run_id)); setAiTick(n => n + 1); } catch (e) { setError((e as Error).message); } finally { setVisBusy(false); }
@@ -292,6 +300,41 @@ export default function AgentAnalysis() {
       <ol className="ag-chat" aria-label="Questions and answers">{chat.map((c, i) => <li key={i}><p><strong>Q:</strong> {c.question}</p>
         {c.answer.length > 0 ? <ul className="ag-ai-list">{c.answer.map((x, j) => <li key={j}><span>{x.text}</span> <small>cites {x.cites.join(", ")}</small></li>)}</ul> : <p className="cmp-note-plain">{c.note || c.status.replace(/_/g, " ")}</p>}
         <small>{c.tools.length ? `Looked up: ${c.tools.map(t => t.name + (t.arg ? ` (${t.arg})` : "")).join(", ")}. ` : ""}{c.status === "refused" ? "Refused before any model was called. " : ""}{c.scripted ? "Scripted demo text. " : ""}AI draft, not reviewed.</small></li>)}</ol>
+    </section>}
+
+    {run?.report && shown(4) && cr && <section className="ag-ai ag-cr" id="ag-cr" aria-label="Clinician review"><h2>Clinician review <small>{cr.state.replace(/_/g, " ")}</small></h2>
+      <p className="cmp-note-plain">Nothing written by a model counts until you accept it. Accept or reject each item below; approving records your decision under your account. It covers the accepted AI items and the draft report, and is not a clinical approval of any care. Regenerating a draft makes its items undecided again.</p>
+      <div className="ag-actions"><button onClick={() => crDo(() => api.agentFollowup(run.run_id))} disabled={crBusy || revMode === "off"}>{cr.followup ? "Draft follow-up suggestions again" : "Draft follow-up suggestions (AI)"}</button>
+        {cr.followup && cr.followup.status !== "completed" && <span className="cmp-note-plain">Follow-up: {cr.followup.reason ?? cr.followup.status}</span>}</div>
+      {cr.items.length === 0 ? <p className="cmp-note-plain">No AI item is waiting for a decision. Draft an explanation, follow-up suggestions or a visual comparison above first.</p> :
+        <ul className="ag-cr-list">{cr.items.map(it => <li key={it.id} className={it.decision ?? ""}><span><em>{({ explanation: "Explanation", followup: "Follow-up", visual: "Visual impression" })[it.kind]}</em> {it.text} <small>cites {it.cites.join(", ")}</small></span>
+          <span className="ag-cr-btns"><button aria-pressed={it.decision === "accepted"} disabled={crBusy} onClick={() => crDo(() => api.agentDecideItem(run.run_id, it.id, it.decision === "accepted" ? "cleared" : "accepted"))}>Accept</button>
+            <button aria-pressed={it.decision === "rejected"} disabled={crBusy} onClick={() => crDo(() => api.agentDecideItem(run.run_id, it.id, it.decision === "rejected" ? "cleared" : "rejected"))}>Reject</button></span></li>)}</ul>}
+      <p className="cmp-note-plain" role="status">{cr.accepted} accepted · {cr.undecided} undecided{cr.approval ? ` · ${cr.approval.decision} by ${cr.approval.by} on ${cr.approval.at.slice(0, 10)}${cr.approval.comment ? `: ${cr.approval.comment}` : ""}` : ""}{cr.approval_outdated ? " · the drafts changed after approval, so the approval is outdated" : ""}</p>
+      <div className="ag-actions"><label>Comment<input value={crComment} maxLength={500} onChange={e => setCrComment(e.target.value)} /></label>
+        <button disabled={crBusy || cr.undecided > 0} onClick={() => crDo(() => api.agentDecide(run.run_id, "approve", crComment))} title={cr.undecided ? "Decide every item first." : ""}>Approve</button>
+        <button disabled={crBusy || !crComment.trim()} onClick={() => crDo(() => api.agentDecide(run.run_id, "return", crComment))} title={crComment.trim() ? "" : "Write what should change."}>Return with comment</button>
+        {cr.approval && <button disabled={crBusy} onClick={() => crDo(() => api.agentDecide(run.run_id, "reopen", ""))}>Reopen</button>}</div>
+    </section>}
+
+    {run?.report && shown(4) && fam && <section className="ag-ai ag-fam" id="ag-fam" aria-label="Family summary"><h2>Family summary <small>only after approval and consent</small></h2>
+      <p className="cmp-note-plain">Optional. A model (Gemini) drafts a short, plain summary for one authorised family member. You read it, then release it. It is shown to the family member only while you have approved the review, the participant has agreed to share a scan-comparison summary, and the participant authorised that family member; if any of these ends, it disappears for them. English only for now.</p>
+      <ol className="ag-fam-checks" aria-label="Conditions">{fam.preconditions.map(c => <li key={c.name} className={c.ok ? "ok" : "no"}><strong>{c.ok ? "Met" : "Not met"}</strong> {c.name}: {c.detail}</li>)}</ol>
+      {!fam.link && <div className="ag-actions"><label>Participant this run concerns<select value={famPart} onChange={e => setFamPart(e.target.value)}><option value="">Choose…</option>{fam.participants.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+        <button disabled={famBusy || !famPart} onClick={() => famDo(() => api.agentFamilyLink(run.run_id, famPart))}>Link this run</button>
+        {fam.participants.length === 0 && <span className="cmp-note-plain">No participant has shared their record with you for clinical review.</span>}</div>}
+      {fam.link && <>
+        <fieldset className="ag-fam-pick"><legend>Facts the summary may mention (at most two, optional)</legend>
+          {[["F-total", "Total volume"], ["F-vent", "Ventricle share"], ...regions.slice(0, 6).map(r => [`F-R${r.label}`, r.name])].map(([id, name]) => <label key={id}><input type="checkbox" checked={famPick.includes(id)} disabled={!famPick.includes(id) && famPick.length >= 2}
+            onChange={() => setFamPick(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])} />{name}</label>)}</fieldset>
+        <div className="ag-actions"><button disabled={famBusy || revMode === "off"} onClick={() => famDo(() => api.agentFamilyDraft(run.run_id, famPick))}>{fam.draft ? "Draft again" : "Draft the family summary (AI)"}</button></div>
+        {fam.draft && <div><p className={`ag-ai-state ${fam.draft.status === "completed" ? "ok" : "blocked"}`} role="status"><strong>{fam.draft.status === "completed" ? "Draft ready for you to read" : "No usable draft"}</strong>{fam.draft.scripted && " · scripted demo text"}{fam.draft.status !== "completed" && ` · ${fam.draft.reason ?? fam.draft.validator?.problems.map(p => p.detail).join(" ")}`}</p>
+          <div className="ag-fam-text" lang="en" dir="ltr">{fam.draft.statements.map((st, i) => <p key={i}>{st.text}</p>)}</div>
+          {fam.draft.status === "completed" && <div className="ag-actions"><label>Release to<select value={famTo} onChange={e => { setFamTo(e.target.value); loadFam(e.target.value); }}><option value="">Choose a family member…</option>{fam.family.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+            <button disabled={famBusy || !famTo || fam.preconditions.some(c => !c.ok) || !!fam.draft.release} onClick={() => famDo(() => api.agentFamilyRelease(run.run_id, famTo))}>Release to this family member</button>
+            {fam.draft.release && <button disabled={famBusy} onClick={() => famDo(() => api.agentFamilyWithdraw(run.run_id))}>Withdraw the release</button>}</div>}
+          {fam.draft.release && <p className="cmp-note-plain" role="status">Released on {fam.draft.release.at.slice(0, 10)}. It stays visible to the family member only while every condition above holds.</p>}</div>}
+      </>}
     </section>}
   </section>;
 }
