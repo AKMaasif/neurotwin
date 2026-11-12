@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from . import agent_activity as AC
 from . import agent_analysis as A
 from . import agent_ledger as L
+from . import agent_runtime as R
 from . import oasis2_api as O
 from . import services
 from .imaging import HEADERS, research_access
@@ -74,6 +75,18 @@ def get_run(run_id: str, _: User = Depends(research_access)):
 @router.get("/runs/{run_id}/facts")
 def facts(run_id: str, _: User = Depends(research_access)):
     return _out(L.build(_get(run_id)))
+
+
+@router.get("/agents/status")
+def agents_status(_: User = Depends(research_access)):
+    return _out(R.status())
+
+
+@router.get("/runs/{run_id}/agents")
+def agents_trace(run_id: str, _: User = Depends(research_access)):
+    _get(run_id)
+    d = A.runs_root() / run_id
+    return _out({"trace": R.read(d, R.TRACE), "egress": R.read(d, R.EGRESS)})
 
 
 @router.post("/runs/{run_id}/cancel")

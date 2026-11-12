@@ -294,3 +294,7 @@ The owner asked for the agent to give an early prediction and the health stage o
 
 - **Step 1 done: fact ledger** (`backend/app/agent_ledger.py`, `GET /api/imaging/agent/runs/{id}/facts`). Rules only, no model. Each measured, derived
   (annualised rate, left-right gap, ventricle share) and stated fact has an id that agents must cite. No agent is built yet.
+- **Step 2 done: runtime** (`backend/app/agent_runtime.py`). One `invoke` path for every model call, with an append-only egress log
+  (`egress.jsonl`: which fact ids went to which provider) and trace store (`agents.jsonl`: status, model, prompt hash, output), a daily cap, and modes
+  `live` / `mock` / `off` (`NEUROTWIN_AGENTS_MODE`; mock is scripted, labelled, and never chosen silently). `GET /api/imaging/agent/agents/status` and
+  `GET /api/imaging/agent/runs/{id}/agents`. No agent is built yet and no image is sent.
