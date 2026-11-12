@@ -132,6 +132,11 @@ export type AgentAi = {
   cross_check: { status: string; reason?: string; provider?: string; model?: string; scripted?: boolean; items: { index: number; supported: boolean; reason: string }[] };
   qa: { passed: boolean; checks: { name: string; ok: boolean; required: boolean; warning?: boolean; detail: string }[] };
 };
+export type AgentObs = { index: number; slice: string; x: number; y: number; description: string; region: string; cites: string[]; status: "supported" | "unsupported" | "rejected";
+  reason: string; reject_code?: string; drawn: boolean; needs_look?: boolean; cross?: { verdict: "agreed" | "disputed" | "not_visible"; reason: string } };
+export type AgentVisual = { review_state: string; note: string; slices: { id: string; axis: number; view: string; index: number; reason: string; size?: number[] }[];
+  observer: { status: string; reason?: string; provider: string | null; model: string | null; scripted?: boolean }; observations: AgentObs[];
+  cross_check: { status: string; reason?: string; model?: string; provider?: string; scripted?: boolean } };
 export type AgentSaved = { run_id: string; earlier: string; later: string; state: string; months: number | null; target_months: number | null; segmentation: string | null; saved_at: number };
 export type AgentPair = { subject_id: string; earlier: string; later: string; segmented: boolean; interval: { months: number; nearest_target_months: number | null; within_requested_window: boolean } };
 
@@ -157,6 +162,8 @@ export const api = {
   agentCancel: (id: string) => post<AgentRun>(`/api/imaging/agent/runs/${id}/cancel`),
   agentAi: (id: string) => get<{ result: AgentAi | null; status: AgentAiStatus }>(`/api/imaging/agent/runs/${id}/ai`),
   agentExplain: (id: string) => post<AgentAi>(`/api/imaging/agent/runs/${id}/ai/explain`),
+  agentVisual: (id: string) => get<{ result: AgentVisual | null; images_allowed: boolean; mode: string }>(`/api/imaging/agent/runs/${id}/ai/visual`),
+  agentLook: (id: string) => post<AgentVisual>(`/api/imaging/agent/runs/${id}/ai/visual`),
   agentRetry: (id: string) => post<AgentRun>(`/api/imaging/agent/runs/${id}/retry`),
   oasis2Info: (mri: string) => get<{ shape: number[]; voxel_mm: number[]; frame: string }>(`/api/imaging/oasis2/visits/${mri}/info`),
   oasis2Subjects: () => get<{ subjects: Oasis2Subject[]; summary: Record<string, number> }>("/api/imaging/oasis2/subjects"),
