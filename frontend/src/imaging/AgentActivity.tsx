@@ -58,14 +58,14 @@ function Chip({ status }: { status: string }) {
   return <span className={`aa-chip aa-s-${status}`}><span aria-hidden="true">{s.icon}</span> {s.text}</span>;
 }
 
-type Props = { liveSignal?: number; runId: string | null; onCancel: () => void; onOpenResult: (target: string) => void };
+type Props = { liveSignal?: number; replaySignal?: number; onReplayEnd?: () => void; runId: string | null; onCancel: () => void; onOpenResult: (target: string) => void };
 
 /** Agent Activity: a compact status card that opens into the real workflow graph, event list and timeline of one run. */
-export default function AgentActivity({ liveSignal = 0, runId, onCancel, onOpenResult }: Props) {
+export default function AgentActivity({ liveSignal = 0, replaySignal = 0, onReplayEnd, runId, onCancel, onOpenResult }: Props) {
   const [act, setAct] = useState<Activity | null>(null), [events, setEvents] = useState<ActEvent[]>([]), [lost, setLost] = useState(false), [error, setError] = useState("");
   const [open, setOpen] = useState(false), [folded, setFolded] = useState(false), [sel, setSel] = useState<string | null>(null), [view, setView] = useState<View | null>(null);
   const [follow, setFollow] = useState(false), [tab, setTab] = useState<"timeline" | "events">("timeline"), [onlySel, setOnlySel] = useState(false);
-  const [replay, setReplay] = useState<number | null>(null), [playing, setPlaying] = useState(false), [fast, setFast] = useState(false), [now, setNow] = useState(Date.now());
+  const [replay, setReplay] = useState<number | null>(null), [playing, setPlaying] = useState(false), [speed, setSpeed] = useState(10), [now, setNow] = useState(Date.now());
   const last = useRef(0), canvas = useRef<HTMLDivElement>(null), expandBtn = useRef<HTMLButtonElement>(null), dialog = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 800, h: 400 }), drag = useRef<{ x: number; y: number; vx: number; vy: number } | null>(null);
 
@@ -140,15 +140,34 @@ export default function AgentActivity({ liveSignal = 0, runId, onCancel, onOpenR
     return () => el.removeEventListener("wheel", wheel);
   }, [open, zoomBy]);
 
-  useEffect(() => {  // replay steps through the recorded events only
+  useEffect(() => {  // replay steps through the recorded events only, spaced by their real gaps divided by the speed
     if (!playing || replay === null) return;
     if (replay >= events.length) { setPlaying(false); return; }
-    const t = window.setTimeout(() => setReplay(r => (r ?? 0) + 1), fast ? 120 : 450);
+    const gap = replay === 0 ? 400 : (new Date(events[replay].ts).getTime() - new Date(events[replay - 1].ts).getTime()) / speed;
+    const t = window.setTimeout(() => setReplay(r => (r ?? 0) + 1), Math.min(2200, Math.max(150, gap)));
     return () => window.clearTimeout(t);
-  }, [playing, replay, events.length, fast]);
+  }, [playing, replay, events, speed]);
 
   // Starting a real run opens the panel and follows the running step; nothing opens for saved results.
-  useEffect(() => { if (liveSignal > 0) { setOpen(true); setFollow(true); setView(null); setTab("timeline"); } }, [liveSignal]);
+  useEffect(() => { if (liveSignal > 0) { auto.current = false; setOpen(true); setFollow(true); setView(null); setTab("timeline"); } }, [liveSignal]);
+
+  // "Watch recorded run": open the panel and play the stored events from the beginning. When it ends the panel closes and the
+  // page loads the results one by one (onReplayEnd). A run saved before event recording has nothing to play: results show at once.
+  const auto = useRef(false), pending = useRef(false);
+  useEffect(() => { if (replaySignal > 0) { pending.current = true; auto.current = true; setOpen(true); setFollow(true); setView(null); setTab("timeline"); setReplay(null); } }, [replaySignal]);
+  useEffect(() => {
+    if (!pending.current || !act || act.run_id !== runId) return;
+    if (act.live) { pending.current = false; auto.current = false; return; }
+    if (!act.has_events) { pending.current = false; auto.current = false; setOpen(false); onReplayEnd?.(); return; }
+    if (events.length && events[events.length - 1].seq === act.last_seq) { pending.current = false; setReplay(0); setPlaying(true); }
+  }, [act, events, runId, replaySignal]);  // eslint-disable-line react-hooks/exhaustive-deps
+  const finish = () => {  // the recorded run was played to its end, or skipped
+    if (!auto.current) return;
+    auto.current = false; setPlaying(false); setReplay(null);
+    window.setTimeout(() => { setOpen(false); onReplayEnd?.(); }, 1200);
+  };
+  useEffect(() => { if (auto.current && replay !== null && events.length > 0 && replay >= events.length) finish(); }, [replay, events.length]);  // eslint-disable-line react-hooks/exhaustive-deps
+
 
   const close = () => { setOpen(false); window.setTimeout(() => expandBtn.current?.focus(), 0); };
   useEffect(() => { if (open) dialog.current?.querySelector<HTMLElement>("[data-first]")?.focus(); }, [open]);
@@ -188,7 +207,7 @@ export default function AgentActivity({ liveSignal = 0, runId, onCancel, onOpenR
   const tEnd = (() => { const ends = nodes.map(n => n.ended_at ? new Date(n.ended_at).getTime() : 0); const m = Math.max(0, ...ends); return act?.live && !replaying ? Math.max(now, m) : m || t0 + 1; })();
   const total = Math.max(tEnd - t0, 1);
 
-  const stateBadge = idle ? "Idle" : act?.live ? "Live" : act?.has_events ? "Historical record" : "Saved result";
+  const stateBadge = idle ? "Idle" : replaying || pending.current ? "Replay of a recorded run" : act?.live ? "Live" : act?.has_events ? "Historical record" : "Saved result";
 
   return <>
     <section className="aa-compact" aria-label="Agent Activity" data-testid="agent-activity">
@@ -214,7 +233,7 @@ export default function AgentActivity({ liveSignal = 0, runId, onCancel, onOpenR
     {open && act && geo && <div className="aa-overlay" role="dialog" aria-modal="true" aria-labelledby="aa-title" ref={dialog} onKeyDown={keys}>
       <header className="aa-top">
         <div><h2 id="aa-title">Agent Activity</h2>
-          <p>{replaying ? "Replaying recorded events. No processing is running." : idle ? "The workflow as built. Nothing has run yet." : act.live ? "Live: updating from the server." : act.has_events ? "Historical record of this run. Opening it does not run anything again." : "Saved result. No timeline was recorded for this run."}
+          <p>{replaying ? `Replaying a recorded run at ${speed}× speed. Nothing is being computed now.` : idle ? "The workflow as built. Nothing has run yet." : act.live ? "Live: updating from the server." : act.has_events ? "Historical record of this run. Opening it does not run anything again." : "Saved result. No timeline was recorded for this run."}
             {act.parent_run_id ? " This run is a retry." : ""}</p></div>
         <div className="aa-tools" role="toolbar" aria-label="Graph controls">
           <label className="aa-check"><input type="checkbox" checked={follow} onChange={e => setFollow(e.target.checked)} disabled={!act.live && !replaying} />Follow active step</label>
@@ -286,8 +305,9 @@ export default function AgentActivity({ liveSignal = 0, runId, onCancel, onOpenR
             {!replaying ? <button onClick={() => { setReplay(0); setPlaying(true); }}>Replay a recorded run (no processing)</button> : <>
               <button onClick={() => setPlaying(p => !p)}>{playing ? "Pause" : "Play"}</button>
               <input type="range" min={0} max={events.length} value={replay!} onChange={e => { setPlaying(false); setReplay(+e.target.value); }} aria-label="Replay position" />
-              <span>{replay} / {events.length}</span><label className="aa-check"><input type="checkbox" checked={fast} onChange={e => setFast(e.target.checked)} />Faster</label>
-              <button onClick={() => { setReplay(null); setPlaying(false); }}>Exit replay</button></>}</span>}
+              <span>{replay} / {events.length}</span>
+              <label className="aa-check">Speed <select value={speed} onChange={e => setSpeed(+e.target.value)} aria-label="Replay speed"><option value={1}>Real time</option><option value={10}>10×</option><option value={30}>30×</option></select></label>
+              {auto.current ? <button onClick={() => setReplay(events.length)}>Skip to result</button> : <button onClick={() => { setReplay(null); setPlaying(false); }}>Exit replay</button>}</>}</span>}
         </div>
         {tab === "timeline" ? <div role="tabpanel" className="aa-timeline">
           {!act.has_events ? <p className="aa-note">{act.note ?? "No events yet."}</p> : <>

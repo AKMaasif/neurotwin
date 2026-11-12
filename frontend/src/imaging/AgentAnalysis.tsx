@@ -15,7 +15,9 @@ const write = (k: string, v: string) => { try { localStorage.setItem(k, v); } ca
 /** Two scans of one person: validation, alignment, imported segmentation, volume comparison, review and a draft report. */
 export default function AgentAnalysis() {
   const [saved, setSaved] = useState<AgentSaved[]>([]), [pairs, setPairs] = useState<AgentPair[] | null>(null), [error, setError] = useState(""), [pair, setPair] = useState("");
-  const [run, setRun] = useState<AgentRun | null>(null), [liveSignal, setLiveSignal] = useState(0);
+  const [run, setRun] = useState<AgentRun | null>(null), [liveSignal, setLiveSignal] = useState(0), [replaySignal, setReplaySignal] = useState(0);
+  const [recorded, setRecorded] = useState(false), [reveal, setReveal] = useState(4), [tools, setTools] = useState<{ available: boolean; needs: string | null } | null>(null);
+  const revealTimer = useRef<number>();
   const [axis, setAxis] = useState(2), [index, setIndex] = useState(64), [layers, setLayers] = useState<string[]>(["original"]);
   const [opacity, setOpacity] = useState(0.6), [zoom, setZoom] = useState(1), [region, setRegion] = useState(0), [later, setLater] = useState("later_aligned");
   const [views, setViews] = useState<View[]>([]), [shape, setShape] = useState<number[] | null>(null);
@@ -24,6 +26,7 @@ export default function AgentAnalysis() {
   useEffect(() => {
     api.agentPairs().then(r => { setPairs(r.pairs); setPair(p => p || (r.pairs[0] ? `${r.pairs[0].earlier}|${r.pairs[0].later}` : "")); }).catch(e => setError(e.message));
     api.agentSaved().then(r => setSaved(r.runs)).catch(() => undefined);
+    api.agentTools().then(t => setTools(t.alignment)).catch(() => undefined);
     const last = read(KEY);
     if (last) api.agentRun(last).then(setRun).catch(() => undefined);  // results survive a refresh
   }, []);
@@ -41,7 +44,7 @@ export default function AgentAnalysis() {
   }, [run?.run_id, run?.alignment !== null]);
 
   const start = async (retry?: boolean) => {
-    setError("");
+    setError(""); stopReveal(); setRecorded(false);
     try {
       if (retry && run) setRun(await api.agentRetry(run.run_id));
       else { const [a, b] = pair.split("|"); setRun(await api.agentStart(a, b)); }
@@ -49,10 +52,34 @@ export default function AgentAnalysis() {
     } catch (e) { setError((e as Error).message); }
   };
   const runLive = async (r: AgentSaved) => {
-    setError("");
+    setError(""); stopReveal(); setRecorded(false);
     try { setRun(await api.agentStart(r.earlier, r.later)); setLiveSignal(n => n + 1); } catch (e) { setError((e as Error).message); }
   };
   const cancel = async () => { if (run) try { setRun(await api.agentCancel(run.run_id)); } catch (e) { setError((e as Error).message); } };
+
+  const stopReveal = () => window.clearInterval(revealTimer.current);
+  useEffect(() => stopReveal, []);
+  const SECTIONS = ["ag-viewer", "ag-table", "ag-review", "ag-report"];
+  /** A recorded run is watched first; its results then load one section at a time, scrolling to each. */
+  const watchRecorded = async (r: AgentSaved) => {
+    setError(""); stopReveal();
+    try {
+      const loaded = await api.agentRun(r.run_id);
+      setRecorded(true); setReveal(0); setRun(loaded); setReplaySignal(n => n + 1);
+    } catch (e) { setError((e as Error).message); }
+  };
+  const onReplayEnd = () => {
+    stopReveal(); let k = 0;
+    revealTimer.current = window.setInterval(() => {
+      k += 1; setReveal(k);
+      window.setTimeout(() => document.getElementById(SECTIONS[k - 1])?.scrollIntoView({ behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }), 60);
+      if (k >= SECTIONS.length) { window.clearInterval(revealTimer.current); setRecorded(false); }
+    }, 1000);
+  };
+  const showNow = (r: AgentSaved) => { stopReveal(); setRecorded(false); api.agentRun(r.run_id).then(setRun).catch(e => setError(e.message)); };
+  const shown = (n: number) => !recorded || reveal >= n;
+  const canLive = (r: AgentSaved) => !!tools?.available && !!pairs?.some(p => p.earlier === r.earlier && p.later === r.later);
+  const whyNoLive = tools && !tools.available ? `This server cannot run live analyses: it needs ${tools.needs ?? "the alignment tool"}.` : "The original scans for this pair are not on this server.";
 
   const openResult = (target: string) => {
     const id = { viewer: "ag-viewer", measurements: "ag-table", review: "ag-review", report: "ag-report" }[target];
@@ -86,13 +113,22 @@ export default function AgentAnalysis() {
     <header><p className="brain-eyebrow">SAME PERSON · TWO SCANS · RESEARCH</p><h1>Agent Analysis</h1>
       <p>Compares two scans of one person taken about 12, 15 or 18 months apart, from the original volumes. Measured differences only: nothing here is a diagnosis or a prediction.</p></header>
     {saved.length > 0 && <section className="ag-saved" aria-label="Saved analyses"><h2>Saved analyses</h2>
-      <p className="cmp-note-plain">Finished runs on this server. <strong>View saved result</strong> shows what was stored; nothing is recomputed. <strong>Run live</strong> starts a new real analysis of the same two scans and shows each step as it happens.</p>
+      <p className="cmp-note-plain">Finished runs on this server. <strong>Watch recorded run</strong> plays a real run from the beginning, then loads its results one by one; nothing is computed now. <strong>Show result now</strong> skips straight to the stored result. <strong>Run live</strong> starts a new real analysis of the same two scans and shows each step as it happens.</p>
       <ul>{saved.map(r => <li key={r.run_id}><div><strong>{r.earlier.split("_")[1]} · {r.earlier.split("_").pop()} → {r.later.split("_").pop()}</strong>
         <span>{r.months !== null ? `${r.months} months${r.target_months ? ` (≈${r.target_months})` : ""}` : ""} · {r.segmentation ? `${r.segmentation} segmentation` : "no segmentation yet"}</span></div>
         <div className="ag-saved-actions">
-          <button onClick={() => api.agentRun(r.run_id).then(setRun).catch(e => setError(e.message))} aria-pressed={run?.run_id === r.run_id}>View saved result</button>
-          <button className="ag-live" onClick={() => runLive(r)} disabled={!!run && BUSY.includes(run.state)} title="Starts a new real analysis of these two scans. If this server cannot run a step, that step is shown as unavailable.">Run live</button></div></li>)}</ul></section>}
-    <AgentActivity liveSignal={liveSignal} runId={run?.run_id ?? null} onCancel={cancel} onOpenResult={openResult} />
+          <button className="ag-watch" onClick={() => watchRecorded(r)} disabled={!!run && BUSY.includes(run.state)} title="Plays the recorded run from the beginning, then loads the results one by one. Nothing is computed.">Watch recorded run</button>
+          <button onClick={() => showNow(r)} aria-pressed={run?.run_id === r.run_id && !recorded}>Show result now</button>
+          <button className="ag-live" onClick={() => runLive(r)} disabled={!canLive(r) || (!!run && BUSY.includes(run.state))} title={canLive(r) ? "Starts a new real analysis of these two scans." : whyNoLive}>Run live</button></div></li>)}</ul>
+      {tools && !pairs?.length && <p className="cmp-note-plain">Run live is off on this server: {whyNoLive} The recorded runs above are real runs made earlier on the same scans.</p>}
+      <details className="ag-guide"><summary>Run live on your own scans: what you need</summary>
+        <ul>
+          <li><strong>Two scans of one person</strong> taken about 12, 15 or 18 months apart, as NIfTI or Analyze files, with the time between them recorded.</li>
+          <li><strong>A computer with at least 2 CPU cores and 4 GB of memory.</strong> On a 2-core machine the alignment of one 256×256×128 pair took about 33 seconds and used about 0.8 GB; the rest of the analysis takes a few seconds.</li>
+          <li><strong>The alignment package</strong> (<code>antspyx</code>) on Linux or macOS, or Ubuntu under Windows (WSL).</li>
+          <li><strong>A segmentation of each scan from SynthSeg</strong>, run once outside NeuroTwin. Without it the alignment and quality review run, and the regional steps show as unavailable.</li>
+          <li>Full steps are in <code>docs/LIVE_RUN_GUIDE.md</code>. Nothing is a diagnosis; a clinician reviews every report.</li></ul></details></section>}
+    <AgentActivity liveSignal={liveSignal} replaySignal={replaySignal} onReplayEnd={onReplayEnd} runId={run?.run_id ?? null} onCancel={cancel} onOpenResult={openResult} />
     {!pairs.length ? (!saved.length && <div className="cmp-empty"><h2>No pair is ready</h2><p>Two visits of one person must be extracted locally first. See <code>docs/OASIS2_COMPARE.md</code>.</p></div>) : <>
       <div className="ag-pick cmp-controls">
         <label>Scan pair<select value={pair} onChange={e => setPair(e.target.value)} disabled={!!run && BUSY.includes(run.state)}>
@@ -103,7 +139,7 @@ export default function AgentAnalysis() {
       {error && <p role="alert" className="cmp-note">{error}</p>}
     </>}
 
-    {run && <section aria-label="Progress" className="ag-steps">
+    {run && shown(1) && <section aria-label="Progress" className="ag-steps">
       <h2>Progress <small>{run.earlier} → {run.later}{run.parent_run_id ? " · retry" : ""}</small></h2>
       {run.validation.interval && <p className="cmp-gap">Interval from the recorded day offsets: {run.validation.interval.months} months ({run.validation.interval.days} days)
         {run.validation.interval.nearest_target_months ? `, matching the ${run.validation.interval.nearest_target_months}-month window.` : ", outside the 12, 15 and 18-month windows."}</p>}
@@ -116,7 +152,7 @@ export default function AgentAnalysis() {
       <details><summary>Limitations of this pair ({run.validation.limitations.length})</summary><ul className="cmp-limits">{run.validation.limitations.map(l => <li key={l}>{l}</li>)}</ul></details>
     </section>}
 
-    {run?.alignment && <section className="ag-viewer" id="ag-viewer" aria-label="Compare scans">
+    {run?.alignment && shown(1) && <section className="ag-viewer" id="ag-viewer" aria-label="Compare scans">
       <h2>Side-by-side view</h2>
       <div className="cmp-controls">
         <fieldset><legend>Slice along</legend>{[0, 1, 2].map(x => <label key={x}><input type="radio" name="agaxis" checked={axis === x} onChange={() => { setAxis(x); setIndex(Math.floor((shape?.[x] ?? 128) / 2)); }} />Voxel axis {x + 1}</label>)}</fieldset>
@@ -143,10 +179,10 @@ export default function AgentAnalysis() {
         estimated head movement {run.alignment.rotation_deg}° and {run.alignment.shift_mm_voxel_frame} mm. Measured over {run.alignment.mask}.</p></div>
     </section>}
 
-    {run && !hasSeg && run.alignment && <section className="ag-need" role="status"><h2>Regional measurements are unavailable</h2>
+    {run && !hasSeg && run.alignment && shown(2) && <section className="ag-need" role="status"><h2>Regional measurements are unavailable</h2>
       <p>{run.steps.find(s => s.key === "anatomical_analysis")?.detail}</p></section>}
 
-    {hasSeg && <section className="ag-table" id="ag-table"><h2>Regional volumes <small>{run!.segmentation_tool?.tool} {run!.segmentation_tool?.version}</small></h2>
+    {hasSeg && shown(2) && <section className="ag-table" id="ag-table"><h2>Regional volumes <small>{run!.segmentation_tool?.tool} {run!.segmentation_tool?.version}</small></h2>
       <p className="cmp-note-plain">{run!.measurements!.source}. Uncertainty is not estimated, so every difference is marked uncertain.</p>
       <div className="ag-scroll"><table><thead><tr><th>Region</th><th>Earlier mm³</th><th>Later mm³</th><th>Difference</th><th>Uncertainty</th><th>Status</th></tr></thead><tbody>
         {regions.map(r => <tr key={r.label} className={r.label === region ? "ag-sel" : ""}>
@@ -159,11 +195,11 @@ export default function AgentAnalysis() {
         <ul>{picked.review_notes.map(n => <li key={n}>{n}</li>)}</ul></aside>}
     </section>}
 
-    {run?.review && <section className="ag-review" id="ag-review"><h2>Findings review</h2>
+    {run?.review && shown(3) && <section className="ag-review" id="ag-review"><h2>Findings review</h2>
       {run.review.flags.length ? <ul>{run.review.flags.map(f => <li key={f}>{f}</li>)}</ul> : <p>No whole-scan inconsistency was found by the review rules.</p>}
       <p className="cmp-note-plain">{run.review.note}</p></section>}
 
-    {run?.report && <section className="ag-report" id="ag-report"><h2>Report <small>{run.report.status}</small></h2>
+    {run?.report && shown(4) && <section className="ag-report" id="ag-report"><h2>Report <small>{run.report.status}</small></h2>
       <p className="cmp-note-plain">Written by a {run.report.author}. It restates the measurements above and adds nothing.</p>
       {Object.entries(run.report.sections).map(([k, items]) => <div key={k}><h3>{{ measured: "Largest measured differences", quality_limitations: "Quality limitations", processing: "Processing", suggested_follow_up: "Suggested follow-up for clinician consideration", needs_clinical_review: "Needs clinical review" }[k] ?? k}</h3>
         <ul>{items.map(i => <li key={i}>{i}</li>)}</ul></div>)}</section>}

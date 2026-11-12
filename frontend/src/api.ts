@@ -140,6 +140,7 @@ export type Activity = {
 };
 
 export const api = {
+  agentTools: () => get<{ alignment: { available: boolean; needs: string | null } }>("/api/imaging/agent/tools"),
   agentWorkflow: () => get<Activity>("/api/imaging/agent/workflow"),
   agentActivity: (id: string, after: number) => get<Activity>(`/api/imaging/agent/runs/${id}/activity?after=${after}`),
   agentSaved: () => get<{ runs: AgentSaved[] }>("/api/imaging/agent/saved"),
