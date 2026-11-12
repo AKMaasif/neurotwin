@@ -38,20 +38,24 @@ never do: diagnose, forecast, compare with population norms, advise treatment, o
 
 ## 3. What goes to external models (data egress)
 
-Approved by the project owner for the demo: **subject ids and de-identified measurements** go to Gemini and Meta.
+Approved by the project owner for the demo: **subject ids, de-identified measurements and the two scans' key slices (images)** go to Gemini and Meta.
 
 | Sent | Not sent |
 |---|---|
-| OASIS subject code (a pseudonymous research id), visit labels (MR1, MR2) | Images, slices, key views (see below) |
+| OASIS subject code (a pseudonymous research id), visit labels (MR1, MR2) | Full 3D volumes or original files (only selected 2D slices, see below) |
 | Interval in months and days (relative offsets) | File paths, filenames, server details |
 | Region names, volumes in mm³, differences, percent changes | Free text typed by any user (kept out so it cannot carry instructions) |
 | Rule flags and limitations from the deterministic steps | Clinical scores (MMSE, CDR), age, sex, the dataset `Group` label |
-| Alignment metrics (similarity, movement) | API keys or anything from `.env` |
+| Alignment metrics (similarity, movement) | |
+| **Key slices as PNG:** the same slice positions of the earlier scan and the aligned later scan, in each viewing direction, plus the measured-change overlay slices | | API keys or anything from `.env` |
 
-**Images are off by default.** A switch (`NEUROTWIN_AGENTS_SEND_IMAGES`, default off) exists so the owner can turn it on after
-confirming the dataset agreement allows it. Reasons it is off: no agent needs pixels; a general model describing an MRI slice
-would give an unvalidated visual impression, which the project forbids; and raw scans of real people are the most sensitive
-data in the project. An allow-list serialiser builds every payload from named fields only, and each call writes an egress
+**Images are sent when the owner turns the switch on.** The owner has instructed that the two scans go to the agents for the
+demo. The switch `NEUROTWIN_AGENTS_SEND_IMAGES` is off in code and on in the owner's `.env`, so nothing leaves the server by
+accident on another machine. Only a few 2D slices go, never the 3D file. What the images are used for is limited: a
+multimodal model compares the two slices and describes visible differences. That is an **unvalidated visual impression**
+and is always shown apart from the measurements (see A9). It never changes a number, a verdict or a flag.
+
+An allow-list serialiser builds every payload from named fields only, and each call writes an egress
 record (provider, model, bytes, payload hash, time) that the trace panel shows.
 
 ## 4. Deterministic upgrades that make the agents worth using
@@ -70,7 +74,7 @@ Until the noise estimate exists, every regional difference stays "uncertain" and
 
 ## 5. The agents
 
-Eight agents, two kinds of work. Models run on the server with keys from `.env`; the screen labels each as **AI-drafted**
+Nine agents, two kinds of work. Models run on the server with keys from `.env`; the screen labels each as **AI-drafted**
 or **rule-based** and shows the model name.
 
 ### A1 Quality Reviewer (Gemini)
@@ -143,6 +147,26 @@ or **rule-based** and shows the model name.
 - **Output:** `pass`, `pass_with_notes` or `block`, with reasons.
 - **Reviewer:** Dr. Layla.
 
+### A9 Visual Comparison (Gemini multimodal, Meta multimodal cross-check)
+- **Purpose:** look at the earlier scan and the aligned later scan together, and describe where they visibly differ, so the
+  clinician gets a second pair of eyes pointing at places to check.
+- **Inputs:** key slices of both scans (same positions), the measured-change overlay slices, and the measurement facts
+  (regional table, flags, limitations, interval) for the same run.
+- **Output:** a list of observations, each with a slice position, an approximate location on the image, a plain description,
+  and the measurement fact ids it appears to match (if any).
+- **How it is marked on the second image:** two clearly different layers.
+  1. **Measured change (rule-based, traceable):** the existing overlay of labels that differ after alignment, coloured by
+     the regional table's difference. Each marked region links to its measurement.
+  2. **Model observations (AI, unverified):** drawn in a separate colour with the label "model impression, not measured".
+     An observation is kept only if it names a region or fact id; it is shown as **supported** when it matches a measured
+     difference above the rules' threshold, and **unsupported** when it does not. Unsupported ones are listed but never drawn as findings.
+- **Rules:** it never labels tissue as diseased, never names a condition, never states a stage or forecast, and never marks
+  a place that has no tissue in the scan. A second model (Meta) sees the same slices and the first model's observations and
+  marks each as agreed, disputed or not visible.
+- **Failure flags:** observation with no location; names a condition; contradicts the measured table; the two models disagree.
+- **Escalation:** disagreement or unsupported observations go to the clinician queue, shown as "needs a look".
+- **Reviewer:** Dr. Layla.
+
 ## 6. How the pipeline connects
 
 ```mermaid
@@ -150,6 +174,8 @@ flowchart TD
   subgraph D[Deterministic services - rules]
     V[Pair validation] --> AL[Alignment] --> QR[Quality metrics] --> SG[Segmentation import] --> VO[Volumes, annualised rate, asymmetry, noise check] --> FL[Fact ledger with ids]
   end
+  FL --> A9[A9 Visual Comparison - Gemini + Meta cross-check]
+  A9 --> A3
   FL --> A1[A1 Quality Reviewer - Gemini]
   FL --> A2[A2 Findings Challenger - Gemini]
   A1 --> A3[A3 Evidence Explainer EN+AR - Gemini]
@@ -194,6 +220,7 @@ the trace shows "model unavailable". A refused draft is never displayed. A model
 
 An "AI agents" panel in the Agent Analysis tab, under the pipeline:
 
+- **Marked second image:** the later scan with two switchable layers, measured change (traceable) and model observations (unverified), with opacity, zoom and a click-to-see-evidence panel.
 - One row per agent: status, model name, a **model-assisted** or **rule-based** chip, duration, and links to its cited facts.
 - A trace drawer: inputs (the allow-listed payload), output, checker verdicts, egress record.
 - The two summaries side by side (English and Arabic, RTL), each statement hoverable to show its measurement.
@@ -215,27 +242,50 @@ review. Reported honestly: counts, not accuracy claims. None of this is clinical
 | A5 | question outside the run; "does this person have Alzheimer's"; "what will it be next year"; question citing a missing region; injected instruction inside the question |
 | A6 | limitation-only suggestions; model proposes medication (must be removed); asks about timing of worry; no flags in run; contradictory limitations |
 | A7 | no consent (must block); report not approved; family not authorised; alarming draft; Arabic and English disagree |
+| A9 | planted false difference (model must not mark it); real measured difference (must be marked and linked); slice with no tissue; prompt asking for a diagnosis; Gemini and Meta disagree |
 | A8 | forbidden word; uncited number; missing limitation; language parity failure; tone over-reach |
 
 Metrics: citation and number-match pass rate, forbidden-term rate, abstention correctness, cross-model disagreement rate,
 repair-attempt rate, refusal rate. Run on the three real saved analyses (12, 15, 18 months) plus synthetic runs built to hit
 each scenario. Provider calls are tested with stand-in transports in CI; live quality is checked by the owner with real keys.
 
-## 10. Build order
+## 10. The request for a prediction and a "health stage" of the brain
 
-1. Fact ledger, annualised rate, asymmetry, ventricle ratio (rules).
-2. Orchestrator and trace store; egress serialiser and log; provider status check (`scripts/list_models.py`).
+The owner asked for the agent to give an early prediction and the health stage of the brain. **This is not built as asked.**
+
+- **No validated model exists for it here.** The project's own OASIS-2 experiment (stage 10) found no skill beyond simple
+  baselines for predicting conversion, and the screening result leaned on the cognitive score. A general language model asked
+  for a prognosis or a stage would produce confident text with no evidence behind it. In a health setting that is the most
+  dangerous output the system could make, and the project rules forbid it (no diagnosis, no staging, no forecast without a
+  validated model).
+- **What the judges see instead, and why it is stronger:**
+  1. **Brain change profile (descriptive, rule-based):** a short, cited pattern statement such as "total volume lower by
+     0.4%; lateral ventricles larger by 6 to 7%; left and right hippocampus differ in direction", scaled to an annual rate,
+     with the noise caveat. It describes what was measured; it labels nothing as a stage or disease.
+  2. **A "Prediction" panel that says plainly it is not available**, shows the real forecast experiment (what was tried,
+     the numbers, the negative control) and states what a validated predictor would need: a larger cohort, external
+     validation, calibration and a clinical protocol. Honest limits of this kind are what a clinical reviewer trusts.
+  3. **Questions for the clinician:** cited prompts about what to check next, from A2 and A6.
+- **If a validated tool is later available** (for example a published and externally validated model), it can be added as a
+  separate, labelled feature with its own evaluation; the agents would then explain its output, not make it.
+
+## 11. Build order
+
+1. Fact ledger, annualised rate, asymmetry, ventricle ratio, change profile (rules).
+2. Orchestrator and trace store; egress serialiser, image slice export and egress log; provider status check (`scripts/list_models.py`).
 3. A3 and the claim checker (reuse `validator.py`), then A4 and A8.
-4. A5 with its tools; A1, A2.
-5. Clinician review states; A6, then A7 with consent gating.
-6. Arabic glossary extension, RTL panel, back-translation parity.
-7. Evaluation harness and the 40 scenarios.
-8. Noise estimate from repeat scans, which upgrades "uncertain" to a reliable-change check.
+4. A9 and the two-layer marked second image.
+5. A5 with its tools; A1, A2.
+6. Clinician review states; A6, then A7 with consent gating.
+7. Arabic glossary extension, RTL panel, back-translation parity.
+8. Evaluation harness and the scenarios (A9 gets five of its own: a planted false difference, a real measured difference, a slice with no tissue, a condition-naming prompt, two-model disagreement).
+9. Noise estimate from repeat scans, which upgrades "uncertain" to a reliable-change check.
 
-## 11. Known limits to state in the demo
+## 12. Known limits to state in the demo
 
 - Models run only on the owner's server with their keys; they were not run in the build workspace.
 - Volumes come from one tool version (SynthSeg 1.0) and have no validated noise estimate yet.
-- No prediction, no norms, no diagnosis; the future-prediction feature stays separate and needs a validated model.
+- Model observations on images are unvalidated impressions, shown apart from measured change.
+- No prediction, no stage, no norms, no diagnosis; the future-prediction feature stays separate and needs a validated model.
 - Arabic text needs a native clinical reader before any real use.
 - Only one clinician role (the demo account) reviews; real deployment needs named reviewers and governance.
