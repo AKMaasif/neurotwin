@@ -289,3 +289,8 @@ The owner asked for the agent to give an early prediction and the health stage o
 - No prediction, no stage, no norms, no diagnosis; the future-prediction feature stays separate and needs a validated model.
 - Arabic text needs a native clinical reader before any real use.
 - Only one clinician role (the demo account) reviews; real deployment needs named reviewers and governance.
+
+## 13. Status of the build
+
+- **Step 1 done: fact ledger** (`backend/app/agent_ledger.py`, `GET /api/imaging/agent/runs/{id}/facts`). Rules only, no model. Each measured, derived
+  (annualised rate, left-right gap, ventricle share) and stated fact has an id that agents must cite. No agent is built yet.
