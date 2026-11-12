@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from . import agent_activity as AC
 from . import agent_analysis as A
+from . import agent_ledger as L
 from . import oasis2_api as O
 from . import services
 from .imaging import HEADERS, research_access
@@ -68,6 +69,11 @@ def saved(_: User = Depends(research_access)):
 @router.get("/runs/{run_id}")
 def get_run(run_id: str, _: User = Depends(research_access)):
     return _out(_get(run_id))
+
+
+@router.get("/runs/{run_id}/facts")
+def facts(run_id: str, _: User = Depends(research_access)):
+    return _out(L.build(_get(run_id)))
 
 
 @router.post("/runs/{run_id}/cancel")
