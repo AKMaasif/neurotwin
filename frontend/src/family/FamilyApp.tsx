@@ -60,7 +60,7 @@ export default function FamilyApp({ user, onSignOut }: { user: User; onSignOut: 
             {entries?.length === 0 && <p className="fam-card fam-muted">{t("familyNone")}</p>}
             {sums.length > 0 && <section className="fam-card" aria-label={t("famSumTitle")}><h2>{t("famSumTitle")}</h2><p className="fam-muted">{t("famSumNote")}</p>
               {sums.map((x) => <div key={x.run_id}><h3>{x.display_name}</h3>
-                {x.active ? <div lang="en" dir="ltr">{x.statements.map((st, i) => <p key={i}>{st}</p>)}</div> : <p className="fam-muted" lang="en" dir="ltr">{x.note}</p>}</div>)}</section>}
+                {x.active ? <div lang={x.language === "ar" ? "ar" : "en"} dir={x.language === "ar" ? "rtl" : "ltr"}>{x.statements.map((st, i) => <p key={i}>{st}</p>)}</div> : <p className="fam-muted" lang="en" dir="ltr">{x.note}</p>}</div>)}</section>}
             <div className="fam-grid">
               {entries?.map((e) => {
                 const done = e.recent.filter((r) => r.status === "completed").length;

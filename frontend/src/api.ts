@@ -126,8 +126,10 @@ export type AgentRun = {
   report?: { status: string; author: string; sections: Record<string, string[]> };
 };
 export type AgentAiStatus = { mode: string; providers: Record<string, { role: string; available: boolean; provider: string | null; model: string | null }> };
+export type ArabicInfo = { glossary_status: string; glossary_note: string;
+  back_translation: { status: string; reason?: string; scripted?: boolean; model?: string | null; items: { index: number; ok: boolean; flags: string[]; english: string }[] } };
 export type AgentAi = {
-  review_state: string; note: string; created_at: string;
+  review_state: string; note: string; created_at: string; language?: string; arabic?: ArabicInfo;
   explanation: { status: string; reason?: string; provider: string | null; model: string | null; scripted?: boolean; attempts: number; statements: { text: string; cites: string[] }[]; validator?: { ok: boolean; problems: { index: number; code: string; detail: string }[] } };
   cross_check: { status: string; reason?: string; provider?: string; model?: string; scripted?: boolean; items: { index: number; supported: boolean; reason: string }[] };
   qa: { passed: boolean; checks: { name: string; ok: boolean; required: boolean; warning?: boolean; detail: string }[] };
@@ -145,8 +147,8 @@ export type AgentChat = { ts: string; question: string; status: string; tools: {
 export type AgentReviewItem = { id: string; kind: "explanation" | "followup" | "visual"; text: string; cites: string[]; decision: "accepted" | "rejected" | null };
 export type AgentReviewState = { state: string; items: AgentReviewItem[]; undecided: number; accepted: number; approval_outdated: boolean; note: string;
   approval: { decision: string; by: string; at: string; comment: string } | null; followup: { status: string; reason?: string; items: unknown[] } | null };
-export type FamilyImaging = { run_id: string; participant_id: string; display_name: string; released_at: string; active: boolean; statements: string[]; note: string };
-export type AgentFamily = { draft: { status: string; reason?: string; statements: { text: string; cites: string[] }[]; scripted?: boolean; model?: string; validator?: { problems: { detail: string }[] }; release: { family_id: string; at: string } | null } | null;
+export type FamilyImaging = { run_id: string; participant_id: string; display_name: string; released_at: string; active: boolean; statements: string[]; note: string; language?: string };
+export type AgentFamily = { draft: { language?: string; arabic?: ArabicInfo; status: string; reason?: string; statements: { text: string; cites: string[] }[]; scripted?: boolean; model?: string; validator?: { problems: { detail: string }[] }; release: { family_id: string; at: string } | null } | null;
   preconditions: { name: string; ok: boolean; detail: string }[]; participants: { id: string; name: string }[]; family: { id: string; name: string }[]; link: { participant_id: string } | null };
 export type AgentSaved = { run_id: string; earlier: string; later: string; state: string; months: number | null; target_months: number | null; segmentation: string | null; saved_at: number };
 export type AgentPair = { subject_id: string; earlier: string; later: string; segmented: boolean; interval: { months: number; nearest_target_months: number | null; within_requested_window: boolean } };
@@ -172,7 +174,7 @@ export const api = {
   agentRun: (id: string) => get<AgentRun>(`/api/imaging/agent/runs/${id}`),
   agentCancel: (id: string) => post<AgentRun>(`/api/imaging/agent/runs/${id}/cancel`),
   agentAi: (id: string) => get<{ result: AgentAi | null; status: AgentAiStatus }>(`/api/imaging/agent/runs/${id}/ai`),
-  agentExplain: (id: string) => post<AgentAi>(`/api/imaging/agent/runs/${id}/ai/explain`),
+  agentExplain: (id: string, language = "en") => post<AgentAi>(`/api/imaging/agent/runs/${id}/ai/explain`, { language }),
   agentVisual: (id: string) => get<{ result: AgentVisual | null; images_allowed: boolean; mode: string }>(`/api/imaging/agent/runs/${id}/ai/visual`),
   agentLook: (id: string) => post<AgentVisual>(`/api/imaging/agent/runs/${id}/ai/visual`),
   agentReview: (id: string) => get<{ result: AgentReview | null; chat: AgentChat[]; mode: string }>(`/api/imaging/agent/runs/${id}/ai/review`),
@@ -184,8 +186,8 @@ export const api = {
   agentDecide: (id: string, decision: string, comment: string) => post<AgentReviewState>(`/api/imaging/agent/runs/${id}/review/decision`, { decision, comment }),
   agentFamily: (id: string, familyId?: string) => get<AgentFamily>(`/api/imaging/agent/runs/${id}/family${familyId ? `?family_id=${encodeURIComponent(familyId)}` : ""}`),
   agentFamilyLink: (id: string, participant_id: string) => post<unknown>(`/api/imaging/agent/runs/${id}/family/link`, { participant_id }),
-  agentFamilyDraft: (id: string, selected: string[]) => post<unknown>(`/api/imaging/agent/runs/${id}/family/draft`, { selected }),
-  agentFamilyRelease: (id: string, family_id: string) => post<unknown>(`/api/imaging/agent/runs/${id}/family/release`, { family_id }),
+  agentFamilyDraft: (id: string, selected: string[], language = "en") => post<unknown>(`/api/imaging/agent/runs/${id}/family/draft`, { selected, language }),
+  agentFamilyRelease: (id: string, family_id: string, arabic_confirmed = false) => post<unknown>(`/api/imaging/agent/runs/${id}/family/release`, { family_id, arabic_confirmed }),
   agentFamilyWithdraw: (id: string) => post<unknown>(`/api/imaging/agent/runs/${id}/family/withdraw`),
   agentRetry: (id: string) => post<AgentRun>(`/api/imaging/agent/runs/${id}/retry`),
   oasis2Info: (mri: string) => get<{ shape: number[]; voxel_mm: number[]; frame: string }>(`/api/imaging/oasis2/visits/${mri}/info`),
