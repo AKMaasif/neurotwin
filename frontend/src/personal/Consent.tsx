@@ -1,7 +1,26 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, Consent } from "../api";
 import { useT } from "../i18n";
 import { ErrorNote, Heading } from "../ui";
+
+/** A separate, revocable consent: sharing a clinician-approved scan-comparison summary with an authorised family member. */
+function ShareSummary() {
+  const { t } = useT();
+  const [c, setC] = useState<Consent | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState<unknown>(null);
+  useEffect(() => { api.consents().then((l) => setC(l.find((x) => x.scope === "family_imaging_summary") ?? null)).catch(setError); }, []);
+  const set = async (granted: boolean) => { setBusy(true); setError(null); try { setC(await api.setConsent("family_imaging_summary", granted, t.lang)); } catch (e) { setError(e); } setBusy(false); };
+  return (
+    <div className="p-card" aria-labelledby="ss-h">
+      <h2 id="ss-h" style={{ fontSize: "1.05rem" }}>{t("shareSumTitle")}</h2>
+      <p>{t("shareSumBody")}</p>
+      <p className="muted">{c?.granted ? t("shareSumOn", { date: t.date(c.at) }) : t("shareSumOff")}</p>
+      {c?.granted
+        ? <button className="btn block" disabled={busy} onClick={() => set(false)}>{t("shareSumStop")}</button>
+        : <button className="btn primary block" disabled={busy} onClick={() => set(true)}>{t("shareSumAgree")}</button>}
+      <ErrorNote error={error} />
+    </div>
+  );
+}
 
 export default function ConsentScreen({ consent, onChanged, onClose }: {
   consent: Consent | null; onChanged: () => void; onClose: () => void;
@@ -49,6 +68,7 @@ export default function ConsentScreen({ consent, onChanged, onClose }: {
             </div>
           )}
         </div>
+        {consent.granted && <ShareSummary />}
         <p className="muted">{t("deletionNote")}</p>
         <ErrorNote error={error} />
         <button className="btn block" onClick={onClose}>{t("backHome")}</button>
