@@ -193,6 +193,11 @@ def create_run(earlier: str, later: str, scan: str = "mpr-1", parent: str | None
         run["state"] = "blocked"
     else:
         step.update(state="done", detail="Interval and files checked." if validation["status"] == "ok" else "Checked with warnings.")
+        # Self-contained display copies, so a saved run opens without the original archives. OASIS values are whole
+        # numbers, so the originals are stored exactly.
+        import numpy as np
+        _save(run_dir, "earlier_scan", np.rint(O._load(earlier, scan)[0]).astype("uint16"))
+        _save(run_dir, "later_scan", np.rint(O._load(later, scan)[0]).astype("uint16"))
     _write(run_dir, run)
     return run
 
@@ -239,10 +244,7 @@ def align(run_id: str) -> dict:
         params = list(tx.parameters)
         rot, shift = _angle_deg(params[:9]), float(np.linalg.norm(params[9:12]))
         shutil.copy(reg["fwdtransforms"][0], run_dir / "later_to_earlier.mat")
-        # Self-contained display copies, so a saved run opens without the original archives. OASIS values are whole
-        # numbers, so the originals are stored exactly; the aligned copy is rounded to whole numbers.
-        _save(run_dir, "earlier_scan", np.rint(d1).astype("uint16"))
-        _save(run_dir, "later_scan", np.rint(d2).astype("uint16"))
+        # The aligned copy is rounded to whole numbers (display only; volumes never use it).
         _save(run_dir, "later_aligned", np.clip(np.rint(aligned), 0, 65535).astype("uint16"))
         flags = []
         if after - before < 0.05:
