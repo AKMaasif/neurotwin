@@ -85,7 +85,7 @@ RULES: dict[str, dict] = {
     "clinical_claim": {
         "en": _en(r"diagnos\w*", r"dementia", r"alzheimer\w*", r"parkinson\w*", r"mild cognitive impairment", r"MCI",
                   r"impairment", r"impaired", r"disorder", r"disease", r"prognos\w*", r"predict\w*", r"risk",
-                  r"deteriorat\w*", r"declin\w*", r"worsen\w*", r"symptom\w*"),
+                  r"deteriorat\w*", r"declin\w*", r"worsen\w*", r"worse", r"symptom\w*"),
         "ar": ["تشخيص", "خرف", "زهايمر", "ضعف ادراكي", "ضعف إدراكي", "اضطراب", "مرض", "تدهور", "تنبؤ", "يتنبأ", "خطر",
                "أعراض", "اعراض"],
     },
