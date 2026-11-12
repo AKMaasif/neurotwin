@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from . import agent_activity as AC
 from . import agent_analysis as A
 from . import oasis2_api as O
 from . import services
@@ -82,6 +83,20 @@ def retry(run_id: str, background: BackgroundTasks, _: User = Depends(research_a
     if run["state"] != "blocked":
         background.add_task(A.run_all, run["run_id"])
     return _out(run, 202)
+
+
+@router.get("/workflow")
+def workflow(_: User = Depends(research_access)):
+    """The workflow graph before any run: what is built, and what this server can run now. Nothing has executed."""
+    al = A.tools()["alignment"]
+    return _out(AC.workflow(al["available"], al["needs"]))
+
+
+@router.get("/runs/{run_id}/activity")
+def activity(run_id: str, after: int = 0, _: User = Depends(research_access)):
+    """Nodes with status plus the execution events after ``after`` (a sequence number). Safe to repeat after a dropped connection."""
+    run = _get(run_id)
+    return _out(AC.activity(run, A.runs_root() / run_id, max(after, 0)))
 
 
 @router.get("/runs/{run_id}/slice.png")
