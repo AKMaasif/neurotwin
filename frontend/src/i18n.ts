@@ -77,7 +77,7 @@ const en = {
   shareSumAgree: "I agree to share",
   shareSumStop: "Stop sharing",
   famSumTitle: "Scan-comparison summaries",
-  famSumNote: "Written with AI help and approved by a clinician. Not a diagnosis. Shown in English only for now.",
+  famSumNote: "Written with AI help and approved by a clinician. Not a diagnosis. It appears in the language the clinician chose.",
   deletionNote: "To ask for your records to be deleted, contact the research team. Deleting records is separate from stopping.",
 
   // Check-in
@@ -638,7 +638,7 @@ const ar: Record<Key, string> = {
   shareSumAgree: "أوافق على المشاركة",
   shareSumStop: "إيقاف المشاركة",
   famSumTitle: "ملخصات مقارنة الفحوصات",
-  famSumNote: "كُتب بمساعدة الذكاء الاصطناعي ووافق عليه الطبيب. ليس تشخيصاً. يظهر بالإنجليزية فقط حالياً.",
+  famSumNote: "كُتب بمساعدة الذكاء الاصطناعي ووافق عليه الطبيب. ليس تشخيصاً. يظهر باللغة التي اختارها الطبيب.",
   deletionNote: "لطلب حذف سجلاتك، تواصل مع فريق البحث. الحذف أمر منفصل عن التوقف.",
 
   qSleepHours: "كم ساعة نمت تقريبًا الليلة الماضية؟",

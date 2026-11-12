@@ -24,7 +24,7 @@ export default function AgentAnalysis() {
   const [rev, setRev] = useState<AgentReview | null>(null), [chat, setChat] = useState<AgentChat[]>([]), [revBusy, setRevBusy] = useState(false), [question, setQuestion] = useState(""), [askBusy, setAskBusy] = useState(false), [revMode, setRevMode] = useState("off");
   const [vis, setVis] = useState<AgentVisual | null>(null), [visInfo, setVisInfo] = useState<{ images_allowed: boolean; mode: string } | null>(null), [visBusy, setVisBusy] = useState(false), [visOk, setVisOk] = useState(false);
   const [showMeasured, setShowMeasured] = useState(true), [showModel, setShowModel] = useState(true);
-  const [ai, setAi] = useState<AgentAi | null>(null), [aiStatus, setAiStatus] = useState<AgentAiStatus | null>(null), [aiBusy, setAiBusy] = useState(false), [aiTick, setAiTick] = useState(0);
+  const [ai, setAi] = useState<AgentAi | null>(null), [aiStatus, setAiStatus] = useState<AgentAiStatus | null>(null), [aiBusy, setAiBusy] = useState(false), [aiTick, setAiTick] = useState(0), [aiLang, setAiLang] = useState<"en" | "ar">("en"), [famLang, setFamLang] = useState<"en" | "ar">("en"), [famRead, setFamRead] = useState(false);
   const [axis, setAxis] = useState(2), [index, setIndex] = useState(64), [layers, setLayers] = useState<string[]>(["original"]);
   const [opacity, setOpacity] = useState(0.6), [zoom, setZoom] = useState(1), [region, setRegion] = useState(0), [later, setLater] = useState("later_aligned");
   const [views, setViews] = useState<View[]>([]), [shape, setShape] = useState<number[] | null>(null);
@@ -91,7 +91,7 @@ export default function AgentAnalysis() {
   };
   const explain = async () => {
     if (!run) return; setAiBusy(true); setError("");
-    try { setAi(await api.agentExplain(run.run_id)); setAiTick(n => n + 1); } catch (e) { setError((e as Error).message); } finally { setAiBusy(false); }
+    try { setAi(await api.agentExplain(run.run_id, aiLang)); setAiTick(n => n + 1); } catch (e) { setError((e as Error).message); } finally { setAiBusy(false); }
   };
   const stopReveal = () => window.clearInterval(revealTimer.current);
   useEffect(() => stopReveal, []);
@@ -237,16 +237,18 @@ export default function AgentAnalysis() {
         <ul>{items.map(i => <li key={i}>{i}</li>)}</ul></div>)}</section>}
 
     {run?.report && shown(4) && <section className="ag-ai" id="ag-ai" aria-label="AI explanation draft"><h2>AI explanation <small>draft, not reviewed</small></h2>
-      <p className="cmp-note-plain">Optional. A language model (Gemini) writes an explanation from the numbered facts above; a rule-based checker refuses added numbers or claims, and a second model (Meta) checks each sentence. It is a draft for the clinician: not a diagnosis, not a prediction, English only so far.</p>
-      {!ai && <div className="ag-actions"><button onClick={explain} disabled={aiBusy || aiStatus?.mode === "off"} title={aiStatus?.mode === "off" ? "No model provider is configured on this server." : ""}>{aiBusy ? "Drafting and checking…" : "Draft AI explanation"}</button>
+      <p className="cmp-note-plain">Optional. A language model (Gemini) writes an explanation from the numbered facts above; a rule-based checker refuses added numbers or claims, and a second model (Meta) checks each sentence. It is a draft for the clinician: not a diagnosis, not a prediction. English, or Arabic with fixed draft terms and a back-translation check; Arabic has not been reviewed by a native clinical reader.</p>
+      {!ai && <div className="ag-actions"><label>Language<select value={aiLang} onChange={e => setAiLang(e.target.value as "en" | "ar")}><option value="en">English</option><option value="ar">العربية (Arabic)</option></select></label><button onClick={explain} disabled={aiBusy || aiStatus?.mode === "off"} title={aiStatus?.mode === "off" ? "No model provider is configured on this server." : ""}>{aiBusy ? "Drafting and checking…" : "Draft AI explanation"}</button>
         {aiStatus?.mode === "off" && <span className="cmp-note-plain">No model provider is configured on this server, so this agent cannot run.</span>}</div>}
       {ai && <div>
         <p className={`ag-ai-state ${ai.qa.passed ? "ok" : "blocked"}`} role="status"><strong>{ai.qa.passed ? "Passed the checks" : "Blocked by the checks"}</strong> · AI draft, not reviewed by a clinician
           {ai.explanation.scripted && " · scripted demo text, no model was used"}</p>
         {ai.explanation.statements.length > 0 && <ol className="ag-ai-list">{ai.explanation.statements.map((st, i) => { const c = ai.cross_check.items.find(x => x.index === i);
-          return <li key={i}><span>{st.text}</span> <small>cites {st.cites.join(", ")}{c ? (ai.cross_check.scripted ? " · scripted demo, not checked" : c.supported ? " · second model: supported" : ` · second model: not supported (${c.reason})`) : ""}</small></li>; })}</ol>}
+          const bt = ai.arabic?.back_translation.items.find(x => x.index === i);
+          return <li key={i}><span lang={ai.language === "ar" ? "ar" : "en"} dir={ai.language === "ar" ? "rtl" : "ltr"}>{st.text}</span>{bt && <small lang="en" dir="ltr">Back-translation to English: {bt.english}{bt.ok ? "" : ` (differs: ${bt.flags.join(", ")})`}{ai.arabic?.back_translation.scripted ? " · scripted demo" : ""}</small>} <small>cites {st.cites.join(", ")}{c ? (ai.cross_check.scripted ? " · scripted demo, not checked" : c.supported ? " · second model: supported" : ` · second model: not supported (${c.reason})`) : ""}</small></li>; })}</ol>}
         {ai.explanation.status !== "completed" && <p className="cmp-note-plain">{ai.explanation.reason ?? ai.explanation.validator?.problems.map(p => p.detail).join(" ")}</p>}
         <ul className="ag-ai-checks">{ai.qa.checks.map(c => <li key={c.name}><strong>{c.ok ? (c.warning ? "Warning" : "Passed") : "Failed"}</strong> {c.name}: {c.detail}</li>)}</ul>
+        {ai.arabic && <p className="cmp-note-plain" role="note">Arabic terms: {ai.arabic.glossary_note}</p>}
         <p className="cmp-note-plain">Drafted by {ai.explanation.model ?? "no model"}{ai.cross_check.model ? `, checked by ${ai.cross_check.model}` : ""}. {ai.note}</p>
         <div className="ag-actions"><button onClick={explain} disabled={aiBusy}>{aiBusy ? "Drafting and checking…" : "Draft again"}</button></div></div>}
     </section>}
@@ -318,7 +320,7 @@ export default function AgentAnalysis() {
     </section>}
 
     {run?.report && shown(4) && fam && <section className="ag-ai ag-fam" id="ag-fam" aria-label="Family summary"><h2>Family summary <small>only after approval and consent</small></h2>
-      <p className="cmp-note-plain">Optional. A model (Gemini) drafts a short, plain summary for one authorised family member. You read it, then release it. It is shown to the family member only while you have approved the review, the participant has agreed to share a scan-comparison summary, and the participant authorised that family member; if any of these ends, it disappears for them. English only for now.</p>
+      <p className="cmp-note-plain">Optional. A model (Gemini) drafts a short, plain summary for one authorised family member. You read it, then release it. It is shown to the family member only while you have approved the review, the participant has agreed to share a scan-comparison summary, and the participant authorised that family member; if any of these ends, it disappears for them. English or Arabic; an Arabic summary is released only after you confirm that you have read it in Arabic.</p>
       <ol className="ag-fam-checks" aria-label="Conditions">{fam.preconditions.map(c => <li key={c.name} className={c.ok ? "ok" : "no"}><strong>{c.ok ? "Met" : "Not met"}</strong> {c.name}: {c.detail}</li>)}</ol>
       {!fam.link && <div className="ag-actions"><label>Participant this run concerns<select value={famPart} onChange={e => setFamPart(e.target.value)}><option value="">Choose…</option>{fam.participants.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
         <button disabled={famBusy || !famPart} onClick={() => famDo(() => api.agentFamilyLink(run.run_id, famPart))}>Link this run</button>
@@ -327,11 +329,14 @@ export default function AgentAnalysis() {
         <fieldset className="ag-fam-pick"><legend>Facts the summary may mention (at most two, optional)</legend>
           {[["F-total", "Total volume"], ["F-vent", "Ventricle share"], ...regions.slice(0, 6).map(r => [`F-R${r.label}`, r.name])].map(([id, name]) => <label key={id}><input type="checkbox" checked={famPick.includes(id)} disabled={!famPick.includes(id) && famPick.length >= 2}
             onChange={() => setFamPick(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])} />{name}</label>)}</fieldset>
-        <div className="ag-actions"><button disabled={famBusy || revMode === "off"} onClick={() => famDo(() => api.agentFamilyDraft(run.run_id, famPick))}>{fam.draft ? "Draft again" : "Draft the family summary (AI)"}</button></div>
+        <div className="ag-actions"><label>Language<select value={famLang} onChange={e => setFamLang(e.target.value as "en" | "ar")}><option value="en">English</option><option value="ar">العربية (Arabic)</option></select></label><button disabled={famBusy || revMode === "off"} onClick={() => famDo(() => api.agentFamilyDraft(run.run_id, famPick, famLang))}>{fam.draft ? "Draft again" : "Draft the family summary (AI)"}</button></div>
         {fam.draft && <div><p className={`ag-ai-state ${fam.draft.status === "completed" ? "ok" : "blocked"}`} role="status"><strong>{fam.draft.status === "completed" ? "Draft ready for you to read" : "No usable draft"}</strong>{fam.draft.scripted && " · scripted demo text"}{fam.draft.status !== "completed" && ` · ${fam.draft.reason ?? fam.draft.validator?.problems.map(p => p.detail).join(" ")}`}</p>
-          <div className="ag-fam-text" lang="en" dir="ltr">{fam.draft.statements.map((st, i) => <p key={i}>{st.text}</p>)}</div>
+          <div className="ag-fam-text" lang={fam.draft.language === "ar" ? "ar" : "en"} dir={fam.draft.language === "ar" ? "rtl" : "ltr"}>{fam.draft.statements.map((st, i) => <p key={i}>{st.text}</p>)}</div>
+          {fam.draft.arabic && <div lang="en" dir="ltr" className="cmp-note-plain"><p><strong>Back-translation to English{fam.draft.arabic.back_translation.scripted ? " (scripted demo)" : ""}:</strong></p>
+            <ol>{fam.draft.arabic.back_translation.items.map(i => <li key={i.index}>{i.english}{i.ok ? "" : ` (differs: ${i.flags.join(", ")})`}</li>)}</ol><p>{fam.draft.arabic.glossary_note}</p></div>}
           {fam.draft.status === "completed" && <div className="ag-actions"><label>Release to<select value={famTo} onChange={e => { setFamTo(e.target.value); loadFam(e.target.value); }}><option value="">Choose a family member…</option>{fam.family.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
-            <button disabled={famBusy || !famTo || fam.preconditions.some(c => !c.ok) || !!fam.draft.release} onClick={() => famDo(() => api.agentFamilyRelease(run.run_id, famTo))}>Release to this family member</button>
+            {fam.draft.language === "ar" && <label className="ag-fam-read"><input type="checkbox" checked={famRead} onChange={e => setFamRead(e.target.checked)} />I read Arabic and have read this summary in Arabic</label>}
+            <button disabled={famBusy || !famTo || fam.preconditions.some(c => !c.ok) || !!fam.draft.release || (fam.draft.language === "ar" && !famRead)} onClick={() => famDo(() => api.agentFamilyRelease(run.run_id, famTo, famRead))}>Release to this family member</button>
             {fam.draft.release && <button disabled={famBusy} onClick={() => famDo(() => api.agentFamilyWithdraw(run.run_id))}>Withdraw the release</button>}</div>}
           {fam.draft.release && <p className="cmp-note-plain" role="status">Released on {fam.draft.release.at.slice(0, 10)}. It stays visible to the family member only while every condition above holds.</p>}</div>}
       </>}
