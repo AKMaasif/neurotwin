@@ -45,6 +45,18 @@ class MockClient:
         self.provider = f"mock-{provider}"
 
     def complete(self, system: str, user: str, json_mode: bool = False, images: list[bytes] | None = None) -> llm.Reply:
+        ids = [ln.split(":")[0] for ln in user.splitlines() if ln.startswith("F-")]
+        if "QUALITY_REVIEWER" in system:
+            c = [i for i in ("F-interval", "F-uncertainty", "F-align") if i in ids] or ids[:1]
+            return llm.Reply(json.dumps({"verdict": "proceed", "statements": [{"text": f"Scripted demo statement {chr(97 + k)}: see fact {i}.", "cites": [i]} for k, i in enumerate((c * 3)[:3])]}), self.provider, self.model)
+        if "FINDINGS_CHALLENGER" in system:
+            c = [i for i in ("F-uncertainty", "F-total") if i in ids] or ids[:1]
+            return llm.Reply(json.dumps({"doubts": [{"text": f"Scripted demo doubt {chr(97 + k)}: see fact {i}.", "cites": [i]} for k, i in enumerate((c * 3)[:3])],
+                                         "questions": [{"text": f"Scripted demo question {chr(97 + k)}: what does fact {i} leave open?", "cites": [i]} for k, i in enumerate((c * 2)[:2])]}), self.provider, self.model)
+        if "EVIDENCE_TOOLS" in system:
+            return llm.Reply(json.dumps({"tools": [{"name": "get_interval", "arg": ""}, {"name": "get_limitations", "arg": ""}]}), self.provider, self.model)
+        if "EVIDENCE_ANSWER" in system:
+            return llm.Reply(json.dumps({"answer": [{"text": t[:280], "cites": [i]} for i, t in [ln.split(": ", 1) for ln in user.splitlines() if ln.startswith("F-")][:2]], "note": ""}), self.provider, self.model)
         if "VISUAL_OBSERVER" in system:  # A9: one scripted impression at the centre of the first slice, matched to the first region fact in the prompt
             ids = [ln.split(":")[0] for ln in user.splitlines() if ln.startswith("F-R")]
             obs = [{"slice": "S1", "x": 0.5, "y": 0.5, "description": "Scripted demo marker, placed in the middle of the first slice. No image was looked at.", "region": ids[0], "cites": [ids[0]]}] if ids else []

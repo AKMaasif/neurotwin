@@ -10,6 +10,7 @@ from . import agent_activity as AC
 from . import agent_analysis as A
 from . import agent_explainer as X
 from . import agent_ledger as L
+from . import agent_reviewers as RV
 from . import agent_runtime as R
 from . import agent_visual as V
 from . import agent_visual_ai as VA
@@ -124,6 +125,36 @@ def ai_visual(run_id: str, _: User = Depends(research_access)):
         return _out(VA.observe(run, A.runs_root() / run_id))
     except ValueError as e:
         raise HTTPException(409, str(e)) from None
+
+
+@router.get("/runs/{run_id}/ai/review")
+def ai_review_result(run_id: str, _: User = Depends(research_access)):
+    _get(run_id)
+    return _out({"result": RV.load(A.runs_root() / run_id), "chat": RV.chat(A.runs_root() / run_id), "mode": R.mode()})
+
+
+@router.post("/runs/{run_id}/ai/review")
+def ai_review(run_id: str, _: User = Depends(research_access)):
+    run = _get(run_id)
+    if run["state"] in ("queued", "running", "aligned"):
+        raise HTTPException(409, "Wait for the analysis to finish.")
+    try:
+        return _out(RV.review(run, A.runs_root() / run_id))
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
+
+
+class AskIn(BaseModel):
+    question: str
+
+
+@router.post("/runs/{run_id}/ai/ask")
+def ai_ask(run_id: str, body: AskIn, user: User = Depends(research_access)):
+    run = _get(run_id)
+    try:
+        return _out(RV.ask(run, A.runs_root() / run_id, body.question, who=str(user.id)))
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
 
 
 @router.post("/runs/{run_id}/cancel")

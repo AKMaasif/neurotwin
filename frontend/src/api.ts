@@ -137,6 +137,11 @@ export type AgentObs = { index: number; slice: string; x: number; y: number; des
 export type AgentVisual = { review_state: string; note: string; slices: { id: string; axis: number; view: string; index: number; reason: string; size?: number[] }[];
   observer: { status: string; reason?: string; provider: string | null; model: string | null; scripted?: boolean }; observations: AgentObs[];
   cross_check: { status: string; reason?: string; model?: string; provider?: string; scripted?: boolean } };
+type Cited = { text: string; cites: string[] };
+export type AgentReview = { review_state: string; note: string;
+  quality: { status: string; reason?: string; gate: string; gate_reasons: string[]; verdict?: string; model_verdict?: string | null; overridden_by_gate?: boolean; statements: Cited[]; model: string | null; scripted?: boolean; validator?: { problems: { detail: string }[] } };
+  challenge: { status: string; reason?: string; doubts: Cited[]; questions: Cited[]; model: string | null; scripted?: boolean; validator?: { problems: { detail: string }[] } } };
+export type AgentChat = { ts: string; question: string; status: string; tools: { name: string; arg: string }[]; answer: Cited[]; note: string; model: string | null; scripted?: boolean };
 export type AgentSaved = { run_id: string; earlier: string; later: string; state: string; months: number | null; target_months: number | null; segmentation: string | null; saved_at: number };
 export type AgentPair = { subject_id: string; earlier: string; later: string; segmented: boolean; interval: { months: number; nearest_target_months: number | null; within_requested_window: boolean } };
 
@@ -164,6 +169,9 @@ export const api = {
   agentExplain: (id: string) => post<AgentAi>(`/api/imaging/agent/runs/${id}/ai/explain`),
   agentVisual: (id: string) => get<{ result: AgentVisual | null; images_allowed: boolean; mode: string }>(`/api/imaging/agent/runs/${id}/ai/visual`),
   agentLook: (id: string) => post<AgentVisual>(`/api/imaging/agent/runs/${id}/ai/visual`),
+  agentReview: (id: string) => get<{ result: AgentReview | null; chat: AgentChat[]; mode: string }>(`/api/imaging/agent/runs/${id}/ai/review`),
+  agentRunReview: (id: string) => post<AgentReview>(`/api/imaging/agent/runs/${id}/ai/review`),
+  agentAsk: (id: string, question: string) => post<AgentChat>(`/api/imaging/agent/runs/${id}/ai/ask`, { question }),
   agentRetry: (id: string) => post<AgentRun>(`/api/imaging/agent/runs/${id}/retry`),
   oasis2Info: (mri: string) => get<{ shape: number[]; voxel_mm: number[]; frame: string }>(`/api/imaging/oasis2/visits/${mri}/info`),
   oasis2Subjects: () => get<{ subjects: Oasis2Subject[]; summary: Record<string, number> }>("/api/imaging/oasis2/subjects"),
