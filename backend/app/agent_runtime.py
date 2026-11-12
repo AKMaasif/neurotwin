@@ -53,6 +53,9 @@ class MockClient:
             c = [i for i in ("F-uncertainty", "F-total") if i in ids] or ids[:1]
             return llm.Reply(json.dumps({"doubts": [{"text": f"Scripted demo doubt {chr(97 + k)}: see fact {i}.", "cites": [i]} for k, i in enumerate((c * 3)[:3])],
                                          "questions": [{"text": f"Scripted demo question {chr(97 + k)}: what does fact {i} leave open?", "cites": [i]} for k, i in enumerate((c * 2)[:2])]}), self.provider, self.model)
+        if "FOLLOWUP_PLANNER" in system:
+            c = [i for i in ids if i.startswith(("F-limit", "F-uncertainty"))][:3] or ids[:1]
+            return llm.Reply(json.dumps({"items": [{"text": f"Consider reading the matching limitation next to the scans. Scripted demo item {chr(97 + k)}.", "cites": [i]} for k, i in enumerate((c * 3)[:3])]}), self.provider, self.model)
         if "EVIDENCE_TOOLS" in system:
             return llm.Reply(json.dumps({"tools": [{"name": "get_interval", "arg": ""}, {"name": "get_limitations", "arg": ""}]}), self.provider, self.model)
         if "EVIDENCE_ANSWER" in system:

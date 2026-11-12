@@ -10,6 +10,8 @@ from . import agent_activity as AC
 from . import agent_analysis as A
 from . import agent_explainer as X
 from . import agent_ledger as L
+from . import agent_followup as FU
+from . import agent_review as RW
 from . import agent_reviewers as RV
 from . import agent_runtime as R
 from . import agent_visual as V
@@ -155,6 +157,53 @@ def ai_ask(run_id: str, body: AskIn, user: User = Depends(research_access)):
         return _out(RV.ask(run, A.runs_root() / run_id, body.question, who=str(user.id)))
     except ValueError as e:
         raise HTTPException(422, str(e)) from None
+
+
+@router.post("/runs/{run_id}/ai/followup")
+def ai_followup(run_id: str, _: User = Depends(research_access)):
+    run = _get(run_id)
+    if run["state"] in ("queued", "running", "aligned"):
+        raise HTTPException(409, "Wait for the analysis to finish.")
+    try:
+        return _out(FU.plan(run, A.runs_root() / run_id))
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
+
+
+@router.get("/runs/{run_id}/review")
+def review_view(run_id: str, _: User = Depends(research_access)):
+    _get(run_id)
+    d = A.runs_root() / run_id
+    return _out({**RW.view(d), "followup": FU.load(d)})
+
+
+class ItemIn(BaseModel):
+    item: str
+    decision: str
+    note: str = ""
+
+
+class DecisionIn(BaseModel):
+    decision: str
+    comment: str = ""
+
+
+@router.post("/runs/{run_id}/review/items")
+def review_item(run_id: str, body: ItemIn, user: User = Depends(research_access)):
+    _get(run_id)
+    try:
+        return _out(RW.decide_item(A.runs_root() / run_id, body.item, body.decision, user.id, body.note))
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+
+
+@router.post("/runs/{run_id}/review/decision")
+def review_decision(run_id: str, body: DecisionIn, user: User = Depends(research_access)):
+    _get(run_id)
+    try:
+        return _out(RW.decide(A.runs_root() / run_id, body.decision, user.id, body.comment))
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
 
 
 @router.post("/runs/{run_id}/cancel")

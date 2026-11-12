@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api, AgentAi, AgentChat, AgentReview, AgentVisual, AgentAiStatus, AgentPair, AgentRegion, AgentRun, AgentSaved } from "../api";
+import { api, AgentReviewState, AgentAi, AgentChat, AgentReview, AgentVisual, AgentAiStatus, AgentPair, AgentRegion, AgentRun, AgentSaved } from "../api";
 import AgentActivity from "./AgentActivity";
 import AgentCharts, { AlignmentFit } from "./AgentCharts";
 
@@ -19,6 +19,7 @@ export default function AgentAnalysis() {
   const [run, setRun] = useState<AgentRun | null>(null), [liveSignal, setLiveSignal] = useState(0), [replaySignal, setReplaySignal] = useState(0);
   const [recorded, setRecorded] = useState(false), [reveal, setReveal] = useState(4);
   const revealTimer = useRef<number>();
+  const [cr, setCr] = useState<AgentReviewState | null>(null), [crBusy, setCrBusy] = useState(false), [crComment, setCrComment] = useState("");
   const [rev, setRev] = useState<AgentReview | null>(null), [chat, setChat] = useState<AgentChat[]>([]), [revBusy, setRevBusy] = useState(false), [question, setQuestion] = useState(""), [askBusy, setAskBusy] = useState(false), [revMode, setRevMode] = useState("off");
   const [vis, setVis] = useState<AgentVisual | null>(null), [visInfo, setVisInfo] = useState<{ images_allowed: boolean; mode: string } | null>(null), [visBusy, setVisBusy] = useState(false), [visOk, setVisOk] = useState(false);
   const [showMeasured, setShowMeasured] = useState(true), [showModel, setShowModel] = useState(true);
@@ -77,6 +78,9 @@ export default function AgentAnalysis() {
     if (!run || !question.trim()) return; setAskBusy(true); setError("");
     try { const a = await api.agentAsk(run.run_id, question.trim()); setChat(c => [...c, a]); setQuestion(""); setAiTick(n => n + 1); } catch (e) { setError((e as Error).message); } finally { setAskBusy(false); }
   };
+  const loadCr = () => { if (run?.report) api.agentReviewState(run.run_id).then(setCr).catch(() => undefined); };
+  useEffect(() => { setCr(null); loadCr(); }, [run?.run_id, !!run?.report, ai, vis, rev]);  // eslint-disable-line react-hooks/exhaustive-deps
+  const crDo = async (f: () => Promise<unknown>) => { setCrBusy(true); setError(""); try { await f(); loadCr(); setAiTick(n => n + 1); } catch (e) { setError((e as Error).message); } finally { setCrBusy(false); } };
   const look = async () => {
     if (!run) return; setVisBusy(true); setError("");
     try { setVis(await api.agentLook(run.run_id)); setAiTick(n => n + 1); } catch (e) { setError((e as Error).message); } finally { setVisBusy(false); }
@@ -292,6 +296,21 @@ export default function AgentAnalysis() {
       <ol className="ag-chat" aria-label="Questions and answers">{chat.map((c, i) => <li key={i}><p><strong>Q:</strong> {c.question}</p>
         {c.answer.length > 0 ? <ul className="ag-ai-list">{c.answer.map((x, j) => <li key={j}><span>{x.text}</span> <small>cites {x.cites.join(", ")}</small></li>)}</ul> : <p className="cmp-note-plain">{c.note || c.status.replace(/_/g, " ")}</p>}
         <small>{c.tools.length ? `Looked up: ${c.tools.map(t => t.name + (t.arg ? ` (${t.arg})` : "")).join(", ")}. ` : ""}{c.status === "refused" ? "Refused before any model was called. " : ""}{c.scripted ? "Scripted demo text. " : ""}AI draft, not reviewed.</small></li>)}</ol>
+    </section>}
+
+    {run?.report && shown(4) && cr && <section className="ag-ai ag-cr" id="ag-cr" aria-label="Clinician review"><h2>Clinician review <small>{cr.state.replace(/_/g, " ")}</small></h2>
+      <p className="cmp-note-plain">Nothing written by a model counts until you accept it. Accept or reject each item below; approving records your decision under your account. It covers the accepted AI items and the draft report, and is not a clinical approval of any care. Regenerating a draft makes its items undecided again.</p>
+      <div className="ag-actions"><button onClick={() => crDo(() => api.agentFollowup(run.run_id))} disabled={crBusy || revMode === "off"}>{cr.followup ? "Draft follow-up suggestions again" : "Draft follow-up suggestions (AI)"}</button>
+        {cr.followup && cr.followup.status !== "completed" && <span className="cmp-note-plain">Follow-up: {cr.followup.reason ?? cr.followup.status}</span>}</div>
+      {cr.items.length === 0 ? <p className="cmp-note-plain">No AI item is waiting for a decision. Draft an explanation, follow-up suggestions or a visual comparison above first.</p> :
+        <ul className="ag-cr-list">{cr.items.map(it => <li key={it.id} className={it.decision ?? ""}><span><em>{({ explanation: "Explanation", followup: "Follow-up", visual: "Visual impression" })[it.kind]}</em> {it.text} <small>cites {it.cites.join(", ")}</small></span>
+          <span className="ag-cr-btns"><button aria-pressed={it.decision === "accepted"} disabled={crBusy} onClick={() => crDo(() => api.agentDecideItem(run.run_id, it.id, it.decision === "accepted" ? "cleared" : "accepted"))}>Accept</button>
+            <button aria-pressed={it.decision === "rejected"} disabled={crBusy} onClick={() => crDo(() => api.agentDecideItem(run.run_id, it.id, it.decision === "rejected" ? "cleared" : "rejected"))}>Reject</button></span></li>)}</ul>}
+      <p className="cmp-note-plain" role="status">{cr.accepted} accepted · {cr.undecided} undecided{cr.approval ? ` · ${cr.approval.decision} by ${cr.approval.by} on ${cr.approval.at.slice(0, 10)}${cr.approval.comment ? `: ${cr.approval.comment}` : ""}` : ""}{cr.approval_outdated ? " · the drafts changed after approval, so the approval is outdated" : ""}</p>
+      <div className="ag-actions"><label>Comment<input value={crComment} maxLength={500} onChange={e => setCrComment(e.target.value)} /></label>
+        <button disabled={crBusy || cr.undecided > 0} onClick={() => crDo(() => api.agentDecide(run.run_id, "approve", crComment))} title={cr.undecided ? "Decide every item first." : ""}>Approve</button>
+        <button disabled={crBusy || !crComment.trim()} onClick={() => crDo(() => api.agentDecide(run.run_id, "return", crComment))} title={crComment.trim() ? "" : "Write what should change."}>Return with comment</button>
+        {cr.approval && <button disabled={crBusy} onClick={() => crDo(() => api.agentDecide(run.run_id, "reopen", ""))}>Reopen</button>}</div>
     </section>}
   </section>;
 }
