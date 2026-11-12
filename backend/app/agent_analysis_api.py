@@ -102,13 +102,17 @@ def ai_result(run_id: str, _: User = Depends(research_access)):
     return _out({"result": X.load(A.runs_root() / run_id), "status": R.status()})
 
 
+class LangIn(BaseModel):
+    language: str = "en"
+
+
 @router.post("/runs/{run_id}/ai/explain")
-def ai_explain(run_id: str, _: User = Depends(research_access)):
+def ai_explain(run_id: str, body: LangIn | None = None, _: User = Depends(research_access)):
     run = _get(run_id)
     if run["state"] in ("queued", "running", "aligned"):
         raise HTTPException(409, "Wait for the analysis to finish.")
     try:
-        return _out(X.explain(run, A.runs_root() / run_id))
+        return _out(X.explain(run, A.runs_root() / run_id, language=(body.language if body else "en")))
     except ValueError as e:
         raise HTTPException(409, str(e)) from None
 
@@ -234,10 +238,12 @@ class LinkIn(BaseModel):
 
 class FamilyDraftIn(BaseModel):
     selected: list[str] = []
+    language: str = "en"
 
 
 class ReleaseIn(BaseModel):
     family_id: str
+    arabic_confirmed: bool = False
 
 
 @router.post("/runs/{run_id}/family/link")
@@ -253,7 +259,7 @@ def family_link(run_id: str, body: LinkIn, user: User = Depends(research_access)
 def family_draft(run_id: str, body: FamilyDraftIn, _: User = Depends(research_access)):
     run = _get(run_id)
     try:
-        return _out(FA.draft(run, A.runs_root() / run_id, body.selected))
+        return _out(FA.draft(run, A.runs_root() / run_id, body.selected, language=body.language))
     except ValueError as e:
         raise HTTPException(409, str(e)) from None
 
@@ -262,7 +268,7 @@ def family_draft(run_id: str, body: FamilyDraftIn, _: User = Depends(research_ac
 def family_release(run_id: str, body: ReleaseIn, user: User = Depends(research_access), db: Session = Depends(get_db)):
     _get(run_id)
     try:
-        return _out(FA.release(db, A.runs_root() / run_id, user, body.family_id))
+        return _out(FA.release(db, A.runs_root() / run_id, user, body.family_id, body.arabic_confirmed))
     except ValueError as e:
         raise HTTPException(409, str(e)) from None
 
