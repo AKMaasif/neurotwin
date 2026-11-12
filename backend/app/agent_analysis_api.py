@@ -59,6 +59,11 @@ def _get(run_id: str) -> dict:
     return run
 
 
+@router.get("/saved")
+def saved(_: User = Depends(research_access)):
+    return _out({"runs": A.list_runs()})
+
+
 @router.get("/runs/{run_id}")
 def get_run(run_id: str, _: User = Depends(research_access)):
     return _out(_get(run_id))
@@ -96,7 +101,7 @@ def slice_png(run_id: str, layer: str = "earlier", axis: int = 2, index: int = 0
     gray = np.clip((np.take(data, index, axis=axis) - lo) / max(hi - lo, 1e-6), 0, 1) * 255
     buf = io.BytesIO()
     image = Image.fromarray(np.rot90(gray).astype(np.uint8), mode="L")
-    zooms = O._load(run["earlier"], run["scan"])[3]
+    zooms = run["validation"]["checks"]["earlier"]["voxel_mm"]
     i, j = [k for k in range(3) if k != axis]
     zi, zj = zooms[i] or 1.0, zooms[j] or 1.0
     if abs(zi - zj) > 1e-3:  # true proportions when voxels are not cubes
@@ -135,7 +140,7 @@ def overlay_png(run_id: str, layer: str = "regions", axis: int = 2, index: int =
         rgba[sel(pe) & ~sel(pl)] = (220, 40, 40, 255)
         rgba[sel(pl) & ~sel(pe)] = (40, 90, 220, 255)
     image = Image.fromarray(np.rot90(rgba), mode="RGBA")
-    zooms = O._load(run["earlier"], run["scan"])[3]
+    zooms = run["validation"]["checks"]["earlier"]["voxel_mm"]
     i, j = [k for k in range(3) if k != axis]
     zi, zj = zooms[i] or 1.0, zooms[j] or 1.0
     if abs(zi - zj) > 1e-3:
