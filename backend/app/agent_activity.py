@@ -46,10 +46,10 @@ NODES = [
      "role": "Fixed rules mark each difference uncertain, small or inconsistent. Rule-based, no model."},
     {"id": "report", "step": "report", "kind": "tool", "label": "Draft report", "deps": ["findings_review", "quality_review"],
      "role": "A template restates the measurements. No language model writes it."},
-    {"id": "evidence_explanation", "step": None, "kind": "ai", "label": "Evidence explanation (agent)", "deps": ["report"], "implemented": False,
-     "role": "Would explain the measured changes in English and Arabic with a citation for every sentence.", "unavailable": PLANNED},
-    {"id": "report_review_ai", "step": None, "kind": "ai", "label": "Report review (agent)", "deps": ["evidence_explanation"], "implemented": False,
-     "role": "Would check the report and explanation for unsupported claims and forbidden wording.", "unavailable": PLANNED},
+    {"id": "evidence_explanation", "step": None, "kind": "ai", "label": "Evidence explanation (agent)", "deps": ["report"], "ai_node": True,
+     "role": "A language model (Gemini) drafts an explanation of the measured changes. Every sentence cites numbered facts and a rule-based checker refuses added numbers or claims. English only so far; a draft for clinician review.", "unavailable": PLANNED},
+    {"id": "report_review_ai", "step": None, "kind": "ai", "label": "Report review (agent)", "deps": ["evidence_explanation"], "ai_node": True,
+     "role": "A second model (Meta) judges each statement against the facts it cites, then fixed rules gate the draft for forbidden wording and missing limits.", "unavailable": PLANNED},
     {"id": "clinician_review", "step": None, "kind": "human", "label": "Clinician review", "deps": ["report"],
      "role": "A clinician reads the draft report and the evidence behind it. Nothing here is approved until a person does so."},
 ]
@@ -80,7 +80,21 @@ def read_events(run_dir: Path, after: int = 0) -> list[dict]:
     return out
 
 
-def _current(run: dict, step_state: dict) -> dict:
+def _ai_current(run: dict, step_state: dict, run_dir: Path | None, ended_early: bool) -> tuple[str, str]:
+    """Agent nodes keep the status their own last event recorded; before any call they are waiting, unavailable (agents off) or skipped."""
+    if step_state["report"] not in ("done", "warning"):
+        return ("skipped", "Not run: the report was not produced.") if ended_early or run["state"] == "partial" else ("waiting", "Waits for the draft report.")
+    if run_dir is not None:
+        for e in reversed(read_events(run_dir)):
+            if e["node"] == run["_ai_node"] and e["type"] == "status" and e.get("origin") == "agent":
+                return e["status"], e["summary"]
+    from . import agent_runtime as R
+    if R.mode() == "off":
+        return "unavailable", "No model provider is configured on this server, so this agent did not run."
+    return "waiting", "Not run yet. A clinician asks for the AI explanation to run it."
+
+
+def _current(run: dict, step_state: dict, run_dir: Path | None = None) -> dict:
     """Status and one-line summary for every node, from the run record as it stands now."""
     state = run["state"]
     ended_early = state in ("failed", "cancelled", "blocked", "unavailable")
@@ -89,6 +103,9 @@ def _current(run: dict, step_state: dict) -> dict:
         nid = n["id"]
         if n.get("implemented") is False:
             out[nid] = ("unavailable", n["unavailable"])
+            continue
+        if n.get("ai_node"):
+            out[nid] = _ai_current({**run, "_ai_node": nid}, step_state, run_dir, ended_early)
             continue
         if nid == "technical_checks":
             v = run["validation"]
@@ -125,7 +142,7 @@ def _current(run: dict, step_state: dict) -> dict:
 def sync(run_dir: Path, run: dict) -> None:
     """Append an event for every node whose status or summary changed since the last event, plus run-level and hand-off events."""
     step_state = {s["key"]: s["state"] for s in run["steps"]}
-    cur = _current(run, step_state)
+    cur = _current(run, step_state, run_dir)
     run_status = RUN_STATUS.get(run["state"], "waiting")
     with LOCK:
         events = read_events(run_dir)
@@ -160,6 +177,20 @@ def sync(run_dir: Path, run: dict) -> None:
             with _path(run_dir).open("a") as f:
                 for e in new:
                     f.write(json.dumps(e) + "\n")
+
+
+def log(run_dir: Path, node: str, status: str, summary: str, tool: str | None = None) -> None:
+    """Append an event written by an AI agent. Marked origin=agent so the status it records is kept by later syncs."""
+    with LOCK:
+        events = read_events(run_dir)
+        run_id = run_dir.name
+        seq = events[-1]["seq"] if events else 0
+        rows = [("status", status, summary)] + ([("tool_call", status, f"Called {tool}.")] if status == "running" and tool else [])
+        with _path(run_dir).open("a") as f:
+            for type_, st, sm in rows:
+                seq += 1
+                f.write(json.dumps({"seq": seq, "id": f"{run_id}:{seq}", "run_id": run_id, "node": node, "type": type_, "ts": now(), "status": st,
+                                    "summary": sm, "tool": tool, "origin": "agent"}) + "\n")
 
 
 def tool_label(node_id: str, run: dict) -> str | None:
@@ -245,7 +276,7 @@ def activity(run: dict, run_dir: Path, after: int = 0) -> dict:
     has_events = bool(all_events)
     times = _times(all_events)
     step_state = {s["key"]: s["state"] for s in run["steps"]}
-    cur = _current(run, step_state)
+    cur = _current(run, step_state, run_dir)
     live = run["state"] in BUSY
     return {"run_id": run["run_id"], "state": run["state"], "parent_run_id": run.get("parent_run_id"), "live": live,
             "historical": not live, "has_events": has_events, "cancel_supported": live,
@@ -261,6 +292,9 @@ def workflow(alignment_available: bool, alignment_needs: str | None) -> dict:
     for n in NODES:
         if n.get("implemented") is False:
             status, summary = "unavailable", n["unavailable"]
+        elif n.get("ai_node"):
+            from . import agent_runtime as R
+            status, summary = ("unavailable", "No model provider is configured on this server.") if R.mode() == "off" else ("waiting", "Runs on request after an analysis.")
         elif n["id"] == "alignment" and not alignment_available:
             status, summary = "unavailable", f"Needs: {alignment_needs}. Saved analyses can still be opened."
         else:

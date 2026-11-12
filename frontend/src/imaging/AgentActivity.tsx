@@ -58,10 +58,10 @@ function Chip({ status }: { status: string }) {
   return <span className={`aa-chip aa-s-${status}`}><span aria-hidden="true">{s.icon}</span> {s.text}</span>;
 }
 
-type Props = { liveSignal?: number; replaySignal?: number; onReplayEnd?: () => void; runId: string | null; onCancel: () => void; onOpenResult: (target: string) => void };
+type Props = { refreshSignal?: number; liveSignal?: number; replaySignal?: number; onReplayEnd?: () => void; runId: string | null; onCancel: () => void; onOpenResult: (target: string) => void };
 
 /** Agent Activity: a compact status card that opens into the real workflow graph, event list and timeline of one run. */
-export default function AgentActivity({ liveSignal = 0, replaySignal = 0, onReplayEnd, runId, onCancel, onOpenResult }: Props) {
+export default function AgentActivity({ refreshSignal = 0, liveSignal = 0, replaySignal = 0, onReplayEnd, runId, onCancel, onOpenResult }: Props) {
   const [act, setAct] = useState<Activity | null>(null), [events, setEvents] = useState<ActEvent[]>([]), [lost, setLost] = useState(false), [error, setError] = useState("");
   const [open, setOpen] = useState(false), [folded, setFolded] = useState(false), [sel, setSel] = useState<string | null>(null), [view, setView] = useState<View | null>(null);
   const [follow, setFollow] = useState(false), [tab, setTab] = useState<"timeline" | "events">("timeline"), [onlySel, setOnlySel] = useState(false);
@@ -91,7 +91,7 @@ export default function AgentActivity({ liveSignal = 0, replaySignal = 0, onRepl
     };
     tick();
     return () => { stop = true; window.clearTimeout(timer); };
-  }, [runId]);
+  }, [runId, refreshSignal]);
 
   useEffect(() => { if (!act?.live) return; const t = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(t); }, [act?.live]);
 

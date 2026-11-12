@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api, AgentPair, AgentRegion, AgentRun, AgentSaved } from "../api";
+import { api, AgentAi, AgentAiStatus, AgentPair, AgentRegion, AgentRun, AgentSaved } from "../api";
 import AgentActivity from "./AgentActivity";
 import AgentCharts, { AlignmentFit } from "./AgentCharts";
 
@@ -19,6 +19,7 @@ export default function AgentAnalysis() {
   const [run, setRun] = useState<AgentRun | null>(null), [liveSignal, setLiveSignal] = useState(0), [replaySignal, setReplaySignal] = useState(0);
   const [recorded, setRecorded] = useState(false), [reveal, setReveal] = useState(4);
   const revealTimer = useRef<number>();
+  const [ai, setAi] = useState<AgentAi | null>(null), [aiStatus, setAiStatus] = useState<AgentAiStatus | null>(null), [aiBusy, setAiBusy] = useState(false), [aiTick, setAiTick] = useState(0);
   const [axis, setAxis] = useState(2), [index, setIndex] = useState(64), [layers, setLayers] = useState<string[]>(["original"]);
   const [opacity, setOpacity] = useState(0.6), [zoom, setZoom] = useState(1), [region, setRegion] = useState(0), [later, setLater] = useState("later_aligned");
   const [views, setViews] = useState<View[]>([]), [shape, setShape] = useState<number[] | null>(null);
@@ -53,6 +54,14 @@ export default function AgentAnalysis() {
   };
   const cancel = async () => { if (run) try { setRun(await api.agentCancel(run.run_id)); } catch (e) { setError((e as Error).message); } };
 
+  useEffect(() => {
+    setAi(null);
+    if (run?.report) api.agentAi(run.run_id).then(r => { setAi(r.result); setAiStatus(r.status); }).catch(() => undefined);
+  }, [run?.run_id, !!run?.report]);
+  const explain = async () => {
+    if (!run) return; setAiBusy(true); setError("");
+    try { setAi(await api.agentExplain(run.run_id)); setAiTick(n => n + 1); } catch (e) { setError((e as Error).message); } finally { setAiBusy(false); }
+  };
   const stopReveal = () => window.clearInterval(revealTimer.current);
   useEffect(() => stopReveal, []);
   const SECTIONS = ["ag-viewer", "ag-table", "ag-review", "ag-report"];
@@ -118,7 +127,7 @@ export default function AgentAnalysis() {
           <li><strong>The alignment package</strong> (<code>antspyx</code>) on Linux or macOS, or Ubuntu under Windows (WSL).</li>
           <li><strong>A segmentation of each scan from SynthSeg</strong>, run once outside NeuroTwin. Without it the alignment and quality review run, and the regional steps show as unavailable.</li>
           <li>Full steps are in <code>docs/LIVE_RUN_GUIDE.md</code>. Nothing is a diagnosis; a clinician reviews every report.</li></ul></details></section>}
-    <AgentActivity liveSignal={liveSignal} replaySignal={replaySignal} onReplayEnd={onReplayEnd} runId={run?.run_id ?? null} onCancel={cancel} onOpenResult={openResult} />
+    <AgentActivity refreshSignal={aiTick} liveSignal={liveSignal} replaySignal={replaySignal} onReplayEnd={onReplayEnd} runId={run?.run_id ?? null} onCancel={cancel} onOpenResult={openResult} />
     {!pairs.length ? (!saved.length && <div className="cmp-empty"><h2>No pair is ready</h2><p>Two visits of one person must be extracted locally first. See <code>docs/OASIS2_COMPARE.md</code>.</p></div>) : <>
       <div className="ag-pick cmp-controls">
         <label>Scan pair<select value={pair} onChange={e => setPair(e.target.value)} disabled={!!run && BUSY.includes(run.state)}>
@@ -195,5 +204,20 @@ export default function AgentAnalysis() {
       <p className="cmp-note-plain">Written by a {run.report.author}. It restates the measurements above and adds nothing.</p>
       {Object.entries(run.report.sections).map(([k, items]) => <div key={k}><h3>{{ measured: "Largest measured differences", quality_limitations: "Quality limitations", processing: "Processing", suggested_follow_up: "Suggested follow-up for clinician consideration", needs_clinical_review: "Needs clinical review" }[k] ?? k}</h3>
         <ul>{items.map(i => <li key={i}>{i}</li>)}</ul></div>)}</section>}
+
+    {run?.report && shown(4) && <section className="ag-ai" id="ag-ai" aria-label="AI explanation draft"><h2>AI explanation <small>draft, not reviewed</small></h2>
+      <p className="cmp-note-plain">Optional. A language model (Gemini) writes an explanation from the numbered facts above; a rule-based checker refuses added numbers or claims, and a second model (Meta) checks each sentence. It is a draft for the clinician: not a diagnosis, not a prediction, English only so far.</p>
+      {!ai && <div className="ag-actions"><button onClick={explain} disabled={aiBusy || aiStatus?.mode === "off"} title={aiStatus?.mode === "off" ? "No model provider is configured on this server." : ""}>{aiBusy ? "Drafting and checking…" : "Draft AI explanation"}</button>
+        {aiStatus?.mode === "off" && <span className="cmp-note-plain">No model provider is configured on this server, so this agent cannot run.</span>}</div>}
+      {ai && <div>
+        <p className={`ag-ai-state ${ai.qa.passed ? "ok" : "blocked"}`} role="status"><strong>{ai.qa.passed ? "Passed the checks" : "Blocked by the checks"}</strong> · AI draft, not reviewed by a clinician
+          {ai.explanation.scripted && " · scripted demo text, no model was used"}</p>
+        {ai.explanation.statements.length > 0 && <ol className="ag-ai-list">{ai.explanation.statements.map((st, i) => { const c = ai.cross_check.items.find(x => x.index === i);
+          return <li key={i}><span>{st.text}</span> <small>cites {st.cites.join(", ")}{c ? (ai.cross_check.scripted ? " · scripted demo, not checked" : c.supported ? " · second model: supported" : ` · second model: not supported (${c.reason})`) : ""}</small></li>; })}</ol>}
+        {ai.explanation.status !== "completed" && <p className="cmp-note-plain">{ai.explanation.reason ?? ai.explanation.validator?.problems.map(p => p.detail).join(" ")}</p>}
+        <ul className="ag-ai-checks">{ai.qa.checks.map(c => <li key={c.name}><strong>{c.ok ? (c.warning ? "Warning" : "Passed") : "Failed"}</strong> {c.name}: {c.detail}</li>)}</ul>
+        <p className="cmp-note-plain">Drafted by {ai.explanation.model ?? "no model"}{ai.cross_check.model ? `, checked by ${ai.cross_check.model}` : ""}. {ai.note}</p>
+        <div className="ag-actions"><button onClick={explain} disabled={aiBusy}>{aiBusy ? "Drafting and checking…" : "Draft again"}</button></div></div>}
+    </section>}
   </section>;
 }
