@@ -148,6 +148,20 @@ def _write(run_dir: Path, run: dict) -> None:
     tmp.replace(run_dir / "run.json")
 
 
+def _save(run_dir: Path, name: str, arr) -> None:
+    import numpy as np
+    np.savez_compressed(run_dir / f"{name}.npz", a=arr)
+
+
+def _read(run_id: str, name: str):
+    import numpy as np
+    path = runs_root() / run_id / f"{name}.npz"
+    if not path.is_file():
+        return None
+    with np.load(path) as z:
+        return z["a"]
+
+
 def load_run(run_id: str) -> dict | None:
     if not RUN_ID.match(run_id):
         return None
@@ -225,7 +239,11 @@ def align(run_id: str) -> dict:
         params = list(tx.parameters)
         rot, shift = _angle_deg(params[:9]), float(np.linalg.norm(params[9:12]))
         shutil.copy(reg["fwdtransforms"][0], run_dir / "later_to_earlier.mat")
-        np.save(run_dir / "later_aligned.npy", aligned)
+        # Self-contained display copies, so a saved run opens without the original archives. OASIS values are whole
+        # numbers, so the originals are stored exactly; the aligned copy is rounded to whole numbers.
+        _save(run_dir, "earlier_scan", np.rint(d1).astype("uint16"))
+        _save(run_dir, "later_scan", np.rint(d2).astype("uint16"))
+        _save(run_dir, "later_aligned", np.clip(np.rint(aligned), 0, 65535).astype("uint16"))
         flags = []
         if after - before < 0.05:
             flags.append("Similarity barely improved; check the alignment before using it.")
@@ -235,7 +253,7 @@ def align(run_id: str) -> dict:
                             "correlation_before": round(before, 4), "correlation_after": round(after, 4),
                             "rotation_deg": round(rot, 2), "shift_mm_voxel_frame": round(shift, 2), "flags": flags,
                             "mask": "voxels above the earlier scan's 60th intensity percentile (not a brain mask)",
-                            "files": ["later_aligned.npy", "later_to_earlier.mat"]}
+                            "files": ["later_aligned.npz", "later_to_earlier.mat"]}
         step.update(state="warning" if flags else "done", detail="; ".join(flags) or "Aligned. Derived files stored separately from the originals.")
         run["state"] = "aligned"  # later steps still to run; ends as complete or partial
     except Exception as exc:
@@ -258,14 +276,8 @@ def cancel(run_id: str) -> dict | None:
 
 
 def layer_volume(run: dict, layer: str):
-    import numpy as np
-    if layer == "later_aligned":
-        path = runs_root() / run["run_id"] / "later_aligned.npy"
-        if not path.is_file():
-            return None
-        return np.load(path)
-    mri = {"earlier": run["earlier"], "later_original": run["later"]}.get(layer)
-    return None if mri is None else O._load(mri, run["scan"])[0]
+    name = {"earlier": "earlier_scan", "later_original": "later_scan", "later_aligned": "later_aligned"}.get(layer)
+    return None if name is None else _read(run["run_id"], name)
 
 
 # ---- stages 3-6: quality review, imported segmentation, volume comparison, findings review, report ----
@@ -361,8 +373,8 @@ def analyze(run_id: str) -> dict:
     fixed = ants.from_numpy(np.ascontiguousarray(d1), spacing=tuple(zooms))
     moving = ants.from_numpy(ls.astype("float32"), spacing=tuple(zooms))
     warped = ants.apply_transforms(fixed=fixed, moving=moving, transformlist=[str(run_dir / "later_to_earlier.mat")], interpolator="genericLabel")
-    np.save(run_dir / "earlier_seg.npy", es)
-    np.save(run_dir / "later_seg_aligned.npy", np.rint(warped.numpy()).astype("int16"))
+    _save(run_dir, "earlier_seg", es.astype("int8"))
+    _save(run_dir, "later_seg_aligned", np.rint(warped.numpy()).astype("int8"))
     _set(run, "anatomical_analysis", "done",
          f"Segmentation imported from {et['tool']} {et['version']} for both scans; labels carried to the earlier anatomy without blending."
          + (f" Labels outside the known list were ignored: {unknown}." if unknown else ""))
@@ -406,6 +418,11 @@ def analyze(run_id: str) -> dict:
                          "quality_limitations": v["limitations"] + align["flags"],
                          "processing": [f"Alignment: {align['method']} ({align['tool']}), similarity {align['correlation_before']} to {align['correlation_after']}",
                                         f"Segmentation: {run['segmentation_tool']['tool']} {run['segmentation_tool']['version']}"],
+                         "suggested_follow_up": [
+                             "A clinician reviews this draft; it is not a diagnosis and no region is labelled as diseased.",
+                             "Before any change is interpreted, estimate measurement noise: same-session repeat scans (mpr-2 to mpr-4) can give a spread for each region.",
+                             "If another scan is arranged, use the same scanner protocol and the same segmentation tool and version, so differences are not from the method.",
+                             "Share results only with people the person has agreed to, for the purpose they agreed to."],
                          "needs_clinical_review": ["Every regional difference is marked uncertain; no noise estimate exists.",
                                                    "Nothing here is a diagnosis; no region is labelled as diseased."] + flags}}
     _set(run, "report", "done", "Draft report built from the measurements above; needs clinical review.")
@@ -429,14 +446,30 @@ def candidate_pairs() -> list[dict]:
 
 
 def layer_labels(run: dict, layer: str):
-    import numpy as np
-    d = runs_root() / run["run_id"]
-    if layer in ("earlier_seg", "later_seg_aligned") and (d / f"{layer}.npy").is_file():
-        return np.load(d / f"{layer}.npy")
-    return None
+    return _read(run["run_id"], layer) if layer in ("earlier_seg", "later_seg_aligned") else None
 
 
 def run_all(run_id: str) -> dict:
     """The Agent Analysis button: alignment, then quality review through report, in order."""
     align(run_id)
     return analyze(run_id)
+
+
+def list_runs() -> list[dict]:
+    """Finished runs on disk, newest first, one entry per pair."""
+    root = runs_root()
+    out, seen = [], set()
+    for d in sorted(root.glob("*/run.json"), key=lambda p: p.stat().st_mtime, reverse=True) if root.is_dir() else []:
+        try:
+            r = json.loads(d.read_text())
+        except Exception:
+            continue
+        key = (r.get("earlier"), r.get("later"))
+        if r.get("state") not in ("complete", "partial") or key in seen or not r.get("alignment"):
+            continue
+        seen.add(key)
+        iv = (r.get("validation") or {}).get("interval") or {}
+        out.append({"run_id": r["run_id"], "earlier": r["earlier"], "later": r["later"], "state": r["state"], "months": iv.get("months"),
+                    "target_months": iv.get("nearest_target_months"), "segmentation": (r.get("segmentation_tool") or {}).get("tool"),
+                    "saved_at": d.stat().st_mtime})
+    return out

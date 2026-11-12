@@ -118,16 +118,18 @@ export type AgentRegion = { label: number; name: string; earlier_mm3: number; la
   earlier_voxels: number; later_voxels: number; uncertainty: null; status: string; review_notes: string[] };
 export type AgentRun = {
   run_id: string; earlier: string; later: string; scan: string; state: string; parent_run_id: string | null; steps: AgentStep[];
-  validation: { status: string; blockers: string[]; limitations: string[]; interval: { months: number; days: number; nearest_target_months: number | null; within_requested_window: boolean } | null };
+  validation: { status: string; blockers: string[]; limitations: string[]; checks?: { earlier?: { shape: number[] } }; interval: { months: number; days: number; nearest_target_months: number | null; within_requested_window: boolean } | null };
   alignment: null | { method: string; tool: string; correlation_before: number; correlation_after: number; rotation_deg: number; shift_mm_voxel_frame: number; flags: string[]; mask: string };
   segmentation_tool?: { tool: string; version: string };
   measurements?: { unit: string; earlier_total_mm3: number; later_total_mm3: number; source: string; regions: AgentRegion[] };
   review?: { flags: string[]; note: string };
   report?: { status: string; author: string; sections: Record<string, string[]> };
 };
+export type AgentSaved = { run_id: string; earlier: string; later: string; state: string; months: number | null; target_months: number | null; segmentation: string | null; saved_at: number };
 export type AgentPair = { subject_id: string; earlier: string; later: string; segmented: boolean; interval: { months: number; nearest_target_months: number | null; within_requested_window: boolean } };
 
 export const api = {
+  agentSaved: () => get<{ runs: AgentSaved[] }>("/api/imaging/agent/saved"),
   agentPairs: () => get<{ pairs: AgentPair[] }>("/api/imaging/agent/pairs"),
   agentStart: (earlier: string, later: string) => post<AgentRun>("/api/imaging/agent/runs", { earlier, later }),
   agentRun: (id: string) => get<AgentRun>(`/api/imaging/agent/runs/${id}`),
