@@ -12,6 +12,7 @@ import threading
 import uuid
 from pathlib import Path
 
+from . import agent_activity as AC
 from . import oasis2_api as O
 
 TARGETS_MONTHS = (12, 15, 18)
@@ -146,6 +147,7 @@ def _write(run_dir: Path, run: dict) -> None:
     tmp = run_dir / "run.json.tmp"
     tmp.write_text(json.dumps(run, indent=1))
     tmp.replace(run_dir / "run.json")
+    AC.sync(run_dir, run)  # the execution log follows what was just recorded
 
 
 def _save(run_dir: Path, name: str, arr) -> None:
@@ -322,6 +324,7 @@ def onto_scan_grid(seg, affine, shape, scan_aff):
 
 def _set(run: dict, key: str, state: str, detail: str) -> None:
     next(s for s in run["steps"] if s["key"] == key).update(state=state, detail=detail)
+    _write(runs_root() / run["run_id"], run)  # saved at every step so progress and the event log are real while it runs
 
 
 def _covers(seg, affine, shape, scan_aff, need=0.98) -> bool:
@@ -344,15 +347,15 @@ def analyze(run_id: str) -> dict:
     align = run["alignment"]
     _set(run, "quality_review", "warning" if (qprob or align["flags"]) else "done",
          "; ".join(qprob + align["flags"]) or f"Intensity range and coverage normal for both scans; alignment similarity {align['correlation_after']}. No repeat-scan spread, so measurement uncertainty is not estimated.")
+    _set(run, "anatomical_analysis", "running", "Reading the imported segmentations for both scans.")
     es, et = _read_seg(run["earlier"])
     ls, lt = _read_seg(run["later"])
     if es is None or ls is None:
         reason = "; ".join(x for x in (es is None and et, ls is None and lt) if x)
+        run["state"] = "partial"  # set first so the log never shows these steps as merely waiting
         _set(run, "anatomical_analysis", "unavailable", "Needs: " + reason)
         for k in ("longitudinal_comparison", "findings_review", "report"):
             _set(run, k, "unavailable", "Needs the anatomical analysis step first.")
-        run["state"] = "partial"
-        _write(run_dir, run)
         return run
     d1, _, _, zooms = O._load(run["earlier"], run["scan"])
     (es_native, ea), (ls_native, la) = es, ls
@@ -381,6 +384,7 @@ def analyze(run_id: str) -> dict:
          f"Segmentation imported from {et['tool']} {et['version']} for both scans; labels carried to the earlier anatomy without blending."
          + (f" Labels outside the known list were ignored: {unknown}." if unknown else ""))
     run["segmentation_tool"] = {"tool": et["tool"], "version": et["version"], "source": et.get("source")}
+    _set(run, "longitudinal_comparison", "running", "Counting each region in both scans.")
     vox_e, vox_l = abs(float(np.linalg.det(ea[:3, :3]))), abs(float(np.linalg.det(la[:3, :3])))
     vox = vox_e
     rows, e_tot, l_tot = [], 0.0, 0.0
@@ -396,6 +400,7 @@ def analyze(run_id: str) -> dict:
                            "earlier_total_mm3": round(e_tot, 1), "later_total_mm3": round(l_tot, 1), "regions": rows}
     _set(run, "longitudinal_comparison", "done", "Regional volumes counted on the segmentation tool's own grid; no uncertainty range exists yet.")
     # findings review: deterministic rules, no model
+    _set(run, "findings_review", "running", "Applying the review rules to each region.")
     flags = []
     total_pct = None if e_tot == 0 else (l_tot - e_tot) / e_tot
     if total_pct is None or abs(total_pct) > TOTAL_DISAGREE:
@@ -413,6 +418,7 @@ def analyze(run_id: str) -> dict:
     run["review"] = {"flags": flags, "findings": findings, "rules": ["uncertainty not estimated", "small region", "region absent", "total volume disagreement"],
                      "note": "Measured differences, not findings of disease. Clinical interpretation is left to a clinician."}
     _set(run, "findings_review", "warning", "; ".join(flags) or "All regional differences are marked uncertain until a measurement-uncertainty estimate exists.")
+    _set(run, "report", "running", "Filling the report template from the measurements.")
     top = sorted((r for r in rows if r["difference_pct"] is not None), key=lambda r: -abs(r["difference_pct"]))[:5]
     run["report"] = {"status": "draft for clinical review", "author": "deterministic template; no language model used",
                      "sections": {
