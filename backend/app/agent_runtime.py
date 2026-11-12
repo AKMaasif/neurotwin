@@ -45,6 +45,9 @@ class MockClient:
         self.provider = f"mock-{provider}"
 
     def complete(self, system: str, user: str, json_mode: bool = False) -> llm.Reply:
+        if "independent checker" in system:  # A4: a scripted stand-in cannot judge anything, and says so
+            n = user.count("Statement ")
+            return llm.Reply(json.dumps({"checks": [{"index": i, "supported": True, "reason": "Scripted demo: no check was made."} for i in range(n)]}), self.provider, self.model)
         rows = [ln.split(": ", 1) for ln in user.splitlines() if ln.startswith("F-") and ": " in ln]
         picks = [r for r in rows if r[0] in ("F-interval", "F-total", "F-uncertainty") or r[0].startswith("F-R")][:4]
         body = json.dumps({"statements": [{"text": t[:380], "cites": [i]} for i, t in picks]})

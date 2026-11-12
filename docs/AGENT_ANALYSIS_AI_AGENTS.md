@@ -298,3 +298,9 @@ The owner asked for the agent to give an early prediction and the health stage o
   (`egress.jsonl`: which fact ids went to which provider) and trace store (`agents.jsonl`: status, model, prompt hash, output), a daily cap, and modes
   `live` / `mock` / `off` (`NEUROTWIN_AGENTS_MODE`; mock is scripted, labelled, and never chosen silently). `GET /api/imaging/agent/agents/status` and
   `GET /api/imaging/agent/runs/{id}/agents`. No agent is built yet and no image is sent.
+- **Step 3 done: A3, claim checker, A4, A8** (`backend/app/agent_explainer.py`). On request (`POST /api/imaging/agent/runs/{id}/ai/explain`, button "Draft AI explanation"):
+  A3 (Gemini) drafts statements citing fact ids; `validator.py` refuses added numbers, uncited claims and forbidden wording (two attempts, with the reasons fed back);
+  A4 (Meta) judges each statement against the facts it cites; A8 (rules) gates the draft (claim checker passed, uncertainty stated, no statement the second model rejects).
+  The result is stored in `ai.json`, labelled "AI draft, not reviewed", and the two AI nodes of the Agent Activity graph show their real status. English only.
+  Without a provider the agent is "unavailable"; scripted mock text is always labelled and its cross-check is never counted as real. Tested with stand-in clients only;
+  no live Gemini or Meta call has been made yet. A8's model part is A4's judgement; a separate Meta pass over the whole report is not built.
