@@ -559,6 +559,14 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
         return [{**e, "since": iso(e["since"]), "ended_at": iso(e["ended_at"]),
                  "recent": [{**r, "at": iso(r["at"])} for r in e["recent"]]} for e in S.family_view(db, user)]
 
+    @app.get("/api/family/imaging-summaries")
+    def family_imaging(user: User = Depends(current_user), db: Session = Depends(get_db)):
+        """Scan-comparison summaries a clinician released to this family member. Re-checked on every request."""
+        if user.role != "family":
+            raise HTTPException(403, "For family members only.")
+        from . import agent_family
+        return agent_family.family_summaries(db, user)
+
     # The built web app, when present -------------------------------------------------------------------------
     dist = config.FRONTEND_DIST
     if serve_frontend and dist.exists():

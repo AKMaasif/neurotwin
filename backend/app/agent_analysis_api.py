@@ -8,6 +8,16 @@ from sqlalchemy.orm import Session
 
 from . import agent_activity as AC
 from . import agent_analysis as A
+from . import agent_explainer as X
+from . import agent_noise as N
+from . import agent_ledger as L
+from . import agent_family as FA
+from . import agent_followup as FU
+from . import agent_review as RW
+from . import agent_reviewers as RV
+from . import agent_runtime as R
+from . import agent_visual as V
+from . import agent_visual_ai as VA
 from . import oasis2_api as O
 from . import services
 from .imaging import HEADERS, research_access
@@ -70,6 +80,209 @@ def get_run(run_id: str, _: User = Depends(research_access)):
     return _out(_get(run_id))
 
 
+@router.get("/runs/{run_id}/facts")
+def facts(run_id: str, _: User = Depends(research_access)):
+    return _out(L.build(_get(run_id)))
+
+
+@router.get("/agents/status")
+def agents_status(_: User = Depends(research_access)):
+    return _out(R.status())
+
+
+@router.get("/runs/{run_id}/agents")
+def agents_trace(run_id: str, _: User = Depends(research_access)):
+    _get(run_id)
+    d = A.runs_root() / run_id
+    return _out({"trace": R.read(d, R.TRACE), "egress": R.read(d, R.EGRESS)})
+
+
+@router.get("/runs/{run_id}/ai")
+def ai_result(run_id: str, _: User = Depends(research_access)):
+    _get(run_id)
+    return _out({"result": X.load(A.runs_root() / run_id), "status": R.status()})
+
+
+class LangIn(BaseModel):
+    language: str = "en"
+
+
+@router.post("/runs/{run_id}/ai/explain")
+def ai_explain(run_id: str, body: LangIn | None = None, _: User = Depends(research_access)):
+    run = _get(run_id)
+    if run["state"] in ("queued", "running", "aligned"):
+        raise HTTPException(409, "Wait for the analysis to finish.")
+    try:
+        return _out(X.explain(run, A.runs_root() / run_id, language=(body.language if body else "en")))
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
+
+
+@router.get("/runs/{run_id}/ai/visual")
+def ai_visual_result(run_id: str, _: User = Depends(research_access)):
+    _get(run_id)
+    return _out({"result": VA.load(A.runs_root() / run_id), "images_allowed": R.images_allowed(), "mode": R.mode()})
+
+
+@router.post("/runs/{run_id}/ai/visual")
+def ai_visual(run_id: str, _: User = Depends(research_access)):
+    run = _get(run_id)
+    if run["state"] in ("queued", "running", "aligned"):
+        raise HTTPException(409, "Wait for the analysis to finish.")
+    try:
+        return _out(VA.observe(run, A.runs_root() / run_id))
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
+
+
+@router.get("/runs/{run_id}/ai/review")
+def ai_review_result(run_id: str, _: User = Depends(research_access)):
+    _get(run_id)
+    return _out({"result": RV.load(A.runs_root() / run_id), "chat": RV.chat(A.runs_root() / run_id), "mode": R.mode()})
+
+
+@router.post("/runs/{run_id}/ai/review")
+def ai_review(run_id: str, _: User = Depends(research_access)):
+    run = _get(run_id)
+    if run["state"] in ("queued", "running", "aligned"):
+        raise HTTPException(409, "Wait for the analysis to finish.")
+    try:
+        return _out(RV.review(run, A.runs_root() / run_id))
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
+
+
+class AskIn(BaseModel):
+    question: str
+
+
+@router.post("/runs/{run_id}/ai/ask")
+def ai_ask(run_id: str, body: AskIn, user: User = Depends(research_access)):
+    run = _get(run_id)
+    try:
+        return _out(RV.ask(run, A.runs_root() / run_id, body.question, who=str(user.id)))
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+
+
+@router.post("/runs/{run_id}/ai/followup")
+def ai_followup(run_id: str, _: User = Depends(research_access)):
+    run = _get(run_id)
+    if run["state"] in ("queued", "running", "aligned"):
+        raise HTTPException(409, "Wait for the analysis to finish.")
+    try:
+        return _out(FU.plan(run, A.runs_root() / run_id))
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
+
+
+@router.get("/runs/{run_id}/review")
+def review_view(run_id: str, _: User = Depends(research_access)):
+    _get(run_id)
+    d = A.runs_root() / run_id
+    return _out({**RW.view(d), "followup": FU.load(d)})
+
+
+class ItemIn(BaseModel):
+    item: str
+    decision: str
+    note: str = ""
+
+
+class DecisionIn(BaseModel):
+    decision: str
+    comment: str = ""
+
+
+@router.post("/runs/{run_id}/review/items")
+def review_item(run_id: str, body: ItemIn, user: User = Depends(research_access)):
+    _get(run_id)
+    try:
+        return _out(RW.decide_item(A.runs_root() / run_id, body.item, body.decision, user.id, body.note))
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+
+
+@router.post("/runs/{run_id}/review/decision")
+def review_decision(run_id: str, body: DecisionIn, user: User = Depends(research_access)):
+    _get(run_id)
+    try:
+        return _out(RW.decide(A.runs_root() / run_id, body.decision, user.id, body.comment))
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
+
+
+def _candidates(db: Session, user: User, run_dir) -> dict:
+    from sqlalchemy import select
+
+    from .models import AccessGrant
+    from .models import User as U
+    parts = [g.owner_id for g in db.scalars(select(AccessGrant).where(AccessGrant.grantee_id == user.id, AccessGrant.purpose == "clinical_review", AccessGrant.revoked_at.is_(None)))]
+    lk = FA._read(run_dir / FA.LINK)
+    fam = []
+    if lk:
+        fam = [g.grantee_id for g in db.scalars(select(AccessGrant).where(AccessGrant.owner_id == lk["participant_id"], AccessGrant.purpose == "participation_updates", AccessGrant.revoked_at.is_(None)))]
+    name = lambda i: (db.get(U, i).display_name if db.get(U, i) else i)  # noqa: E731
+    return {"participants": [{"id": i, "name": name(i)} for i in parts], "family": [{"id": i, "name": name(i)} for i in fam], "link": lk}
+
+
+@router.get("/runs/{run_id}/family")
+def family_state(run_id: str, family_id: str | None = None, user: User = Depends(research_access), db: Session = Depends(get_db)):
+    _get(run_id)
+    d = A.runs_root() / run_id
+    return _out({"draft": FA._read(d / FA.FILE), "preconditions": FA.preconditions(db, d, family_id), **_candidates(db, user, d)})
+
+
+class LinkIn(BaseModel):
+    participant_id: str
+
+
+class FamilyDraftIn(BaseModel):
+    selected: list[str] = []
+    language: str = "en"
+
+
+class ReleaseIn(BaseModel):
+    family_id: str
+    arabic_confirmed: bool = False
+
+
+@router.post("/runs/{run_id}/family/link")
+def family_link(run_id: str, body: LinkIn, user: User = Depends(research_access), db: Session = Depends(get_db)):
+    _get(run_id)
+    try:
+        return _out(FA.link(db, A.runs_root() / run_id, user, body.participant_id))
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
+
+
+@router.post("/runs/{run_id}/family/draft")
+def family_draft(run_id: str, body: FamilyDraftIn, _: User = Depends(research_access)):
+    run = _get(run_id)
+    try:
+        return _out(FA.draft(run, A.runs_root() / run_id, body.selected, language=body.language))
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
+
+
+@router.post("/runs/{run_id}/family/release")
+def family_release(run_id: str, body: ReleaseIn, user: User = Depends(research_access), db: Session = Depends(get_db)):
+    _get(run_id)
+    try:
+        return _out(FA.release(db, A.runs_root() / run_id, user, body.family_id, body.arabic_confirmed))
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
+
+
+@router.post("/runs/{run_id}/family/withdraw")
+def family_withdraw(run_id: str, user: User = Depends(research_access), db: Session = Depends(get_db)):
+    _get(run_id)
+    try:
+        return _out(FA.revoke_release(db, A.runs_root() / run_id, user))
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
+
+
 @router.post("/runs/{run_id}/cancel")
 def cancel(run_id: str, _: User = Depends(research_access)):
     _get(run_id)
@@ -83,6 +296,16 @@ def retry(run_id: str, background: BackgroundTasks, _: User = Depends(research_a
     if run["state"] != "blocked":
         background.add_task(A.run_all, run["run_id"])
     return _out(run, 202)
+
+
+@router.post("/runs/{run_id}/noise")
+def noise_refresh(run_id: str, _: User = Depends(research_access)):
+    """Re-read the repeat segmentations and recompute the same-session spread for a saved run. Does not touch alignment or the main volumes."""
+    _get(run_id)
+    try:
+        return _out(N.refresh(run_id))
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
 
 
 @router.get("/workflow")
@@ -101,8 +324,6 @@ def activity(run_id: str, after: int = 0, _: User = Depends(research_access)):
 
 @router.get("/runs/{run_id}/slice.png")
 def slice_png(run_id: str, layer: str = "earlier", axis: int = 2, index: int = 0, _: User = Depends(research_access)):
-    import numpy as np
-    from PIL import Image
     if layer not in ("earlier", "later_original", "later_aligned") or axis not in AXES:
         raise HTTPException(422, "Unknown layer or axis.")
     run = _get(run_id)
@@ -111,19 +332,7 @@ def slice_png(run_id: str, layer: str = "earlier", axis: int = 2, index: int = 0
         raise HTTPException(404, "This layer is not available for this run.")
     if not 0 <= index < data.shape[axis]:
         raise HTTPException(422, f"index must be between 0 and {data.shape[axis] - 1}.")
-    ref = A.layer_volume(run, "earlier")  # one display range for every layer so brightness is comparable
-    lo, hi = (float(v) for v in np.percentile(ref[ref > 0], [1, 99]))
-    gray = np.clip((np.take(data, index, axis=axis) - lo) / max(hi - lo, 1e-6), 0, 1) * 255
-    buf = io.BytesIO()
-    image = Image.fromarray(np.rot90(gray).astype(np.uint8), mode="L")
-    zooms = run["validation"]["checks"]["earlier"]["voxel_mm"]
-    i, j = [k for k in range(3) if k != axis]
-    zi, zj = zooms[i] or 1.0, zooms[j] or 1.0
-    if abs(zi - zj) > 1e-3:  # true proportions when voxels are not cubes
-        m = min(zi, zj)
-        image = image.resize((max(1, round(image.width * zi / m)), max(1, round(image.height * zj / m))), Image.BILINEAR)
-    image.save(buf, format="PNG")
-    return Response(buf.getvalue(), media_type="image/png", headers=HEADERS)
+    return Response(V.png(V.render_slice(run, layer, axis, index)), media_type="image/png", headers=HEADERS)
 
 
 PALETTE = [(230, 25, 75), (60, 180, 75), (255, 225, 25), (0, 130, 200), (245, 130, 48), (145, 30, 180), (70, 240, 240), (240, 50, 230),
