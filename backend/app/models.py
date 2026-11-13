@@ -173,6 +173,49 @@ class AuditEvent(Base):
 DAY_PARTS = ("morning", "afternoon", "evening", "anytime")
 
 
+PLAN_STATUS = ("draft", "sent", "accepted", "declined", "superseded")
+PLAN_RESPONSES = ("accept", "question", "decline")
+REPLY_KINDS = ("done", "not_today", "snooze", "difficulty")
+DIFFICULTY_REASONS = ("too_tiring", "unclear", "inaccessible", "need_help")
+
+
+class CarePlan(Base):
+    """One version of a person's plan. A plan is a draft until the clinician sends it, and its routines become tasks only when the
+    person accepts it. A change after acceptance is a new version (a new draft) that needs its own acceptance; older versions and
+    everything recorded under them are kept. `legacy` marks routines that existed before acceptance was introduced."""
+    __tablename__ = "care_plans"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    participant_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    status: Mapped[str] = mapped_column(String(12), default="draft")
+    created_by: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    sent_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    supersedes_id: Mapped[int | None] = mapped_column(ForeignKey("care_plans.id"), nullable=True)
+    legacy: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class PlanResponse(Base):
+    """What the person said about a sent plan. Append-only. A question stays open until the clinician answers it (Stage 3)."""
+    __tablename__ = "plan_responses"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    plan_id: Mapped[int] = mapped_column(ForeignKey("care_plans.id"), index=True)
+    participant_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    response: Mapped[str] = mapped_column(String(10))   # accept | question | decline
+    note: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class PatientPreference(Base):
+    """Settings that belong to the person. The time zone decides what "today" means for their routines."""
+    __tablename__ = "patient_preferences"
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    timezone: Mapped[str] = mapped_column(String(64), default="Asia/Dubai")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class CarePlanItem(Base):
     """One routine in a person's care plan, written by a clinician in their own words. No model writes or edits these.
     Stopping an item keeps it (and its history) in the record."""
@@ -189,6 +232,19 @@ class CarePlanItem(Base):
     stopped_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     stopped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     stop_note: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    # Structured fields (Stage 2). The clinician's own words stay in text_en / text_ar and are never rewritten.
+    plan_id: Mapped[int | None] = mapped_column(ForeignKey("care_plans.id"), nullable=True, index=True)
+    title: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    time_hhmm: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    window_start: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    window_end: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    start_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    end_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    quantity: Mapped[float | None] = mapped_column(Float, nullable=True)
+    unit: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    precautions: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    copied_from_id: Mapped[int | None] = mapped_column(Integer, nullable=True)   # a new plan version copies the routines it keeps
+    extraction: Mapped[dict | None] = mapped_column(JSON, nullable=True)   # how the fields were proposed and approved (Stage 3)
 
 
 class CarePlanReply(Base):
@@ -199,8 +255,13 @@ class CarePlanReply(Base):
     item_id: Mapped[int] = mapped_column(ForeignKey("care_plan_items.id"), index=True)
     participant_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     day: Mapped[str] = mapped_column(String(10))   # YYYY-MM-DD, the person's own day
-    reply: Mapped[str] = mapped_column(String(10))  # done | not_today
+    reply: Mapped[str] = mapped_column(String(10))  # done | not_today | snooze | difficulty
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)   # snooze: when the reminder returns
+    reason: Mapped[str | None] = mapped_column(String(20), nullable=True)                    # difficulty: one of DIFFICULTY_REASONS
+    note: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    idem_key: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)     # a retried request returns the first result
+    recorded_by: Mapped[str | None] = mapped_column(String(40), nullable=True)               # a supporter's help is attributed (later stages)
 
 
 class FamilyMessage(Base):
