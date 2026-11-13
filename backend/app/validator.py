@@ -10,6 +10,7 @@ contains. The validator refuses a draft when any statement:
 - mentions medication, doses or treatment, or tells the reader what to do     (treatment_advice)
 - compares the person with other people or calls a result normal or abnormal  (normative_claim)
 - reassures ("nothing to worry about")                                        (reassurance)
+- claims significance or proof ("significant", "statistically", "confirmed")   (significance_claim)
 - is too long, or the draft has too many statements or none                   (too_long, too_many, empty)
 
 Passing means the draft broke none of these rules. It does not mean the draft is right, complete or well worded:
@@ -85,7 +86,7 @@ RULES: dict[str, dict] = {
     "clinical_claim": {
         "en": _en(r"diagnos\w*", r"dementia", r"alzheimer\w*", r"parkinson\w*", r"mild cognitive impairment", r"MCI",
                   r"impairment", r"impaired", r"disorder", r"disease", r"prognos\w*", r"predict\w*", r"risk",
-                  r"deteriorat\w*", r"declin\w*", r"worsen\w*", r"symptom\w*"),
+                  r"deteriorat\w*", r"declin\w*", r"worsen\w*", r"worse", r"symptom\w*"),
         "ar": ["تشخيص", "خرف", "زهايمر", "ضعف ادراكي", "ضعف إدراكي", "اضطراب", "مرض", "تدهور", "تنبؤ", "يتنبأ", "خطر",
                "أعراض", "اعراض"],
     },
@@ -98,6 +99,10 @@ RULES: dict[str, dict] = {
         "en": _en(r"normal\w*", r"abnormal\w*", r"healthy", r"unhealthy", r"average person", r"for (?:his|her|their) age",
                   r"other (?:people|patients|adults)", r"population", r"typical\w*"),
         "ar": ["طبيعي", "غير طبيعي", "سليم", "الاخرين", "الآخرين", "لعمره", "لعمرها", "المعدل العام"],
+    },
+    "significance_claim": {
+        "en": _en(r"signific\w*", r"statistical\w*", r"p-?values?", r"confirmed", r"proves?", r"proven", r"definite\w*"),
+        "ar": ["دلالة إحصائية", "ذو دلالة", "ذات دلالة", "مؤكد", "مؤكدة", "ثبت", "يثبت"],
     },
     "reassurance": {
         "en": _en(r"nothing to worry", r"no cause for concern", r"no need to worry", r"reassur\w*", r"rest assured"),

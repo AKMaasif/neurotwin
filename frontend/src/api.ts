@@ -115,16 +115,44 @@ export type Oasis2Subject = { subject_id: string; group_label_from_dataset: stri
 
 export type AgentStep = { key: string; label: string; state: string; detail: string | null };
 export type AgentRegion = { label: number; name: string; earlier_mm3: number; later_mm3: number; difference_mm3: number; difference_pct: number | null;
-  earlier_voxels: number; later_voxels: number; uncertainty: null; status: string; review_notes: string[] };
+  earlier_voxels: number; later_voxels: number; uncertainty: null; status: string; review_notes: string[]; repeat?: AgentRepeat | null };
+export type AgentRepeat = { status: string; df: number; sd_mm3: number; cv_pct: number | null; max_range_mm3: number; ratio: number | null; within_repeat_range: boolean };
+export type AgentNoise = { status: string; reason?: string | null; earlier_repeats: string[]; later_repeats: string[]; skipped: { scan: string; reason: string }[]; flags: string[]; note: string };
 export type AgentRun = {
   run_id: string; earlier: string; later: string; scan: string; state: string; parent_run_id: string | null; steps: AgentStep[];
   validation: { status: string; blockers: string[]; limitations: string[]; checks?: { earlier?: { shape: number[] } }; interval: { months: number; days: number; nearest_target_months: number | null; within_requested_window: boolean } | null };
   alignment: null | { method: string; tool: string; correlation_before: number; correlation_after: number; rotation_deg: number; shift_mm_voxel_frame: number; flags: string[]; mask: string };
   segmentation_tool?: { tool: string; version: string };
   measurements?: { unit: string; earlier_total_mm3: number; later_total_mm3: number; source: string; regions: AgentRegion[] };
+  noise?: AgentNoise;
   review?: { flags: string[]; note: string };
   report?: { status: string; author: string; sections: Record<string, string[]> };
 };
+export type AgentAiStatus = { mode: string; providers: Record<string, { role: string; available: boolean; provider: string | null; model: string | null }> };
+export type ArabicInfo = { glossary_status: string; glossary_note: string;
+  back_translation: { status: string; reason?: string; scripted?: boolean; model?: string | null; items: { index: number; ok: boolean; flags: string[]; english: string }[] } };
+export type AgentAi = {
+  review_state: string; note: string; created_at: string; language?: string; arabic?: ArabicInfo;
+  explanation: { status: string; reason?: string; provider: string | null; model: string | null; scripted?: boolean; attempts: number; statements: { text: string; cites: string[] }[]; validator?: { ok: boolean; problems: { index: number; code: string; detail: string }[] } };
+  cross_check: { status: string; reason?: string; provider?: string; model?: string; scripted?: boolean; items: { index: number; supported: boolean; reason: string }[] };
+  qa: { passed: boolean; checks: { name: string; ok: boolean; required: boolean; warning?: boolean; detail: string }[] };
+};
+export type AgentObs = { index: number; slice: string; x: number; y: number; description: string; region: string; cites: string[]; status: "supported" | "unsupported" | "rejected";
+  reason: string; reject_code?: string; drawn: boolean; needs_look?: boolean; cross?: { verdict: "agreed" | "disputed" | "not_visible"; reason: string } };
+export type AgentVisual = { review_state: string; note: string; slices: { id: string; axis: number; view: string; index: number; reason: string; size?: number[] }[];
+  observer: { status: string; reason?: string; provider: string | null; model: string | null; scripted?: boolean }; observations: AgentObs[];
+  cross_check: { status: string; reason?: string; model?: string; provider?: string; scripted?: boolean } };
+type Cited = { text: string; cites: string[] };
+export type AgentReview = { review_state: string; note: string;
+  quality: { status: string; reason?: string; gate: string; gate_reasons: string[]; verdict?: string; model_verdict?: string | null; overridden_by_gate?: boolean; statements: Cited[]; model: string | null; scripted?: boolean; validator?: { problems: { detail: string }[] } };
+  challenge: { status: string; reason?: string; doubts: Cited[]; questions: Cited[]; model: string | null; scripted?: boolean; validator?: { problems: { detail: string }[] } } };
+export type AgentChat = { ts: string; question: string; status: string; tools: { name: string; arg: string }[]; answer: Cited[]; note: string; model: string | null; scripted?: boolean };
+export type AgentReviewItem = { id: string; kind: "explanation" | "followup" | "visual"; text: string; cites: string[]; decision: "accepted" | "rejected" | null };
+export type AgentReviewState = { state: string; items: AgentReviewItem[]; undecided: number; accepted: number; approval_outdated: boolean; note: string;
+  approval: { decision: string; by: string; at: string; comment: string } | null; followup: { status: string; reason?: string; items: unknown[] } | null };
+export type FamilyImaging = { run_id: string; participant_id: string; display_name: string; released_at: string; active: boolean; statements: string[]; note: string; language?: string };
+export type AgentFamily = { draft: { language?: string; arabic?: ArabicInfo; status: string; reason?: string; statements: { text: string; cites: string[] }[]; scripted?: boolean; model?: string; validator?: { problems: { detail: string }[] }; release: { family_id: string; at: string } | null } | null;
+  preconditions: { name: string; ok: boolean; detail: string }[]; participants: { id: string; name: string }[]; family: { id: string; name: string }[]; link: { participant_id: string } | null };
 export type AgentSaved = { run_id: string; earlier: string; later: string; state: string; months: number | null; target_months: number | null; segmentation: string | null; saved_at: number };
 export type AgentPair = { subject_id: string; earlier: string; later: string; segmented: boolean; interval: { months: number; nearest_target_months: number | null; within_requested_window: boolean } };
 
@@ -148,6 +176,23 @@ export const api = {
   agentStart: (earlier: string, later: string) => post<AgentRun>("/api/imaging/agent/runs", { earlier, later }),
   agentRun: (id: string) => get<AgentRun>(`/api/imaging/agent/runs/${id}`),
   agentCancel: (id: string) => post<AgentRun>(`/api/imaging/agent/runs/${id}/cancel`),
+  agentAi: (id: string) => get<{ result: AgentAi | null; status: AgentAiStatus }>(`/api/imaging/agent/runs/${id}/ai`),
+  agentExplain: (id: string, language = "en") => post<AgentAi>(`/api/imaging/agent/runs/${id}/ai/explain`, { language }),
+  agentVisual: (id: string) => get<{ result: AgentVisual | null; images_allowed: boolean; mode: string }>(`/api/imaging/agent/runs/${id}/ai/visual`),
+  agentLook: (id: string) => post<AgentVisual>(`/api/imaging/agent/runs/${id}/ai/visual`),
+  agentReview: (id: string) => get<{ result: AgentReview | null; chat: AgentChat[]; mode: string }>(`/api/imaging/agent/runs/${id}/ai/review`),
+  agentRunReview: (id: string) => post<AgentReview>(`/api/imaging/agent/runs/${id}/ai/review`),
+  agentAsk: (id: string, question: string) => post<AgentChat>(`/api/imaging/agent/runs/${id}/ai/ask`, { question }),
+  agentFollowup: (id: string) => post<unknown>(`/api/imaging/agent/runs/${id}/ai/followup`),
+  agentReviewState: (id: string) => get<AgentReviewState>(`/api/imaging/agent/runs/${id}/review`),
+  agentDecideItem: (id: string, item: string, decision: string) => post<AgentReviewState>(`/api/imaging/agent/runs/${id}/review/items`, { item, decision }),
+  agentDecide: (id: string, decision: string, comment: string) => post<AgentReviewState>(`/api/imaging/agent/runs/${id}/review/decision`, { decision, comment }),
+  agentFamily: (id: string, familyId?: string) => get<AgentFamily>(`/api/imaging/agent/runs/${id}/family${familyId ? `?family_id=${encodeURIComponent(familyId)}` : ""}`),
+  agentFamilyLink: (id: string, participant_id: string) => post<unknown>(`/api/imaging/agent/runs/${id}/family/link`, { participant_id }),
+  agentFamilyDraft: (id: string, selected: string[], language = "en") => post<unknown>(`/api/imaging/agent/runs/${id}/family/draft`, { selected, language }),
+  agentFamilyRelease: (id: string, family_id: string, arabic_confirmed = false) => post<unknown>(`/api/imaging/agent/runs/${id}/family/release`, { family_id, arabic_confirmed }),
+  agentFamilyWithdraw: (id: string) => post<unknown>(`/api/imaging/agent/runs/${id}/family/withdraw`),
+  agentNoise: (id: string) => post<AgentRun>(`/api/imaging/agent/runs/${id}/noise`),
   agentRetry: (id: string) => post<AgentRun>(`/api/imaging/agent/runs/${id}/retry`),
   oasis2Info: (mri: string) => get<{ shape: number[]; voxel_mm: number[]; frame: string }>(`/api/imaging/oasis2/visits/${mri}/info`),
   oasis2Subjects: () => get<{ subjects: Oasis2Subject[]; summary: Record<string, number> }>("/api/imaging/oasis2/subjects"),
@@ -221,5 +266,6 @@ export const api = {
   audit: (pid: string) => get<AuditRow[]>(`/api/participants/${encodeURIComponent(pid)}/audit`),
 
   clinicianParticipants: () => get<ClinicianParticipant[]>("/api/clinician/participants"),
+  familyImaging: () => get<FamilyImaging[]>("/api/family/imaging-summaries"),
   familyShared: () => get<FamilyEntry[]>("/api/family/shared"),
 };
