@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import VoiceButton from "../voice";
 import { api, ApiError, AssistantItem, AssistantReply } from "../api";
 import { Key, useT } from "../i18n";
 import { ErrorNote, Heading } from "../ui";
@@ -14,6 +15,24 @@ export default function Assistant({ go, onBack }: { go: (s: Screen) => void; onB
   const [text, setText] = useState("");
   const [lines, setLines] = useState<Line[]>([]);
   const [error, setError] = useState<unknown>(null);
+  const [heard, setHeard] = useState(false);
+  const [reading, setReading] = useState(false);
+  const [canRead, setCanRead] = useState(false);
+  useEffect(() => {
+    if (!("speechSynthesis" in window)) return;
+    const check = () => setCanRead(window.speechSynthesis.getVoices().some((v) => v.lang.toLowerCase().startsWith(t.lang)));
+    check();
+    window.speechSynthesis.addEventListener?.("voiceschanged", check);
+    return () => { window.speechSynthesis.cancel(); window.speechSynthesis.removeEventListener?.("voiceschanged", check); };
+  }, [t.lang]);
+  const read = (what: string) => {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(what);
+    u.lang = t.lang === "ar" ? "ar" : "en";
+    u.onend = () => setReading(false);
+    setReading(true);
+    window.speechSynthesis.speak(u);
+  };
   const add = (l: Line) => setLines((x) => [...x, l]);
   const title = (i: AssistantItem) => [i.title, t.lang === "ar" ? i.text_ar ?? i.text_en : i.text_en ?? i.text_ar].filter(Boolean).join(": ");
 
@@ -36,7 +55,7 @@ export default function Assistant({ go, onBack }: { go: (s: Screen) => void; onB
         go(NAV[r.navigate]);
       }
     } catch (e) { setError(e); }
-    setText("");
+    setText(""); setHeard(false);
   };
 
   const decide = async (c: NonNullable<Line["confirm"]>, yes: boolean) => {
@@ -59,6 +78,10 @@ export default function Assistant({ go, onBack }: { go: (s: Screen) => void; onB
             {l.text && l.text !== "…" && <p style={{ margin: "4px 0" }}>{l.text}</p>}
             {l.items?.map((i) => <p key={i.id} style={{ margin: "4px 0" }}>{i.time_hhmm ? `${i.time_hhmm} · ` : ""}{title(i)}{i.quantity != null && i.unit ? ` · ${i.quantity} ${i.unit}` : ""}{i.precautions ? ` · ${i.precautions}` : ""}</p>)}
             {l.pick?.map((i) => <button key={i.id} className="btn block" onClick={() => send(`${l.orig ?? ""} ${i.text_en ?? i.text_ar ?? ""}`.trim())}>{title(i)}</button>)}
+            {l.who === "bot" && canRead && (l.text || l.items || l.confirm) && (
+              <button className="link" onClick={() => reading ? (window.speechSynthesis.cancel(), setReading(false)) : read([l.text, ...(l.items ?? []).map(title), l.confirm ? `${t(l.confirm.tool === "mark_done" ? "asConfirmDone" : l.confirm.tool === "mark_not_today" ? "asConfirmNot" : "asConfirmSnooze", { n: l.confirm.minutes ?? 0 })} ${title(l.confirm.item)}` : ""].filter(Boolean).join(". "))}>
+                {reading ? t("asStopReading") : t("asReadAloud")}</button>
+            )}
             {l.confirm && (
               <>
                 <p style={{ margin: "4px 0" }}>{t(l.confirm.tool === "mark_done" ? "asConfirmDone" : l.confirm.tool === "mark_not_today" ? "asConfirmNot" : "asConfirmSnooze", { n: l.confirm.minutes ?? 0 })}</p>
@@ -73,9 +96,12 @@ export default function Assistant({ go, onBack }: { go: (s: Screen) => void; onB
         ))}
       </div>
       <form onSubmit={(e) => { e.preventDefault(); send(text); }} style={{ display: "grid", gap: 8, marginTop: 12 }}>
-        <input className="note" value={text} maxLength={300} placeholder={t("asPlaceholder")} aria-label={t("asPlaceholder")} onChange={(e) => setText(e.target.value)} />
+        <VoiceButton onText={(w) => { setText(w.slice(0, 300)); setHeard(true); }} />
+        {heard && <p className="hint" role="status">{t("asHeard")}</p>}
+        <input className="note" value={text} maxLength={300} placeholder={t("asPlaceholder")} aria-label={t("asPlaceholder")} onChange={(e) => { setText(e.target.value); }} />
         <button className="btn primary block" type="submit" disabled={!text.trim()}>{t("asSend")}</button>
       </form>
+      {canRead && <p className="hint">{t("asReadNote")}</p>}
       <button className="btn block" onClick={onBack}>{t("backHome")}</button>
     </>
   );
