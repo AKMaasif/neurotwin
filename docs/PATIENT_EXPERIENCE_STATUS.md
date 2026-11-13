@@ -50,3 +50,16 @@ Last updated with Stage 2. Items are labelled: **Verified** (automated test or b
 | Sending anything to another person from the assistant | Not offered (needs the Stage 6 flow with its own Send step) |
 | Arabic matching uses a rough root-like form and can join different words; every change is still confirmed | Known limit; needs native-speaker testing |
 | Phone-width browser check in Arabic (ask, confirm, ambiguity, not understood, urgent) | Verified; English phone-width check Planned |
+
+## Stage 5: voice and confirmed actions
+
+| Item | State |
+|---|---|
+| Voice button in the assistant reuses the existing dictation: the person starts and stops recording, a red indicator and timer stay visible, the clip is never stored, voice-recording consent is required | Verified earlier (tests); reused unchanged |
+| The transcript only fills the text box; the person reads and fixes it, then presses Send. A spoken change still needs the "Yes" | Verified (tests with a stand-in speech provider) |
+| A repeated spoken command cannot record twice; instructions inside speech are plain words; spoken "help" opens the urgent page | Verified (tests, stand-in provider) |
+| Long mixed sentences are not treated as "open a screen" requests | Verified |
+| "Read aloud" button uses the device's own voice and appears only if the device has a voice for the language | Written; not tested on real devices |
+| Live speech accuracy in English and Arabic, and whether intended commands are understood from real speech | **Not evaluated.** Tests use a stand-in provider and say nothing about live quality |
+| Microphone capture in a real browser/device | Not tested in this environment |
+| English phone-width check of the assistant | Verified (390 px) |
