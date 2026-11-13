@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -19,8 +21,23 @@ def _fresh_rate_limits():
 
 @pytest.fixture()
 def app(tmp_path):
-    return create_app(database_url=f"sqlite:///{tmp_path / 'test.db'}", seed_demo=True, serve_frontend=False,
-                      demo_password=DEMO_PASSWORD)
+    """A fresh app and database for each test. Set NEUROTWIN_TEST_DATABASE_URL to run the suite on PostgreSQL
+    (every table is dropped first, so use an empty throwaway database)."""
+    url = os.environ.get("NEUROTWIN_TEST_DATABASE_URL")
+    if url:
+        from app import models  # noqa: F401  (registers tables)
+        from app.db import Base, make_engine
+        engine = make_engine(url)
+        Base.metadata.drop_all(engine)
+        from sqlalchemy import text
+        with engine.begin() as c:
+            c.execute(text("DROP TABLE IF EXISTS alembic_version"))
+        engine.dispose()
+    else:
+        url = f"sqlite:///{tmp_path / 'test.db'}"
+    made = create_app(database_url=url, seed_demo=True, serve_frontend=False, demo_password=DEMO_PASSWORD)
+    yield made
+    made.state.db.engine.dispose()
 
 
 @pytest.fixture()
