@@ -24,7 +24,7 @@ from . import quality as Q
 from . import services as S
 from .db import Database
 from .logs import SafeRequestLog
-from .models import AccessGrant, ActivitySession, AuditEvent, CarePlanItem, Draft, FamilyMessage, Evidence, ReviewItem, User
+from .models import AccessGrant, ActivitySession, AuditEvent, CarePlan, CarePlanItem, Draft, FamilyMessage, Evidence, ReviewItem, User
 from .auth import router as auth_router
 from .auth import user_out
 from .imaging import router as imaging_router
@@ -43,6 +43,24 @@ class CarePlanIn(BaseModel):
     text_ar: str | None = Field(default=None, max_length=300)
     day_part: str = "anytime"
     weekdays: list[int] = Field(default_factory=list, max_length=7)
+    title: str | None = Field(default=None, max_length=120)
+    time_hhmm: str | None = Field(default=None, max_length=5)
+    window_start: str | None = Field(default=None, max_length=5)
+    window_end: str | None = Field(default=None, max_length=5)
+    start_date: str | None = Field(default=None, max_length=10)
+    end_date: str | None = Field(default=None, max_length=10)
+    quantity: float | None = None
+    unit: str | None = Field(default=None, max_length=20)
+    precautions: str | None = Field(default=None, max_length=300)
+
+
+class PlanResponseIn(BaseModel):
+    response: Literal["accept", "question", "decline"]
+    note: str | None = Field(default=None, max_length=300)
+
+
+class TimezoneIn(BaseModel):
+    timezone: str = Field(min_length=1, max_length=64)
 
 
 class MessageIn(BaseModel):
@@ -55,8 +73,12 @@ class CarePlanStopIn(BaseModel):
 
 
 class CarePlanReplyIn(BaseModel):
-    reply: Literal["done", "not_today"]
+    reply: Literal["done", "not_today", "snooze", "difficulty"]
     day: str | None = None
+    idem_key: str | None = Field(default=None, max_length=64)
+    snooze_minutes: int | None = None
+    reason: str | None = Field(default=None, max_length=30)
+    note: str | None = Field(default=None, max_length=200)
 
 
 class ConsentIn(BaseModel):
@@ -176,10 +198,7 @@ def draft_out(d: Draft) -> dict:
 
 
 def care_item_out(i: CarePlanItem, db: Session) -> dict:
-    who = db.get(User, i.created_by)
-    return {"id": i.id, "text_en": i.text_en, "text_ar": i.text_ar, "day_part": i.day_part, "weekdays": i.weekdays,
-            "status": i.status, "created_at": iso(i.created_at), "written_by": who.display_name if who else None,
-            "stopped_at": iso(i.stopped_at), "stop_note": i.stop_note}
+    return CP.item_out(db, i)
 
 
 def message_out(m: FamilyMessage, db: Session) -> dict:
@@ -492,12 +511,12 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
     @app.get("/api/participants/{pid}/care-plan")
     def clinician_care_plan(pid: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
         _clinician_for(db, user, pid)
-        return [{**care_item_out(r["item"], db), "marked": r["marked"]} for r in CP.clinician_view(db, pid)]
+        return CP.clinician_view(db, pid)
 
     @app.post("/api/participants/{pid}/care-plan")
     def add_care_item(pid: str, body: CarePlanIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
         _clinician_for(db, user, pid)
-        item = CP.add_item(db, user, pid, body.text_en, body.text_ar, body.day_part, body.weekdays)
+        item = CP.add_item(db, user, pid, **body.model_dump())
         return care_item_out(item, db)
 
     @app.post("/api/care-plan/{item_id}/stop")
@@ -509,12 +528,43 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
         _clinician_for(db, user, item.participant_id)
         return care_item_out(CP.stop_item(db, user, item, body.note), db)
 
+    def _plan_for_clinician(db: Session, user: User, plan_id: int):
+        plan = db.get(CarePlan, plan_id)
+        if plan is None:
+            raise HTTPException(404, "Not found, or you do not have access.")
+        _clinician_for(db, user, plan.participant_id)
+        return plan
+
+    @app.post("/api/care-plans/{plan_id}/send")
+    def send_care_plan(plan_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return CP.plan_out(db, CP.send_plan(db, user, _plan_for_clinician(db, user, plan_id)))
+
+    @app.post("/api/care-plans/{plan_id}/recall")
+    def recall_care_plan(plan_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return CP.plan_out(db, CP.recall_plan(db, user, _plan_for_clinician(db, user, plan_id)))
+
+    @app.get("/api/care-plan/awaiting")
+    def plans_awaiting_me(user: User = Depends(current_user), db: Session = Depends(get_db)):
+        if user.role != "participant":
+            raise HTTPException(404, "Not found, or you do not have access.")
+        return CP.awaiting(db, user)
+
+    @app.post("/api/care-plans/{plan_id}/respond")
+    def respond_to_care_plan(plan_id: int, body: PlanResponseIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        plan = db.get(CarePlan, plan_id)
+        if plan is None or user.role != "participant":
+            raise HTTPException(404, "Not found, or you do not have access.")
+        CP.respond(db, user, plan, body.response, body.note)
+        return {"ok": True, "status": plan.status}
+
     @app.get("/api/care-plan/today")
     def my_reminders(day: str | None = None, user: User = Depends(current_user), db: Session = Depends(get_db)):
         if user.role != "participant":
             raise HTTPException(404, "Not found, or you do not have access.")
-        d = CP.person_day(day)
-        return {"day": d.isoformat(), "items": [{**care_item_out(i, db), "reply": r} for i, r in CP.todays(db, user, d)]}
+        d = CP.reply_day(db, user, day)
+        return {"day": d.isoformat(), "timezone": CP.tz_name(db, user),
+                "items": [{**care_item_out(i, db), "reply": st["reply"], "snoozed_until": CP._iso(st["snoozed_until"]), "difficulty": st["difficulty"]}
+                          for i, st in CP.todays(db, user, d)]}
 
     @app.post("/api/care-plan/{item_id}/reply")
     def reply_to_reminder(item_id: int, body: CarePlanReplyIn, user: User = Depends(current_user),
@@ -522,8 +572,17 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
         item = db.get(CarePlanItem, item_id)
         if item is None or user.role != "participant":
             raise HTTPException(404, "Not found, or you do not have access.")
-        CP.reply(db, user, item, CP.person_day(body.day), body.reply)
-        return {"ok": True}
+        _, dup = CP.reply(db, user, item, CP.reply_day(db, user, body.day), body.reply, idem_key=body.idem_key,
+                          snooze_minutes=body.snooze_minutes, reason=body.reason, note=body.note)
+        return {"ok": True, "duplicate": dup}
+
+    @app.get("/api/me/preferences")
+    def my_preferences(user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return {"timezone": CP.tz_name(db, user)}
+
+    @app.put("/api/me/preferences")
+    def set_my_preferences(body: TimezoneIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return {"timezone": CP.set_timezone(db, user, body.timezone)}
 
     @app.get("/api/participants/{pid}/audit")
     def list_audit(pid: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
