@@ -17,7 +17,7 @@ import pytest
 HERE = Path(__file__).resolve().parent.parent
 OUT = HERE.parent / "docs" / "AGENT_EVAL_REPORT.md"
 NAMES = {"A1": "A1 Quality reviewer", "A2": "A2 Findings challenger", "A3": "A3 Evidence explainer", "A4": "A4 Cross-checker", "A5": "A5 Ask-the-Evidence",
-         "A6": "A6 Follow-up planner", "A7": "A7 Family summary", "A8": "A8 Report QA", "A9": "A9 Visual comparison", "AR": "Arabic glossary and back-translation"}
+         "A6": "A6 Follow-up planner", "A7": "A7 Family summary", "A8": "A8 Report QA", "A9": "A9 Visual comparison", "AR": "Arabic glossary and back-translation", "NZ": "Same-session repeat spread (noise estimate)"}
 
 
 class Collector:

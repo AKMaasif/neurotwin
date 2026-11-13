@@ -74,7 +74,7 @@ def facts_names(facts: list[dict]) -> dict[str, str]:
     """fact id -> English structure name, for the facts that are about one structure (their text starts with 'name: ')."""
     out = {}
     for f in facts:
-        m = re.match(r"^(?:F-R|F-rate|F-lr)\d+$", f["id"])
+        m = re.match(r"^(?:F-R|F-rate|F-lr|F-noise)\d+$", f["id"])
         if m and ": " in f["text"]:
             out[f["id"]] = f["text"].split(": ", 1)[0]
     return out

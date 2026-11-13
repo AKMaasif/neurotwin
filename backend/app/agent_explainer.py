@@ -31,6 +31,8 @@ Rules:
 - Use only the facts you are given. Every statement lists the ids of the facts it uses in "cites".
 - Copy numbers exactly as they appear in the facts you cite. Do not calculate new numbers. Say "derived" for facts marked derived.
 - Say what changed and by how much, which differences are largest, and that uncertainty is not estimated (cite F-uncertainty).
+- If facts named F-noise... are given, you may say how many times larger a difference is than the same-session repeat spread, using the numbers as written, and that this spread is a lower bound.
+  Never call a difference significant, confirmed, proven or real; the repeat spread is not a test.
 - Mention the limits of the comparison (alignment, interval, small structures) when the facts give them.
 - Do not name any diagnosis or condition. Do not predict anything. Do not speak of risk, decline or symptoms.
 - Do not give advice or mention medication or treatment. Do not say what anyone should do.

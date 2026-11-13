@@ -19,7 +19,7 @@ from .agent_reviewers import _json, _statements
 
 VERSION = "agent-followup/0.1"
 FILE = "followup.json"
-BASIS = ("F-limit", "F-flag", "F-alignflag", "F-uncertainty", "F-seg")
+BASIS = ("F-limit", "F-flag", "F-alignflag", "F-uncertainty", "F-seg", "F-noise")
 DIRECTIVE = re.compile(r"\b(?:urgent\w*|immediate\w*|as soon as possible|emergenc\w*|refer\w*|see a (?:doctor|specialist|neurologist)|seek\w*|worry\w*|alarm\w*|concern\w*|schedul\w*|within \w+ (?:days|weeks|months)|book)\b", re.I)
 
 SYSTEM = """Role: FOLLOWUP_PLANNER. You draft suggestions for a clinician to consider after reading a comparison of two brain scans of one person.
