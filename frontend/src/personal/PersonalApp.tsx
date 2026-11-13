@@ -23,16 +23,18 @@ export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut
   const [consent, setConsent] = useState<Consent | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [unread, setUnread] = useState(0);
+  const [waiting, setWaiting] = useState(0);
   const [error, setError] = useState<unknown>(null);
   const [ready, setReady] = useState(false);
 
   const refresh = useCallback(async () => {
     setError(null);
     try {
-      const [cs, ss, inbox] = await Promise.all([api.consents(), api.sessions(user.id), api.inbox().catch(() => [])]);
+      const [cs, ss, inbox, pl] = await Promise.all([api.consents(), api.sessions(user.id), api.inbox().catch(() => []), api.plansAwaiting().catch(() => [])]);
       setConsent(cs.find((c) => c.scope === "participation") ?? null);
       setSessions(ss);
       setUnread(inbox.filter((m) => !m.read).length);
+      setWaiting(pl.length);
     } catch (e) { setError(e); }
     setReady(true);
   }, [user.id]);
@@ -63,7 +65,7 @@ export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut
   );
   else if (screen === "urgent") body = <Info title={t("urgentTitle")} lines={[t("urgentBody"), t("urgentUAE")]} onBack={home} />;
   else if (screen === "about") body = <Info title={t("aboutTitle")} lines={[t("aboutBody"), t("prototypeLong")]} onBack={home} />;
-  else body = <Home user={user} sessions={sessions} participating={participating} unread={unread} go={go} />;
+  else body = <Home user={user} sessions={sessions} participating={participating} unread={unread} waiting={waiting} go={go} />;
 
   const tabbed = ready && TAB_SCREENS.includes(screen) && !needsConsent;
 
@@ -116,8 +118,8 @@ function Ring({ done, total, label }: { done: number; total: number; label: stri
   );
 }
 
-function Home({ user, sessions, participating, unread, go }: {
-  user: User; sessions: Session[]; participating: boolean; unread: number; go: (s: Screen) => void;
+function Home({ user, sessions, participating, unread, waiting, go }: {
+  user: User; sessions: Session[]; participating: boolean; unread: number; waiting: number; go: (s: Screen) => void;
 }) {
   const { t } = useT();
   const doneToday = (code: string) => sessions.some((s) => s.protocol_code === code && s.status === "completed" && isToday(s.started_at));
@@ -177,7 +179,8 @@ function Home({ user, sessions, participating, unread, go }: {
 
       <button className="pt-tile" onClick={() => go("reminders")}>
         <span className="ico v"><BellRing size={32} aria-hidden="true" /></span>
-        <span className="t"><b>{t("remTitle")}</b><span>{t("remMeta")}</span></span>
+        <span className="t"><b>{t("remTitle")}</b><span>{waiting > 0 ? t("remPending") : t("remMeta")}</span></span>
+        {waiting > 0 && <span className="pt-badge" aria-hidden="true">{t.num(waiting)}</span>}
         <ChevronRight className="go" size={26} aria-hidden="true" />
       </button>
       <button className="pt-tile" onClick={() => go("messages")}>

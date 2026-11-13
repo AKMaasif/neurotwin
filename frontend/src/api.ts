@@ -26,11 +26,29 @@ export type ReviewItem = {
 };
 export type DayPart = "morning" | "afternoon" | "evening" | "anytime";
 export type CareItem = {
-  id: number; text_en: string | null; text_ar: string | null; day_part: DayPart; weekdays: number[];
-  status: "active" | "stopped"; created_at: string; written_by: string | null; stopped_at: string | null; stop_note: string | null;
+  id: number; plan_id: number | null; text_en: string | null; text_ar: string | null; day_part: DayPart; weekdays: number[];
+  status: "active" | "stopped"; title: string | null; time_hhmm: string | null; window_start: string | null; window_end: string | null;
+  start_date: string | null; end_date: string | null; quantity: number | null; unit: string | null; precautions: string | null;
+  created_at: string; written_by: string | null; stopped_at: string | null; stop_note: string | null;
 };
-export type CareItemClinician = CareItem & { marked: { day: string; reply: "done" | "not_today" }[] };
-export type Reminder = CareItem & { reply: "done" | "not_today" | null };
+export type PlanStatus = "draft" | "sent" | "accepted" | "declined" | "superseded";
+export type CareItemClinician = CareItem & {
+  marked: { day: string; reply: "done" | "not_today" }[]; difficulty: { day: string; reason: string; note: string | null }[];
+};
+export type CarePlanView = {
+  id: number; version: number; status: PlanStatus; legacy: boolean; created_at: string; sent_at: string | null; responded_at: string | null;
+  written_by: string | null; sent_by: string | null; items: CareItemClinician[];
+  responses: { response: "accept" | "question" | "decline"; note: string | null; at: string }[];
+};
+export type CarePlanClinician = { plans: CarePlanView[]; draft_id: number | null };
+export type AwaitingPlan = { id: number; version: number; sent_at: string | null; sent_by: string | null; written_by: string | null; items: CareItem[]; questions_asked: number };
+export type DifficultyReason = "too_tiring" | "unclear" | "inaccessible" | "need_help";
+export type NewCareItem = {
+  text_en: string | null; text_ar: string | null; day_part: DayPart; weekdays: number[]; title?: string | null; time_hhmm?: string | null;
+  window_start?: string | null; window_end?: string | null; start_date?: string | null; end_date?: string | null;
+  quantity?: number | null; unit?: string | null; precautions?: string | null;
+};
+export type Reminder = CareItem & { reply: "done" | "not_today" | null; snoozed_until: string | null; difficulty: DifficultyReason | null };
 export type Message = {
   id: number; sender: string; participant_id: string; text: string; status: "draft" | "sent" | "discarded";
   created_at: string; sent_at: string | null; read: boolean;
@@ -239,12 +257,17 @@ export const api = {
   createDraft: (pid: string, language: string) => post<Draft>(`/api/participants/${encodeURIComponent(pid)}/drafts`, { language }),
   reviewDraft: (id: number, decision: "approve" | "reject", note: string, statements?: { text: string; cites: string[] }[]) =>
     post<Draft>(`/api/drafts/${id}/review`, { decision, note, statements }),
-  carePlan: (pid: string) => get<CareItemClinician[]>(`/api/participants/${encodeURIComponent(pid)}/care-plan`),
-  addCareItem: (pid: string, b: { text_en: string | null; text_ar: string | null; day_part: DayPart; weekdays: number[] }) =>
-    post<CareItem>(`/api/participants/${encodeURIComponent(pid)}/care-plan`, b),
+  carePlan: (pid: string) => get<CarePlanClinician>(`/api/participants/${encodeURIComponent(pid)}/care-plan`),
+  addCareItem: (pid: string, b: NewCareItem) => post<CareItem>(`/api/participants/${encodeURIComponent(pid)}/care-plan`, b),
   stopCareItem: (id: number, note: string) => post<CareItem>(`/api/care-plan/${id}/stop`, { note: note || null }),
-  reminders: (day: string) => get<{ day: string; items: Reminder[] }>(`/api/care-plan/today?day=${day}`),
-  replyReminder: (id: number, reply: "done" | "not_today", day: string) => post<{ ok: boolean }>(`/api/care-plan/${id}/reply`, { reply, day }),
+  sendCarePlan: (id: number) => post<unknown>(`/api/care-plans/${id}/send`),
+  recallCarePlan: (id: number) => post<unknown>(`/api/care-plans/${id}/recall`),
+  plansAwaiting: () => get<AwaitingPlan[]>("/api/care-plan/awaiting"),
+  respondToPlan: (id: number, response: "accept" | "question" | "decline", note?: string) =>
+    post<{ ok: boolean; status: string }>(`/api/care-plans/${id}/respond`, { response, note: note || null }),
+  reminders: () => get<{ day: string; timezone: string; items: Reminder[] }>("/api/care-plan/today"),
+  replyReminder: (id: number, b: { reply: "done" | "not_today" | "snooze" | "difficulty"; day: string; snooze_minutes?: number; reason?: DifficultyReason; idem_key?: string }) =>
+    post<{ ok: boolean; duplicate: boolean }>(`/api/care-plan/${id}/reply`, b),
   draftMessage: (participant_id: string, text: string) => post<Message>("/api/family/messages", { participant_id, text }),
   sendMessage: (id: number) => post<Message>(`/api/family/messages/${id}/send`),
   discardMessage: (id: number) => post<Message>(`/api/family/messages/${id}/discard`),
