@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from . import agent_activity as AC
 from . import agent_analysis as A
 from . import agent_explainer as X
+from . import agent_noise as N
 from . import agent_ledger as L
 from . import agent_family as FA
 from . import agent_followup as FU
@@ -295,6 +296,16 @@ def retry(run_id: str, background: BackgroundTasks, _: User = Depends(research_a
     if run["state"] != "blocked":
         background.add_task(A.run_all, run["run_id"])
     return _out(run, 202)
+
+
+@router.post("/runs/{run_id}/noise")
+def noise_refresh(run_id: str, _: User = Depends(research_access)):
+    """Re-read the repeat segmentations and recompute the same-session spread for a saved run. Does not touch alignment or the main volumes."""
+    _get(run_id)
+    try:
+        return _out(N.refresh(run_id))
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from None
 
 
 @router.get("/workflow")

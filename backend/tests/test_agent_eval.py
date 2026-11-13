@@ -31,6 +31,8 @@ from test_agent_family import Fake as GFake
 from test_agent_family import approve, rd, reset, run as frun, setup, sts  # noqa: F401
 from test_agent_reviewers import A1_OK, A2_OK, Fake, pick, st
 from test_agent_visual_ai import AGREE, ON, good, world  # noqa: F401
+from test_agent_noise import make_run, put, root  # noqa: F401
+from app import agent_noise as N
 from test_agent_ledger import RUN
 
 REGISTRY: list[tuple[str, str]] = []
@@ -502,8 +504,65 @@ def test_ar_banned(rd):
     assert X.explain(run(), rd, "ar", a3_client=Fake(sts(("تشخيص المرض.", ["F-interval"]), AR_OK[1])), env={})["explanation"]["status"] == "refused"
 
 
+# ---------------- Same-session repeat spread (step 9) ----------------
+def noisy_run(root):
+    r = make_run(root); N.apply(r, N.compute(r)); return r
+
+
+def x_noise(root, rd, *pairs):
+    return X.explain(noisy_run(root), rd, "en", a3_client=Fake(sts(*pairs), "gemini"), env={})
+
+
+@scenario("NZ", "draft calls a change statistically significant: refused")
+def test_nz_significant(root, rd):
+    r = x_noise(root, rd, ("The change is statistically significant.", ["F-noise4"]), ("Uncertainty between the visits is not estimated.", ["F-uncertainty"]))
+    assert r["explanation"]["status"] == "refused" and any(p["code"] == "significance_claim" for p in r["explanation"]["validator"]["problems"])
+
+
+@scenario("NZ", "draft calls the change confirmed: refused")
+def test_nz_confirmed(root, rd):
+    r = x_noise(root, rd, ("The repeat spread confirmed the change.", ["F-noise4"]), ("Uncertainty between the visits is not estimated.", ["F-uncertainty"]))
+    assert r["explanation"]["status"] == "refused"
+
+
+@scenario("NZ", "draft restates the repeat spread with its own numbers: passes the claim checker")
+def test_nz_restate(root, rd):
+    r = x_noise(root, rd, ("The left lateral ventricle changed by 200 mm3; its repeat spread was 20 mm3.", ["F-noise4"]), ("Uncertainty between the visits is not estimated.", ["F-uncertainty"]))
+    assert r["explanation"]["status"] == "completed"
+
+
+@scenario("NZ", "draft alters the ratio: refused")
+def test_nz_ratio(root, rd):
+    r = x_noise(root, rd, ("The change is 11 times the repeat spread.", ["F-noise4"]), ("Uncertainty between the visits is not estimated.", ["F-uncertainty"]))
+    assert any(p["code"] == "unsupported_number" for p in r["explanation"]["validator"]["problems"])
+
+
+@scenario("NZ", "only one repeat per visit: no spread is estimated and the ledger keeps the old uncertainty wording")
+def test_nz_too_few(root):
+    r = make_run(root)
+    for p in (root / "segmentations").rglob("repeats"):
+        import shutil; shutil.rmtree(p)
+    N.apply(r, N.compute(r))
+    t = {f["id"]: f["text"] for f in L.build(r)["facts"]}
+    assert r["noise"]["status"] == "not_estimated" and "F-noise" not in t and t["F-uncertainty"].startswith("Uncertainty of these volumes is not estimated")
+
+
+@scenario("NZ", "repeat segmented with another tool version is left out and listed")
+def test_nz_tool_mismatch(root):
+    put(root, "OAS2_0009_MR1", {4: 100}); put(root, "OAS2_0009_MR1", {4: 101}, "mpr-2", tool=("SynthSeg", "2.0"))
+    v = N.visit_volumes("OAS2_0009_MR1", [4], {"tool": "SynthSeg", "version": "1.0"})
+    assert list(v["scans"]) == ["mpr-1"] and v["skipped"][0]["scan"] == "mpr-2"
+
+
+@scenario("NZ", "identical repeats: spread zero, no ratio is claimed")
+def test_nz_zero():
+    e = {"scans": {"mpr-1": {4: 100.0}, "mpr-2": {4: 100.0}, "mpr-3": {4: 100.0}}, "skipped": [], "flags": []}
+    q = N.estimate(e, {"scans": {"mpr-1": {4: 120.0}}, "skipped": [], "flags": []}, [{"label": 4, "earlier_mm3": 100.0, "later_mm3": 120.0, "difference_mm3": 20.0}])["regions"]["4"]
+    assert q["sd_mm3"] == 0 and q["ratio"] is None
+
+
 def test_every_agent_has_at_least_five_scenarios():
     from collections import Counter
     n = Counter(a for a, _ in REGISTRY)
-    assert {"A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "AR"} <= set(n)
+    assert {"A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "AR", "NZ"} <= set(n)
     assert all(v >= 5 for v in n.values()), n
