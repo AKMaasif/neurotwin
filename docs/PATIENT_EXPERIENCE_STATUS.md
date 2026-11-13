@@ -23,3 +23,16 @@ Last updated with Stage 2. Items are labelled: **Verified** (automated test or b
 - A new version lists every routine in the plan, not only the new one. Marking what changed is planned for Stage 3 history.
 - Reminder delivery (push or local notification) is Stage 3. Today only shows snoozes; it does not fire alerts.
 - Accepting is recorded for the signed-in person only. Family cannot accept on someone's behalf.
+
+## Stage 3: notifications, history, clinician review, suggested fields
+
+| Item | State |
+|---|---|
+| In-app notifications (plan waiting; plan accepted / declined / question to the sending clinician). They hold the kind and plan id only, no routine or question text; private to the owner | Verified (tests) |
+| Person's "Your record": what they marked over the last 14 days, plans answered; labelled patient-reported; days with nothing marked are not listed | Verified (tests) |
+| Clinician "Mark as read" on a plan answer; only this sets "a clinician has read your answer" for the person | Verified (tests + browser, desktop width) |
+| "Suggest fields from the text": fixed rules, not a model; every number must be in the text, units never guessed, missing time/days flagged "needs the clinician"; nothing saved until the clinician adds the routine | Verified (tests + browser) |
+| Model-assisted extraction | Planned. No model is used. Any future model proposal must pass the same checks and the clinician approval |
+| Arabic numerals (٣٠) in routine text are not read by the suggestion rules; they are left for the clinician | Known limit |
+| Push or system notifications outside the app | Planned |
+| Notification and record screens in Arabic/English at phone width | Planned for the Stage 10 sweep |
