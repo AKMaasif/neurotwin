@@ -32,7 +32,7 @@ Nothing is selected as "validated for NeuroTwin". Each candidate is either an au
 
 | Candidate | Kind | What I could verify today | Status |
 |---|---|---|---|
-| **WHO-5** (wellbeing) | Authorised instrument | The copy I could read carries "© Psychiatric Research Unit, WHO Collaborating Center for Mental Health, Frederiksborg General Hospital" and no separate licence text. Recall period: the last two weeks. Six response options scored 5 to 0, raw score 0 to 25, multiplied by 4 for a 0 to 100 scale. The form also prints a screening cut-off (raw below 13) and a "10% change" remark. I could **not** open WHO's publication page or the owner's terms of use from here, so the licence and electronic-use conditions are **unverified**. Arabic: published Arabic validation studies exist, including in an older population; I have not seen the official Arabic wording. | **Blocked until** the owner checks the terms and supplies the official English and Arabic text. No AI translation. Plan: raw and 0 to 100 score only, **no cut-off and no "significant change" label**, because those belong to depression screening and were not validated for this use. Not a daily task: the two-week recall means roughly every two weeks at most. |
+| **WHO-5** (wellbeing) | Authorised instrument | The copy I could read carries "© Psychiatric Research Unit, WHO Collaborating Center for Mental Health, Frederiksborg General Hospital" and no separate licence text. Recall period: the last two weeks. Six response options scored 5 to 0, raw score 0 to 25, multiplied by 4 for a 0 to 100 scale. The form also prints a screening cut-off (raw below 13) and a "10% change" remark. I could **not** open WHO's publication page or the owner's terms of use from here, so the licence and electronic-use conditions are **unverified**. Arabic: published Arabic validation studies exist, including in an older population; I have not seen the official Arabic wording. | **Build in Stage 8 on the owner's instruction** (terms are the owner's responsibility); the official Arabic text is still needed as an input. No AI translation. Plan: raw and 0 to 100 score only, **no cut-off and no "significant change" label**, because those belong to depression screening and were not validated for this use. Not a daily task: the two-week recall means roughly every two weeks at most. |
 | **Existing reaction task** | NeuroTwin research task (v0.1) | Built, tested, marked prototype | **Keep.** Measures response speed and anticipations only. |
 | **Picture-sequence memory** | NeuroTwin research task | Needs own picture set (culturally neutral icons), own scoring, own pilot | **Proposed first new cognitive task** (memory is the core family concern). Prototype label, no norms. |
 | Pattern comparison, attention / inhibition, working memory, rule switching | NeuroTwin research tasks | Not started | **Roadmap** (brief asks to start with two cognitive activities and one wellbeing instrument). |
@@ -77,7 +77,14 @@ No database queries, URLs, recipient ids or code from model output; retrieved te
 
 `CarePlan` (version, status, sent/responded times, time zone); `CarePlanItem` (extended); `PlanResponse` (accept / question / decline, append-only); `TaskOccurrence`-style unique key plus `OccurrenceResponse` (append-only, idempotency key); `Notification` (separate from tasks); `ConcernReport` and `ConcernEvent`; `AssistantAction` (tool, argument hash, status, confirmation); `EmergencyConfig` and `TrustedContact`; `PatientPreferences` (time zone, text size, contrast, speech rate, reminders); `ActivitySession` gains `mode` and `input_method`. Existing legacy care-plan rows are backfilled as "accepted (legacy, before acceptance existed)" so current demos keep working, and are labelled that way.
 
-## 6. Stages, acceptance and open decisions
+## 6. Decisions recorded (13 Nov 2026, project owner)
+
+- First two cognitive activities: the existing reaction task and a new picture-sequence memory task, both prototype.
+- **WHO-5 is to be built in Stage 8 on the owner's instruction; the owner takes responsibility for its terms of use.** It is still an authorised instrument, not a NeuroTwin task: official wording, recall period, response options and scoring are kept unchanged, and no cut-off or "significant change" label is applied. The Arabic wording must come from the official Arabic form; I will not translate it myself, so the owner needs to supply that text (or its source) before the Arabic version is switched on. Until then Arabic users are told that this questionnaire is not yet available in Arabic.
+- Existing routines are kept and labelled "legacy-accepted"; new plans need real acceptance.
+- Migrations use Alembic, with a baseline revision for the existing schema.
+
+## 7. Stages, acceptance and open decisions
 
 | Stage | Deliverable | Acceptance (from the brief, section 13) |
 |---|---|---|
