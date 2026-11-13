@@ -224,6 +224,20 @@ class Notification(Base):
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class AssistantAction(Base):
+    """A change the assistant proposed and is waiting for the person to confirm. Single use, short life, bound to the person.
+    It holds the tool name and its checked arguments (ids, a day, minutes), never the person's words."""
+    __tablename__ = "assistant_actions"
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    tool: Mapped[str] = mapped_column(String(30))
+    args: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    outcome: Mapped[str | None] = mapped_column(String(10), nullable=True)   # succeeded | failed
+
+
 class PatientPreference(Base):
     """Settings that belong to the person. The time zone decides what "today" means for their routines."""
     __tablename__ = "patient_preferences"
