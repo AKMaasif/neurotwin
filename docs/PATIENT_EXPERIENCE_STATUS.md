@@ -36,3 +36,17 @@ Last updated with Stage 2. Items are labelled: **Verified** (automated test or b
 | Arabic numerals (٣٠) in routine text are not read by the suggestion rules; they are left for the clinician | Known limit |
 | Push or system notifications outside the app | Planned |
 | Notification and record screens in Arabic/English at phone width | Planned for the Stage 10 sweep |
+
+## Stage 4: text assistant
+
+| Item | State |
+|---|---|
+| Fixed tool list: open screen, read today, explain instruction, mark done, mark not today, snooze, start activity, emergency | Verified (tests) |
+| Understanding of words is by fixed English and Arabic patterns, **not a language model**. No health data leaves the server | Verified; model path Planned (would use the same checks and confirmation) |
+| Any change (done / not today / snooze) is read back and recorded only after "Yes"; single use, 5-minute life, bound to the person; repeat confirm adds nothing | Verified (tests) |
+| More than one routine could be meant: it asks which, never guesses | Verified |
+| "Help" words open the urgent page at once; the assistant never calls and never says help is coming | Verified (tests, browser) |
+| Audit records tool attempted / succeeded / failed / not understood, never the person's words | Verified |
+| Sending anything to another person from the assistant | Not offered (needs the Stage 6 flow with its own Send step) |
+| Arabic matching uses a rough root-like form and can join different words; every change is still confirmed | Known limit; needs native-speaker testing |
+| Phone-width browser check in Arabic (ask, confirm, ambiguity, not understood, urgent) | Verified; English phone-width check Planned |
