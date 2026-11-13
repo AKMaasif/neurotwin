@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, CareItemClinician, CarePlanClinician, CarePlanView, ClinicianParticipant, DayPart } from "../api";
+import { api, CareItemClinician, Notice, Suggestion, CarePlanClinician, CarePlanView, ClinicianParticipant, DayPart } from "../api";
 import { Key, useT } from "../i18n";
 import { ErrorNote, FormError, Status } from "../ui";
 
@@ -12,7 +12,11 @@ export default function CarePlan({ person }: { person: ClinicianParticipant }) {
   const { t } = useT();
   const [data, setData] = useState<CarePlanClinician | null>(null);
   const [error, setError] = useState<unknown>(null);
-  const load = useCallback(() => { api.carePlan(person.id).then(setData).catch(setError); }, [person.id]);
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const load = useCallback(() => {
+    api.carePlan(person.id).then(setData).catch(setError);
+    api.notices().then((n) => setNotices(n.filter((x) => !x.read && x.about_id === person.id))).catch(() => {});
+  }, [person.id]);
   useEffect(load, [load]);
 
   return (
@@ -22,6 +26,12 @@ export default function CarePlan({ person }: { person: ClinicianParticipant }) {
         <div className="meta">{t("cpLede")}</div>
       </div>
       <ErrorNote error={error} />
+      {notices.map((n) => (
+        <div key={n.id} className="d-card" role="status" style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+          <span>{t(n.kind === "plan_question" ? "noticeQuestion" : n.kind === "plan_accepted" ? "noticeAccepted" : "noticeDeclined", { who: n.about ?? "" })}</span>
+          <button className="link" onClick={() => api.readNotice(n.id).then(load)}>{t("noticeMark")}</button>
+        </div>
+      ))}
       <AddForm pid={person.id} onAdded={load} />
       {data?.plans.length === 0 && <p className="hint">{t("cpNone")}</p>}
       {data?.plans.filter((p) => p.items.length > 0 || p.status !== "draft").map((p) => <Plan key={p.id} plan={p} onChanged={load} />)}
@@ -54,7 +64,9 @@ function Plan({ plan, onChanged }: { plan: CarePlanView; onChanged: () => void }
         <div className="d-card" style={{ gap: 4 }}>
           <p className="hint" style={{ margin: 0 }}>{t("cpResponses")}</p>
           {plan.responses.map((r, k) => (
-            <p key={k} style={{ margin: 0 }}>{t.date(r.at, true)} · <b>{r.response === "question" ? t("cpQuestion") : r.response === "accept" ? t("cpAccept") : t("cpDecline")}</b>{r.note ? `: ${r.note}` : ""}</p>
+            <p key={k} style={{ margin: 0 }}>{t.date(r.at, true)} · <b>{r.response === "question" ? t("cpQuestion") : r.response === "accept" ? t("cpAccept") : t("cpDecline")}</b>{r.note ? `: ${r.note}` : ""}
+              {r.reviewed_at ? <span className="hint"> · {t("cpReviewedBy", { who: r.reviewed_by ?? "", date: t.date(r.reviewed_at, true) })}</span>
+                : <> · <button className="link" onClick={() => act(() => api.reviewPlanResponse(r.id, ""))}>{t("cpReview")}</button></>}</p>
           ))}
         </div>
       )}
@@ -71,8 +83,22 @@ function AddForm({ pid, onAdded }: { pid: string; onAdded: () => void }) {
   const [days, setDays] = useState<number[]>([]);
   const [x, setX] = useState({ title: "", time: "", from: "", to: "", start: "", end: "", qty: "", unit: "", prec: "" });
   const setF = (k: keyof typeof x) => (e: { target: { value: string } }) => setX({ ...x, [k]: e.target.value });
+  const [sug, setSug] = useState<Suggestion | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+
+  const suggest = async () => {
+    setError(null);
+    try { setSug(await api.suggestFields(pid, en.trim() || null, ar.trim() || null)); } catch (e) { setError(e); }
+  };
+  const applySug = () => {
+    if (!sug) return;
+    const f = sug.fields;
+    if (f.day_part) setPart(f.day_part);
+    setDays(f.weekdays);
+    setX({ ...x, time: f.time_hhmm ?? "", qty: f.quantity != null ? String(f.quantity) : "", unit: f.unit ?? "" });
+    setSug(null);
+  };
 
   const toggle = (d: number) => setDays(days.includes(d) ? days.filter((x) => x !== d) : [...days, d]);
   const submit = async () => {
@@ -108,7 +134,22 @@ function AddForm({ pid, onAdded }: { pid: string; onAdded: () => void }) {
           ))}
         </div>
       </fieldset>
-      <details>
+      <div style={{ display: "grid", gap: 6 }}>
+        <button className="btn" style={{ justifySelf: "start" }} disabled={!en.trim() && !ar.trim()} onClick={suggest}>{t("cpSuggest")}</button>
+        {sug && (
+          <div className="d-card" role="status" style={{ gap: 6 }}>
+            <p className="hint" style={{ margin: 0 }}>{t("cpSuggestNote")}</p>
+            <p className="mono" style={{ margin: 0 }}>{[sug.fields.day_part, sug.fields.time_hhmm, sug.fields.quantity != null && `${sug.fields.quantity} ${sug.fields.unit}`,
+              sug.fields.weekdays.length ? sug.fields.weekdays.map((d) => t(WD[d])).join(" · ") : null].filter(Boolean).join(" · ") || "—"}</p>
+            <ul style={{ margin: 0, paddingInlineStart: 18 }}>{sug.flags.map((f, k) => <li key={k}>{t(`cpFlag_${f.code}` as Key)}</li>)}</ul>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn" onClick={applySug}>{t("cpSuggestApply")}</button>
+              <button className="btn" onClick={() => setSug(null)}>{t("cancel")}</button>
+            </div>
+          </div>
+        )}
+      </div>
+      <details open={x.time !== "" || x.qty !== "" || x.unit !== ""}>
         <summary>{t("cpMore")}</summary>
         <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
           <label className="field"><span>{t("cpTitleField")}</span><input className="note" maxLength={120} value={x.title} onChange={setF("title")} /></label>

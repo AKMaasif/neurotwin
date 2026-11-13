@@ -38,7 +38,14 @@ export type CareItemClinician = CareItem & {
 export type CarePlanView = {
   id: number; version: number; status: PlanStatus; legacy: boolean; created_at: string; sent_at: string | null; responded_at: string | null;
   written_by: string | null; sent_by: string | null; items: CareItemClinician[];
-  responses: { response: "accept" | "question" | "decline"; note: string | null; at: string }[];
+  responses: { id: number; reviewed_at: string | null; reviewed_by: string | null; review_note: string | null; response: "accept" | "question" | "decline"; note: string | null; at: string }[];
+};
+export type Notice = { id: number; kind: string; plan_id: number | null; about_id: string | null; about: string | null; created_at: string; read: boolean };
+export type Suggestion = { source: "rules"; fields: { day_part: DayPart | null; weekdays: number[]; time_hhmm: string | null; quantity: number | null; unit: string | null }; flags: { field: string; code: string; message: string }[] };
+export type History = {
+  since: string; until: string; timezone: string; label: "patient_reported";
+  plans: { plan_id: number; version: number; status: string; legacy: boolean; sent_at: string | null; responded_at: string | null; by: string | null; your_answers: { response: string; at: string; reviewed: boolean }[] }[];
+  days: { day: string; entries: { item_id: number; text_en: string | null; text_ar: string | null; title: string | null; reply: "done" | "not_today" | null; difficulty: string | null; snoozed: boolean }[] }[];
 };
 export type CarePlanClinician = { plans: CarePlanView[]; draft_id: number | null };
 export type AwaitingPlan = { id: number; version: number; sent_at: string | null; sent_by: string | null; written_by: string | null; items: CareItem[]; questions_asked: number };
@@ -260,6 +267,11 @@ export const api = {
   carePlan: (pid: string) => get<CarePlanClinician>(`/api/participants/${encodeURIComponent(pid)}/care-plan`),
   addCareItem: (pid: string, b: NewCareItem) => post<CareItem>(`/api/participants/${encodeURIComponent(pid)}/care-plan`, b),
   stopCareItem: (id: number, note: string) => post<CareItem>(`/api/care-plan/${id}/stop`, { note: note || null }),
+  suggestFields: (pid: string, text_en: string | null, text_ar: string | null) => post<Suggestion>(`/api/participants/${encodeURIComponent(pid)}/care-plan/suggest`, { text_en, text_ar }),
+  reviewPlanResponse: (id: number, note: string) => post<{ ok: boolean }>(`/api/plan-responses/${id}/review`, { note: note || null }),
+  notices: () => get<Notice[]>("/api/notifications"),
+  readNotice: (id: number) => post<{ ok: boolean }>(`/api/notifications/${id}/read`),
+  history: () => get<History>("/api/care-plan/history"),
   sendCarePlan: (id: number) => post<unknown>(`/api/care-plans/${id}/send`),
   recallCarePlan: (id: number) => post<unknown>(`/api/care-plans/${id}/recall`),
   plansAwaiting: () => get<AwaitingPlan[]>("/api/care-plan/awaiting"),
