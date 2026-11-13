@@ -86,11 +86,14 @@ def seed(db: Session) -> None:
                 else Q.ObservationIn("sleep_hours", "self_reported", missing_reason="skipped_by_participant", unit="h"),
                 Q.ObservationIn("sleep_quality", "self_reported", 3 if week != 2 else 2, unit="1-5")]
         _store(db, c, cobs, at - timedelta(minutes=8))
-    from .models import CarePlanItem
+    from .models import CarePlan, CarePlanItem
+    plan = CarePlan(participant_id="demo-fatima", version=1, status="accepted", created_by="demo-dr-layla", legacy=False)
+    db.add(plan)
+    db.flush()
     db.add_all([
-        CarePlanItem(participant_id="demo-fatima", created_by="demo-dr-layla", day_part="morning",
+        CarePlanItem(participant_id="demo-fatima", created_by="demo-dr-layla", plan_id=plan.id, day_part="morning",
                      text_en="Walk for ten minutes after breakfast.", text_ar="امشِ عشر دقائق بعد الإفطار."),
-        CarePlanItem(participant_id="demo-fatima", created_by="demo-dr-layla", day_part="evening", weekdays=[0, 2, 4],
+        CarePlanItem(participant_id="demo-fatima", created_by="demo-dr-layla", plan_id=plan.id, day_part="evening", weekdays=[0, 2, 4],
                      text_en="Call a friend or relative for a chat.", text_ar="تحدّث هاتفيًا مع صديق أو قريب."),
     ])
     db.commit()
