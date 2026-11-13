@@ -22,7 +22,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .models import (DAY_PARTS, DIFFICULTY_REASONS, CarePlan, CarePlanItem, CarePlanReply, PatientPreference, PlanResponse, User, now)
+from .models import (DAY_PARTS, DIFFICULTY_REASONS, CarePlan, CarePlanItem, CarePlanReply, Notification, PatientPreference, PlanResponse, User, now)
 from .services import Refused, audit
 
 MAX_ACTIVE = 12
@@ -39,6 +39,27 @@ def _clean(text: str | None, limit: int | None = None) -> str | None:
     if limit and len(text) > limit:
         raise Refused(422, f"Keep this under {limit} characters.")
     return text or None
+
+
+def notify(db: Session, user_id: str | None, kind: str, plan: CarePlan) -> None:
+    """Queue a pointer for someone. It carries the kind and the plan id only, never any routine or question text."""
+    if user_id:
+        db.add(Notification(user_id=user_id, kind=kind, ref_id=plan.id, about_id=plan.participant_id))
+
+
+def notifications(db: Session, user: User) -> list[dict]:
+    rows = db.scalars(select(Notification).where(Notification.user_id == user.id).order_by(Notification.id.desc()).limit(50))
+    return [{"id": n.id, "kind": n.kind, "plan_id": n.ref_id, "about_id": n.about_id, "about": _name(db, n.about_id) if user.role == "clinician" else None,
+             "created_at": _iso(n.created_at), "read": n.read_at is not None} for n in rows]
+
+
+def mark_read(db: Session, user: User, nid: int) -> None:
+    n = db.get(Notification, nid)
+    if n is None or n.user_id != user.id:
+        raise Refused(404, _NO_ACCESS)
+    if n.read_at is None:
+        n.read_at = now()
+        db.commit()
 
 
 # ---- the person's day ---------------------------------------------------------------------------------------
@@ -215,6 +236,7 @@ def send_plan(db: Session, clinician: User, plan: CarePlan) -> CarePlan:
     if not _items(db, plan.id, only_active=True):
         raise Refused(409, "Add at least one routine before sending the plan.")
     plan.status, plan.sent_by, plan.sent_at = "sent", clinician.id, now()
+    notify(db, plan.participant_id, "plan_waiting", plan)
     audit(db, clinician.id, "careplan.sent", plan.participant_id, f"plan:{plan.id}")
     db.commit()
     return plan
@@ -224,6 +246,8 @@ def recall_plan(db: Session, clinician: User, plan: CarePlan) -> CarePlan:
     if plan.status != "sent":
         raise Refused(409, "Only a plan that is waiting for the person can be recalled.")
     plan.status, plan.sent_at, plan.sent_by = "draft", None, None
+    for n in db.scalars(select(Notification).where(Notification.ref_id == plan.id, Notification.kind == "plan_waiting", Notification.read_at.is_(None))):
+        n.read_at = now()          # the plan is no longer waiting, so its notice is closed
     audit(db, clinician.id, "careplan.recalled", plan.participant_id, f"plan:{plan.id}")
     db.commit()
     return plan
@@ -248,6 +272,10 @@ def respond(db: Session, participant: User, plan: CarePlan, response: str, note:
         plan.status, plan.responded_at = "accepted", now()
     elif response == "decline":
         plan.status, plan.responded_at = "declined", now()
+    notify(db, plan.sent_by, {"accept": "plan_accepted", "question": "plan_question", "decline": "plan_declined"}[response], plan)
+    for n in db.scalars(select(Notification).where(Notification.user_id == participant.id, Notification.ref_id == plan.id, Notification.kind == "plan_waiting", Notification.read_at.is_(None))):
+        if response != "question":
+            n.read_at = now()
     audit(db, participant.id, f"careplan.{ {'accept': 'accepted', 'question': 'question', 'decline': 'declined'}[response] }", participant.id, f"plan:{plan.id}")
     db.commit()
     return row
@@ -367,6 +395,47 @@ def awaiting(db: Session, participant: User) -> list[dict]:
             for p in _plans(db, participant.id, "sent")]
 
 
+def review_response(db: Session, clinician: User, response_id: int, note: str | None) -> PlanResponse:
+    """The clinician marks that they have read a response. Only then does anything say a clinician has seen it."""
+    row = db.get(PlanResponse, response_id)
+    if row is None:
+        raise Refused(404, _NO_ACCESS)
+    if row.reviewed_at is None:
+        row.reviewed_by, row.reviewed_at, row.review_note = clinician.id, now(), _clean(note, 300)
+        audit(db, clinician.id, "careplan.response_reviewed", row.participant_id, f"response:{row.id}")
+        db.commit()
+    return row
+
+
+def history(db: Session, participant: User, days: int = 14) -> dict:
+    """The person's own record: plans they answered and what they marked, newest first. Patient-reported, and silence is not listed."""
+    days = max(1, min(days, 60))
+    today = local_today(db, participant)
+    since = (today - timedelta(days=days - 1)).isoformat()
+    plans = [{"plan_id": p.id, "version": p.version, "status": p.status, "legacy": p.legacy, "sent_at": _iso(p.sent_at), "responded_at": _iso(p.responded_at),
+              "by": _name(db, p.sent_by or p.created_by), "your_answers": [{"response": r.response, "at": _iso(r.at), "reviewed": r.reviewed_at is not None}
+                                                                         for r in db.scalars(select(PlanResponse).where(PlanResponse.plan_id == p.id).order_by(PlanResponse.id))]}
+             for p in db.scalars(select(CarePlan).where(CarePlan.participant_id == participant.id, CarePlan.status != "draft").order_by(CarePlan.version.desc()))]
+    rows = list(db.scalars(select(CarePlanReply).where(CarePlanReply.participant_id == participant.id, CarePlanReply.day >= since).order_by(CarePlanReply.id)))
+    by_day: dict[str, dict[int, dict]] = {}
+    for r in rows:
+        cell = by_day.setdefault(r.day, {}).setdefault(r.item_id, {"reply": None, "difficulty": None, "snoozed": False})
+        if r.reply in ("done", "not_today"):
+            cell["reply"] = r.reply
+        elif r.reply == "difficulty":
+            cell["difficulty"] = r.reason
+        else:
+            cell["snoozed"] = True
+    out = []
+    for day in sorted(by_day, reverse=True):
+        entries = []
+        for iid, cell in by_day[day].items():
+            it = db.get(CarePlanItem, iid)
+            entries.append({"item_id": iid, "text_en": it.text_en, "text_ar": it.text_ar, "title": it.title, **cell})
+        out.append({"day": day, "entries": entries})
+    return {"since": since, "until": today.isoformat(), "timezone": tz_name(db, participant), "label": "patient_reported", "plans": plans, "days": out}
+
+
 def clinician_view(db: Session, participant_id: str) -> dict:
     """Every plan version with its routines, the person's answers to the plan, and what they chose to mark in the last two weeks."""
     since = (datetime.now(timezone.utc).date() - timedelta(days=HISTORY_DAYS)).isoformat()
@@ -379,6 +448,7 @@ def clinician_view(db: Session, participant_id: str) -> dict:
             latest: dict[str, str] = {r.day: r.reply for r in rows if r.reply in ("done", "not_today")}
             hard = [{"day": r.day, "reason": r.reason, "note": r.note} for r in rows if r.reply == "difficulty"]
             items.append({**item_out(db, i), "marked": [{"day": d, "reply": r} for d, r in sorted(latest.items())], "difficulty": hard})
-        resp = [{"response": r.response, "note": r.note, "at": _iso(r.at)} for r in db.scalars(select(PlanResponse).where(PlanResponse.plan_id == p.id).order_by(PlanResponse.id))]
+        resp = [{"id": r.id, "response": r.response, "note": r.note, "at": _iso(r.at), "reviewed_at": _iso(r.reviewed_at), "reviewed_by": _name(db, r.reviewed_by),
+                 "review_note": r.review_note} for r in db.scalars(select(PlanResponse).where(PlanResponse.plan_id == p.id).order_by(PlanResponse.id))]
         out.append({**plan_out(db, p, items), "responses": resp})
     return {"plans": out, "draft_id": next((p["id"] for p in out if p["status"] == "draft"), None), "tz": None}
