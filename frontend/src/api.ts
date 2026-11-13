@@ -47,6 +47,11 @@ export type History = {
   plans: { plan_id: number; version: number; status: string; legacy: boolean; sent_at: string | null; responded_at: string | null; by: string | null; your_answers: { response: string; at: string; reviewed: boolean }[] }[];
   days: { day: string; entries: { item_id: number; text_en: string | null; text_ar: string | null; title: string | null; reply: "done" | "not_today" | null; difficulty: string | null; snoozed: boolean }[] }[];
 };
+export type AssistantItem = { id: number; title: string | null; text_en: string | null; text_ar: string | null; time_hhmm: string | null; day_part: DayPart; quantity: number | null; unit: string | null; precautions: string | null; written_by: string | null };
+export type AssistantReply =
+  | { understood: false; reason: "empty" | "not_understood" | "which" | "no_tasks" | "snooze_minutes"; choices: AssistantItem[] }
+  | { understood: true; tool: string; needs_confirmation: true; confirmation_id: string; item: AssistantItem; minutes: number | null; expires_minutes: number }
+  | { understood: true; tool: string; needs_confirmation: false; navigate?: string | null; items?: (AssistantItem & { reply: string | null })[]; item?: AssistantItem };
 export type CarePlanClinician = { plans: CarePlanView[]; draft_id: number | null };
 export type AwaitingPlan = { id: number; version: number; sent_at: string | null; sent_by: string | null; written_by: string | null; items: CareItem[]; questions_asked: number };
 export type DifficultyReason = "too_tiring" | "unclear" | "inaccessible" | "need_help";
@@ -272,6 +277,8 @@ export const api = {
   notices: () => get<Notice[]>("/api/notifications"),
   readNotice: (id: number) => post<{ ok: boolean }>(`/api/notifications/${id}/read`),
   history: () => get<History>("/api/care-plan/history"),
+  assistantSay: (text: string) => post<AssistantReply>("/api/assistant/message", { text }),
+  assistantConfirm: (confirmation_id: string) => post<{ ok: boolean; duplicate: boolean; tool: string }>("/api/assistant/confirm", { confirmation_id }),
   sendCarePlan: (id: number) => post<unknown>(`/api/care-plans/${id}/send`),
   recallCarePlan: (id: number) => post<unknown>(`/api/care-plans/${id}/recall`),
   plansAwaiting: () => get<AwaitingPlan[]>("/api/care-plan/awaiting"),
