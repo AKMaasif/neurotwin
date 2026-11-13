@@ -16,6 +16,7 @@ from . import change as C
 from . import config
 from . import careplan as CP
 from . import extraction as EX
+from . import assistant as AS
 from . import drafts as D
 from . import llm
 from . import messages as M
@@ -58,6 +59,14 @@ class CarePlanIn(BaseModel):
 class PlanResponseIn(BaseModel):
     response: Literal["accept", "question", "decline"]
     note: str | None = Field(default=None, max_length=300)
+
+
+class AssistantIn(BaseModel):
+    text: str = Field(max_length=300)
+
+
+class AssistantConfirmIn(BaseModel):
+    confirmation_id: str = Field(min_length=8, max_length=40)
 
 
 class SuggestIn(BaseModel):
@@ -613,6 +622,14 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
         text = " ".join(filter(None, [body.text_en, body.text_ar]))
         fields = EX.propose(text)
         return {"source": "rules", "fields": fields, "flags": EX.check(text, fields)}
+
+    @app.post("/api/assistant/message")
+    def assistant_message(body: AssistantIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return AS.message(db, user, body.text)
+
+    @app.post("/api/assistant/confirm")
+    def assistant_confirm(body: AssistantConfirmIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return AS.confirm(db, user, body.confirmation_id)
 
     @app.get("/api/me/preferences")
     def my_preferences(user: User = Depends(current_user), db: Session = Depends(get_db)):
