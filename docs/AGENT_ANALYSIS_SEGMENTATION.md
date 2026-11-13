@@ -26,6 +26,17 @@ Both scans of a pair must come from the **same tool and version**; otherwise the
 Do this for the 12-, 15- and 18-month pairs you want in the demo. Candidates in the extracted data: OAS2_0001 (15 mo) and
 OAS2_0004 (18 mo). A 12-month subject (for example OAS2_0071) needs extracting first.
 
+## Optional: same-session repeats for a noise estimate
+
+OASIS-2 stores up to four back-to-back scans per session (mpr-1 to mpr-4). To estimate how much a structure's volume moves between acquisitions that should be identical,
+extract the repeats (`python scripts/oasis2_extract.py ... --scans mpr-1 mpr-2 mpr-3 mpr-4`), prepare and segment them with the SAME tool and version as mpr-1, and import each as a repeat:
+
+    python scripts/agent_segmentation.py prepare OAS2_0001_MR1:mpr-2 OAS2_0001_MR1:mpr-3
+    python scripts/agent_segmentation.py import OAS2_0001_MR1 path\to\seg_mpr2.nii.gz SynthSeg 1.0 mpr-2
+
+Do the same for the later visit. In the app, press "Re-read repeat scans" under the regional table (or run the analysis again). A repeat segmented with another tool or version is left out and listed.
+The result is a pooled standard deviation per structure: a lower bound that includes only same-session variation, not a significance test. See `backend/app/agent_noise.py`.
+
 ## What the app does with it
 
 Region volumes are voxel counts of each scan's own segmentation, so alignment does not alter them. The later labels are carried

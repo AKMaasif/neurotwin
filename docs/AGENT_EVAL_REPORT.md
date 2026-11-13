@@ -25,7 +25,8 @@ Each scenario gives an agent a prepared reply from a **stand-in model** (often a
 | A8 Report QA | 6 | 6 | 0 |
 | A9 Visual comparison | 7 | 7 | 0 |
 | Arabic glossary and back-translation | 5 | 5 | 0 |
-| **Total** | **64** | **64** | **0** |
+| Same-session repeat spread (noise estimate) | 7 | 7 | 0 |
+| **Total** | **71** | **71** | **0** |
 
 ## Scenarios
 
@@ -112,6 +113,15 @@ Each scenario gives an agent a prepared reply from a **stand-in model** (often a
 - PASS: back-translation adds forbidden wording: flagged
 - PASS: no back-translation provider: Arabic cannot pass QA
 - PASS: Arabic banned wording (diagnosis) is refused
+
+### Same-session repeat spread (noise estimate)
+- PASS: draft calls a change statistically significant: refused
+- PASS: draft calls the change confirmed: refused
+- PASS: draft restates the repeat spread with its own numbers: passes the claim checker
+- PASS: draft alters the ratio: refused
+- PASS: only one repeat per visit: no spread is estimated and the ledger keeps the old uncertainty wording
+- PASS: repeat segmented with another tool version is left out and listed
+- PASS: identical repeats: spread zero, no ratio is claimed
 
 ## Not yet evaluated
 
