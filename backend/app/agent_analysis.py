@@ -17,6 +17,7 @@ import uuid
 from pathlib import Path
 
 from . import agent_activity as AC
+from . import agent_noise as N
 from . import oasis2_api as O
 
 TARGETS_MONTHS = (12, 15, 18)
@@ -466,6 +467,7 @@ def analyze(run_id: str) -> dict:
                          "needs_clinical_review": ["Every regional difference is marked uncertain; no noise estimate exists.",
                                                    "Nothing here is a diagnosis; no region is labelled as diseased."] + flags}}
     _set(run, "report", "done", "Draft report built from the measurements above; needs clinical review.")
+    N.apply(run, N.compute(run))  # optional same-session repeat spread; a failure here leaves "not estimated" and never fails the run
     run["state"] = "complete"
     _write(run_dir, run)
     return run

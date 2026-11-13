@@ -221,7 +221,7 @@ def run_tool(ledger: dict, name: str, arg: str = "") -> list[dict]:
     if name == "get_alignment":
         return by_prefix("F-align")
     if name == "get_limitations":
-        return by_prefix("F-limit", "F-uncertainty", "F-seg")
+        return by_prefix("F-limit", "F-uncertainty", "F-seg") + [f for f in facts if f["id"] in ("F-noise", "F-noiseTotal")]
     if name == "list_flags":
         return by_prefix("F-flag", "F-alignflag")
     if name == "get_totals":
@@ -232,7 +232,7 @@ def run_tool(ledger: dict, name: str, arg: str = "") -> list[dict]:
             return []
         hits = [f for f in by_prefix("F-R") if q in f["text"].split(":")[0].lower()]
         labels = [f["id"][3:] for f in hits[:3]]
-        return [f for f in facts if any(f["id"] in (f"F-R{l}", f"F-rate{l}", f"F-lr{l}") for l in labels)]
+        return [f for f in facts if any(f["id"] in (f"F-R{l}", f"F-rate{l}", f"F-lr{l}", f"F-noise{l}") for l in labels)]
     return []
 
 

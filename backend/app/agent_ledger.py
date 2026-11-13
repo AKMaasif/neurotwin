@@ -55,7 +55,9 @@ def build(run: dict) -> dict:
         tot_e, tot_l = m["earlier_total_mm3"], m["later_total_mm3"]
         tp = 100 * (tot_l - tot_e) / tot_e if tot_e else None
         facts.append(("F-total", "measured", f"Total of the {len(m['regions'])} measured structures: {_n(tot_e)} mm3 earlier and {_n(tot_l)} mm3 later (difference {_n(tot_l - tot_e)} mm3, {_pct(tp)})."))
-        facts.append(("F-uncertainty", "stated", "Uncertainty of these volumes is not estimated, so every difference is uncertain."))
+        nz = run.get("noise") if (run.get("noise") or {}).get("status") == "estimated" else None
+        facts.append(("F-uncertainty", "stated", "Uncertainty of these volumes is not estimated, so every difference is uncertain." if not nz else
+                      "Uncertainty between the two visits is not estimated. Only a same-session repeat spread exists (see F-noise), which is a lower bound, so every difference is still uncertain."))
         by_name = {}
         for r in m["regions"]:
             by_name[r["name"]] = r
@@ -65,6 +67,19 @@ def build(run: dict) -> dict:
                           f"difference {_n(r['difference_mm3'])} mm3 ({_pct(r['difference_pct'])})." + (" Small structure." if small else "")))
             if months and r["difference_pct"] is not None:
                 facts.append((f"F-rate{r['label']}", "derived", f"{r['name']}: {_pct(r['difference_pct'] * 12 / months)} per 12 months if the change were spread evenly over the {_n(months, 1)} months (derived, not measured)."))
+        if nz:
+            ne, nl = len(nz["earlier_repeats"]), len(nz["later_repeats"])
+            facts.append(("F-noise", "measured", f"Same-session repeat scans were segmented with the same tool: {ne} earlier and {nl} later. The spread of each structure is the pooled standard deviation of its volume across those repeats. "
+                          "It covers acquisition and segmentation variation within one session only, so it is a lower bound. It is not a test of whether a change is real."))
+            t = nz.get("total")
+            if t and t["status"] == "estimated":
+                facts.append(("F-noiseTotal", "derived", f"Total of the measured structures: repeat spread {_n(t['sd_mm3'], 1)} mm3 ({t['df']} degrees of freedom); the measured difference is {_n(t['difference_mm3'])} mm3"
+                              + ("" if t["ratio"] is None else f", {_n(t['ratio'], 1)} times that spread") + f", {'inside' if t['within_repeat_range'] else 'outside'} the largest repeat range of {_n(t['max_range_mm3'], 1)} mm3 (derived)."))
+            for r in m["regions"]:
+                q = nz["regions"].get(str(r["label"]))
+                if q and q["status"] == "estimated":
+                    facts.append((f"F-noise{r['label']}", "derived", f"{r['name']}: repeat spread {_n(q['sd_mm3'], 1)} mm3 ({q['df']} degrees of freedom); the measured difference is {_n(q['difference_mm3'])} mm3"
+                                  + ("; the repeat spread was zero" if q["ratio"] is None else f", {_n(q['ratio'], 1)} times that spread") + f", {'inside' if q['within_repeat_range'] else 'outside'} the largest repeat range of {_n(q['max_range_mm3'], 1)} mm3 (derived)."))
         pairs = []
         for name, r in by_name.items():
             side, base = _side(name)

@@ -125,7 +125,7 @@ export default function AgentCharts({ regions, months, selected, onSelect, total
   const change = totals.earlier ? (100 * (totals.later - totals.earlier) / totals.earlier) : null;
   return <section className="ag-charts" aria-label="Charts of the regional volume comparison">
     <h3>Charts</h3>
-    <p className="cmp-note-plain">These charts only redraw the table above. Uncertainty is not estimated, so they show no error bars and no normal range, and colour shows direction only; it does not mean better or worse. Not a diagnosis.</p>
+    <p className="cmp-note-plain">These charts only redraw the table above. They show no error bars and no normal range (any repeat spread is only in the table), and colour shows direction only; it does not mean better or worse. Not a diagnosis.</p>
     <figure><figcaption><strong>Which regions changed most</strong>
       <span role="group" aria-label="Chart units" className="agc-switch"><button aria-pressed={mode === "pct"} onClick={() => setMode("pct")}>Percent</button><button aria-pressed={mode === "mm3"} onClick={() => setMode("mm3")}>Cubic millimetres</button></span></figcaption>
       <ChangeBars regions={regions} mode={mode} selected={selected} onSelect={onSelect} perYear={months} />

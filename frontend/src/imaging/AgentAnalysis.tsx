@@ -24,7 +24,7 @@ export default function AgentAnalysis() {
   const [rev, setRev] = useState<AgentReview | null>(null), [chat, setChat] = useState<AgentChat[]>([]), [revBusy, setRevBusy] = useState(false), [question, setQuestion] = useState(""), [askBusy, setAskBusy] = useState(false), [revMode, setRevMode] = useState("off");
   const [vis, setVis] = useState<AgentVisual | null>(null), [visInfo, setVisInfo] = useState<{ images_allowed: boolean; mode: string } | null>(null), [visBusy, setVisBusy] = useState(false), [visOk, setVisOk] = useState(false);
   const [showMeasured, setShowMeasured] = useState(true), [showModel, setShowModel] = useState(true);
-  const [ai, setAi] = useState<AgentAi | null>(null), [aiStatus, setAiStatus] = useState<AgentAiStatus | null>(null), [aiBusy, setAiBusy] = useState(false), [aiTick, setAiTick] = useState(0), [aiLang, setAiLang] = useState<"en" | "ar">("en"), [famLang, setFamLang] = useState<"en" | "ar">("en"), [famRead, setFamRead] = useState(false);
+  const [ai, setAi] = useState<AgentAi | null>(null), [aiStatus, setAiStatus] = useState<AgentAiStatus | null>(null), [aiBusy, setAiBusy] = useState(false), [aiTick, setAiTick] = useState(0), [noiseBusy, setNoiseBusy] = useState(false), [aiLang, setAiLang] = useState<"en" | "ar">("en"), [famLang, setFamLang] = useState<"en" | "ar">("en"), [famRead, setFamRead] = useState(false);
   const [axis, setAxis] = useState(2), [index, setIndex] = useState(64), [layers, setLayers] = useState<string[]>(["original"]);
   const [opacity, setOpacity] = useState(0.6), [zoom, setZoom] = useState(1), [region, setRegion] = useState(0), [later, setLater] = useState("later_aligned");
   const [views, setViews] = useState<View[]>([]), [shape, setShape] = useState<number[] | null>(null);
@@ -213,17 +213,21 @@ export default function AgentAnalysis() {
       <p>{run.steps.find(s => s.key === "anatomical_analysis")?.detail}</p></section>}
 
     {hasSeg && shown(2) && <section className="ag-table" id="ag-table"><h2>Regional volumes <small>{run!.segmentation_tool?.tool} {run!.segmentation_tool?.version}</small></h2>
-      <p className="cmp-note-plain">{run!.measurements!.source}. Uncertainty is not estimated, so every difference is marked uncertain.</p>
-      <div className="ag-scroll"><table><thead><tr><th>Region</th><th>Earlier mm³</th><th>Later mm³</th><th>Difference</th><th>Uncertainty</th><th>Status</th></tr></thead><tbody>
+      <p className="cmp-note-plain">{run!.measurements!.source}. {run!.noise?.status === "estimated"
+        ? `A same-session repeat spread was estimated from ${run!.noise.earlier_repeats.length} earlier and ${run!.noise.later_repeats.length} later repeat scans. It is a lower bound, not a test of whether a change is real; every difference stays marked uncertain.`
+        : "No repeat-scan spread exists, so uncertainty is not estimated and every difference is marked uncertain."}
+        {run!.noise?.flags?.map(f => ` ${f}`)}{run!.noise?.skipped?.map(k => ` Left out ${k.scan}: ${k.reason}.`)}
+        {" "}<button className="ag-watch" disabled={noiseBusy} onClick={async () => { setNoiseBusy(true); try { setRun(await api.agentNoise(run!.run_id)); } catch (e) { setError((e as Error).message); } finally { setNoiseBusy(false); } }}>{noiseBusy ? "Reading repeats…" : "Re-read repeat scans"}</button></p>
+      <div className="ag-scroll"><table><thead><tr><th>Region</th><th>Earlier mm³</th><th>Later mm³</th><th>Difference</th><th>Repeat spread (SD)</th><th>Status</th></tr></thead><tbody>
         {regions.map(r => <tr key={r.label} className={r.label === region ? "ag-sel" : ""}>
           <td><button onClick={() => { setRegion(r.label === region ? 0 : r.label); if (!layers.includes("regions")) toggle("regions"); }}>{r.name}</button></td>
-          <td>{r.earlier_mm3}</td><td>{r.later_mm3}</td><td>{r.difference_mm3} ({r.difference_pct === null ? "n/a" : `${r.difference_pct}%`})</td><td>not estimated</td><td>{r.status}</td></tr>)}
+          <td>{r.earlier_mm3}</td><td>{r.later_mm3}</td><td>{r.difference_mm3} ({r.difference_pct === null ? "n/a" : `${r.difference_pct}%`})</td><td>{r.repeat ? `${r.repeat.sd_mm3} mm³ · ${r.repeat.ratio === null ? "spread 0" : `${r.repeat.ratio}× the spread`} · ${r.repeat.within_repeat_range ? "inside" : "outside"} repeat range` : "not estimated"}</td><td>{r.status}</td></tr>)}
       </tbody></table></div>
       <AgentCharts regions={regions} months={run!.validation.interval?.months ?? null} selected={region} totals={{ earlier: run!.measurements!.earlier_total_mm3, later: run!.measurements!.later_total_mm3 }}
         onSelect={l => { setRegion(l); if (l && !layers.includes("regions")) toggle("regions"); }} />
       {picked && <aside className="ag-evidence" aria-label="Evidence"><h3>Evidence: {picked.name}</h3>
         <p>{picked.earlier_voxels} voxels earlier, {picked.later_voxels} later; {picked.earlier_mm3} → {picked.later_mm3} mm³ ({picked.difference_mm3} mm³).
-          Source: voxel counts of the {run!.segmentation_tool?.tool} {run!.segmentation_tool?.version} segmentation. Earlier value, recent value, difference and uncertainty are as listed above.</p>
+          Source: voxel counts of the {run!.segmentation_tool?.tool} {run!.segmentation_tool?.version} segmentation. Earlier value, recent value, difference and repeat spread are as listed above.</p>
         <ul>{picked.review_notes.map(n => <li key={n}>{n}</li>)}</ul></aside>}
     </section>}
 

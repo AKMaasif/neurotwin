@@ -115,13 +115,16 @@ export type Oasis2Subject = { subject_id: string; group_label_from_dataset: stri
 
 export type AgentStep = { key: string; label: string; state: string; detail: string | null };
 export type AgentRegion = { label: number; name: string; earlier_mm3: number; later_mm3: number; difference_mm3: number; difference_pct: number | null;
-  earlier_voxels: number; later_voxels: number; uncertainty: null; status: string; review_notes: string[] };
+  earlier_voxels: number; later_voxels: number; uncertainty: null; status: string; review_notes: string[]; repeat?: AgentRepeat | null };
+export type AgentRepeat = { status: string; df: number; sd_mm3: number; cv_pct: number | null; max_range_mm3: number; ratio: number | null; within_repeat_range: boolean };
+export type AgentNoise = { status: string; reason?: string | null; earlier_repeats: string[]; later_repeats: string[]; skipped: { scan: string; reason: string }[]; flags: string[]; note: string };
 export type AgentRun = {
   run_id: string; earlier: string; later: string; scan: string; state: string; parent_run_id: string | null; steps: AgentStep[];
   validation: { status: string; blockers: string[]; limitations: string[]; checks?: { earlier?: { shape: number[] } }; interval: { months: number; days: number; nearest_target_months: number | null; within_requested_window: boolean } | null };
   alignment: null | { method: string; tool: string; correlation_before: number; correlation_after: number; rotation_deg: number; shift_mm_voxel_frame: number; flags: string[]; mask: string };
   segmentation_tool?: { tool: string; version: string };
   measurements?: { unit: string; earlier_total_mm3: number; later_total_mm3: number; source: string; regions: AgentRegion[] };
+  noise?: AgentNoise;
   review?: { flags: string[]; note: string };
   report?: { status: string; author: string; sections: Record<string, string[]> };
 };
@@ -189,6 +192,7 @@ export const api = {
   agentFamilyDraft: (id: string, selected: string[], language = "en") => post<unknown>(`/api/imaging/agent/runs/${id}/family/draft`, { selected, language }),
   agentFamilyRelease: (id: string, family_id: string, arabic_confirmed = false) => post<unknown>(`/api/imaging/agent/runs/${id}/family/release`, { family_id, arabic_confirmed }),
   agentFamilyWithdraw: (id: string) => post<unknown>(`/api/imaging/agent/runs/${id}/family/withdraw`),
+  agentNoise: (id: string) => post<AgentRun>(`/api/imaging/agent/runs/${id}/noise`),
   agentRetry: (id: string) => post<AgentRun>(`/api/imaging/agent/runs/${id}/retry`),
   oasis2Info: (mri: string) => get<{ shape: number[]; voxel_mm: number[]; frame: string }>(`/api/imaging/oasis2/visits/${mri}/info`),
   oasis2Subjects: () => get<{ subjects: Oasis2Subject[]; summary: Record<string, number> }>("/api/imaging/oasis2/subjects"),
