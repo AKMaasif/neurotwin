@@ -47,7 +47,7 @@ class Database:
         legacy = "alembic_version" not in tables and bool(tables)
         if legacy:
             # Tables an old start-up never made are made now, except the ones the first migration after the baseline owns.
-            newer = {"care_plans", "plan_responses", "patient_preferences"}
+            newer = {"care_plans", "plan_responses", "patient_preferences", "notifications"}   # add each later migration's new tables here
             Base.metadata.create_all(self.engine, tables=[t for n, t in Base.metadata.tables.items() if n not in newer])
             self._add_missing_columns()
         cfg = Config()
