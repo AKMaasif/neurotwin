@@ -69,6 +69,10 @@ class AssistantConfirmIn(BaseModel):
     confirmation_id: str = Field(min_length=8, max_length=40)
 
 
+class MemoryIn(BaseModel):
+    enabled: bool
+
+
 class SuggestIn(BaseModel):
     text_en: str | None = Field(default=None, max_length=300)
     text_ar: str | None = Field(default=None, max_length=300)
@@ -630,6 +634,26 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
     @app.post("/api/assistant/confirm")
     def assistant_confirm(body: AssistantConfirmIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
         return AS.confirm(db, user, body.confirmation_id)
+
+    @app.post("/api/assistant/cancel")
+    def assistant_cancel(body: AssistantConfirmIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return AS.cancel(db, user, body.confirmation_id)
+
+    @app.get("/api/assistant/history")
+    def assistant_history(user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return AS.history(db, user)
+
+    @app.delete("/api/assistant/history")
+    def assistant_clear(user: User = Depends(current_user), db: Session = Depends(get_db)):
+        if user.role != "participant":
+            raise HTTPException(404, "Not found, or you do not have access.")
+        return {"cleared": AS.clear(db, user)}
+
+    @app.put("/api/assistant/memory")
+    def assistant_memory(body: MemoryIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        if user.role != "participant":
+            raise HTTPException(404, "Not found, or you do not have access.")
+        return {"memory": AS.set_memory(db, user, body.enabled)}
 
     @app.get("/api/me/preferences")
     def my_preferences(user: User = Depends(current_user), db: Session = Depends(get_db)):
