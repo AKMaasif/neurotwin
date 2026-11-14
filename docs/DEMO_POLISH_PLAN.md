@@ -22,7 +22,7 @@ Source: the owner's brief of 14 Nov 2026 (17 sections, 9 delivery stages). Statu
 |---|---|---|
 | 1 | Inventory and plan | This document |
 | 2 | One brand, direct portal buttons, clinician shell | **Done** (see below) |
-| 3 | Real loading stages, Brain Analytics access notice and default tab | Planned |
+| 3 | Real loading stages, Brain Analytics access notice and default tab | **Done** (see below) |
 | 4 | Language persistence, RTL for Brain Analytics | Planned |
 | 5 | Six-month reproducible synthetic history | Planned |
 | 6 | Clinician charts and evidence summaries | Planned |
@@ -42,3 +42,14 @@ Source: the owner's brief of 14 Nov 2026 (17 sections, 9 delivery stages). Statu
 - "Available, with a recent successful check" is not implemented: there is no stored provider check yet, so the footer says what is configured and that it has not been checked.
 - The still-image and transparent-video work on the landing animation (brief section 3) is not started.
 - Patient and family screens were not re-checked after the brand change beyond the type-check and build.
+
+## Stage 3 — what changed
+
+- Workspace loading shows the real steps of the first load: opening the workspace (the session is already known), loading the caseload, loading the first person's records, rendering the views. Each step turns complete only when its data has arrived or it has rendered; there is no artificial delay. If a step fails, the screen names it ("Loading authorized records — did not finish") with Try again and Sign out. Switching people later never brings the loader back. A welcome line appears once when the workspace is ready.
+- Brain Analytics: the Brain Analytics button and the footer link now open a short access notice with the exact wording requested, **Enter Brain Analytics** and **Back**. It is an introduction only: every imaging API still enforces research access on the server, and entering starts no analysis and no model call.
+- Default tab is now **Images & 3D** (it was Import & processing). The context label follows the tab ("One visit" only for single-visit views; "Two visits compared" for Compare visits and Agent Analysis).
+- If the 3D case is unavailable, the page says so and offers Try again, Import & processing and Compare visits.
+
+Checked in the browser (desktop, English): staged loader with a deliberately slowed caseload request, welcome line, notice text, default tab and label, failure state. On the test server the 3D case is not prepared, so the "unavailable" state was what appeared.
+
+Not done: progress messages for Brain Analytics beyond the existing artifact-loading progress (they are real, but there is no separate "checks" step), phone and Arabic checks of these screens (Stage 4).
