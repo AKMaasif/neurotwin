@@ -53,3 +53,14 @@ Source: the owner's brief of 14 Nov 2026 (17 sections, 9 delivery stages). Statu
 Checked in the browser (desktop, English): staged loader with a deliberately slowed caseload request, welcome line, notice text, default tab and label, failure state. On the test server the 3D case is not prepared, so the "unavailable" state was what appeared.
 
 Not done: progress messages for Brain Analytics beyond the existing artifact-loading progress (they are real, but there is no separate "checks" step), phone and Arabic checks of these screens (Stage 4).
+
+## Stage 4 — what changed
+
+- **Language persistence.** Signing in no longer replaces the language the person was looking at. Whatever is shown when they press a portal or sign in (the landing choice, or the default) is kept, stored in this browser and saved to their account. On reload the choice made in this browser wins; the account language is used only when this browser has no choice. Checked: landing English → patient demo (account Arabic) stays English after sign-in and reload; landing Arabic → clinician stays Arabic.
+- **Brain Analytics** now follows the chosen language and direction: header, tabs, page label, loading and unavailable states, case bar, layer and tool labels, measurements table, region inspector and footer. The 3D scene and MRI slice panes are fixed left-to-right, so anatomy and the L/R/A/P/S/I orientation letters are never mirrored. Physical left/right CSS in these screens became logical.
+- **Clinician timeline** labels: Arabic lane labels were clipped because SVG text anchors differently in right-to-left; the label column is wider in Arabic and labels are right-aligned.
+- Phone header keeps the brand on one line.
+
+**Stated gap.** Import & processing, Compare visits, Agent Analysis and Source & quality are long research panes with English-only text. In Arabic they appear in a left-to-right English block under a visible Arabic note saying so. They are not machine-translated. Arabic wording throughout is a draft and needs native review.
+
+Checked in the browser at 1280 px and 390 px, English and Arabic: no horizontal overflow, no page errors. Not checked: real devices, screen readers.
