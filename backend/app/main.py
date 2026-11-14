@@ -18,6 +18,7 @@ from . import careplan as CP
 from . import extraction as EX
 from . import assistant as AS
 from . import concerns as CN
+from . import emergency as EM
 from . import drafts as D
 from . import llm
 from . import messages as M
@@ -79,6 +80,11 @@ class ConcernIn(BaseModel):
 class ConcernSendIn(BaseModel):
     rev: int
     recipient_id: str | None = Field(default=None, max_length=40)
+
+
+class TrustedIn(BaseModel):
+    name: str = Field(max_length=80)
+    phone: str = Field(max_length=24)
 
 
 class MemoryIn(BaseModel):
@@ -709,6 +715,19 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
     @app.post("/api/concerns/{rid}/close")
     def close_concern(rid: int, body: CarePlanStopIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
         return CN.out(db, CN.close(db, user, rid, body.note), True)
+
+    @app.get("/api/emergency/config")
+    def emergency_config(user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return EM.config(db, user)
+
+    @app.put("/api/emergency/trusted")
+    def emergency_trusted(body: TrustedIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return EM.set_trusted(db, user, body.name, body.phone)
+
+    @app.delete("/api/emergency/trusted")
+    def emergency_trusted_clear(user: User = Depends(current_user), db: Session = Depends(get_db)):
+        EM.clear_trusted(db, user)
+        return {"ok": True}
 
     @app.get("/api/me/preferences")
     def my_preferences(user: User = Depends(current_user), db: Session = Depends(get_db)):
