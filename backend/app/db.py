@@ -43,11 +43,16 @@ class Database:
         from alembic.config import Config
         from sqlalchemy import inspect
         from . import models  # noqa: F401  (registers tables)
+        from sqlalchemy import text
         tables = set(inspect(self.engine).get_table_names())
-        legacy = "alembic_version" not in tables and bool(tables)
+        with self.engine.connect() as c:
+            versioned = "alembic_version" in tables and c.execute(text("SELECT COUNT(*) FROM alembic_version")).scalar() > 0
+        # An alembic_version table with no row is what a failed first upgrade leaves behind: the database is still the old, unversioned one.
+        legacy = not versioned and bool(tables - {"alembic_version"})
+        newer = {"care_plans", "plan_responses", "patient_preferences", "notifications", "assistant_actions", "assistant_messages", "concern_reports", "concern_events"}   # add each later migration's new tables here
         if legacy:
+            self._clear_failed_upgrade(tables, newer)
             # Tables an old start-up never made are made now, except the ones the first migration after the baseline owns.
-            newer = {"care_plans", "plan_responses", "patient_preferences", "notifications", "assistant_actions", "assistant_messages", "concern_reports", "concern_events"}   # add each later migration's new tables here
             Base.metadata.create_all(self.engine, tables=[t for n, t in Base.metadata.tables.items() if n not in newer])
             self._add_missing_columns()
         cfg = Config()
@@ -74,6 +79,20 @@ class Database:
                 if sqlite:
                     conn.exec_driver_sql("PRAGMA foreign_keys=ON")
                     conn.commit()
+
+    def _clear_failed_upgrade(self, tables: set[str], newer: set[str]) -> None:
+        """A first upgrade that stopped half way leaves temporary copies and newly made, still empty tables behind. Remove only those, so
+        the upgrade can start again. A newer table that holds rows is never touched: that needs a person to look."""
+        from sqlalchemy import text
+        with self.engine.begin() as conn:
+            for name in sorted(tables):
+                if name.startswith("_alembic_tmp_"):
+                    conn.execute(text(f'DROP TABLE "{name}"'))
+            for name in sorted(newer & tables):
+                if conn.execute(text(f'SELECT COUNT(*) FROM "{name}"')).scalar() == 0:
+                    conn.execute(text(f'DROP TABLE "{name}"'))
+                else:
+                    raise RuntimeError(f"The table {name} already holds data, so the upgrade will not continue. Restore a backup copy of the database file and report this.")
 
     def _add_missing_columns(self) -> None:
         """Columns added after a database was first made. Additive only: nothing is dropped or rewritten."""
