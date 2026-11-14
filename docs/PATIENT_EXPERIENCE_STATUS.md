@@ -63,3 +63,19 @@ Last updated with Stage 2. Items are labelled: **Verified** (automated test or b
 | Live speech accuracy in English and Arabic, and whether intended commands are understood from real speech | **Not evaluated.** Tests use a stand-in provider and say nothing about live quality |
 | Microphone capture in a real browser/device | Not tested in this environment |
 | English phone-width check of the assistant | Verified (390 px) |
+
+## Assistant conversation memory (added between Stage 5 and Stage 6)
+
+| Item | State |
+|---|---|
+| Conversation kept in its own table (`assistant_messages`, migration 0005): separate from clinical evidence and care messages, visible only to the person, never given to a model, clinician or family | Verified (tests) |
+| Follow-ups read from the last 30 minutes: "it", "that one", "the first/second", "the other one", "again/the same", "and the water?", a typed or spoken "yes"/"no", answers to "which one?" and "how long?" | Verified (tests, browser EN/AR) |
+| "Yes" confirms only the newest waiting proposal; "no" cancels it; a new request replaces an older one; an old Yes button or id can no longer record anything | Verified |
+| A topic older than 30 minutes is not assumed: the assistant asks which | Verified |
+| Notices when something is already marked; recall of the last real question; recap of what was marked today (from stored records) | Verified |
+| Greeting, thanks and "what can you do" answered without doing anything | Verified |
+| Person can clear the conversation (also drops any waiting proposal) or switch memory off (deletes it; each message then stands alone). Kept 30 days / 200 messages, then pruned | Verified |
+| The conversation survives leaving and reopening the screen | Verified (browser) |
+| Understanding is still fixed English/Arabic patterns, **not a model**. It follows short, task-focused conversations; it does not hold free conversation, give advice or answer health questions | By design |
+| Arabic follow-ups use the same rough root matching; need native-speaker testing | Known limit |
+| The stored conversation includes the person's own words and routine text. Retention period and whether it needs its own consent scope | **Needs owner decision** |
