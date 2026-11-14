@@ -129,3 +129,21 @@ Last updated with Stage 2. Items are labelled: **Verified** (automated test or b
 | Clinician view of WHO-5 totals and change over time | Planned (Stage 9 reports); no change thresholds will be invented |
 | Assistant can open both activities ("pictures", "well-being") | Verified (test) |
 | Arabic UI wording for the new screens | Draft; needs a native clinical reader |
+
+## Stage 9 — Patient report, appointment preparation, display settings
+
+| Item | State |
+|---|---|
+| "My last days": the person's own report, default last 11 days (7, 11 or 30 selectable; API accepts 1–90 and an end date, never in the future), exact dates shown, days follow the person's time zone | Verified (tests + browser, EN and AR, 390 px) |
+| Laid out by day: activities with completion state and context (helped, interrupted, said unwell), the person's own self-reported answers, routine answers, messages sent to the clinician | Verified |
+| No score, no normal/abnormal, no comparison with others, no change bands, no imaging or risk content, no causal wording ("missed" never appears) | Verified (tests) |
+| Performance numbers and WHO-5 answers/totals are not shown to the person (same rule as their records); the page says so | Verified (tests) |
+| Missing information is listed: days with nothing recorded (stated as "not a problem"), count of skipped answers; unanswered routines are not counted as missed | Verified (tests) |
+| Own data only; clinicians get 404; opening the report is audited without content | Verified (tests) |
+| Clinician comments/notes inside the patient report | **Not included** (no agreed rule for what the clinician writes that the person sees) |
+| Appointment preparation: the same report plus the person's own list of questions (up to 20) | Verified (browser). Questions are kept **in this browser only** and are not sent anywhere; they are lost if browser data is cleared |
+| Print / save as PDF through the browser's print dialog, with a print layout | Built; print output **not** checked on a real printer or device |
+| Display settings: text size (normal / large / extra large), stronger contrast, calmer screen (no movement); kept per device | Verified (browser, EN and AR, no sideways scroll at extra large) |
+| Reading aloud and speech-rate setting | **Not built**; the settings page says so |
+| Screen reader, keyboard-only, Dynamic Type / OS font scaling, real-device check, colour-contrast measurement | Planned |
+| Arabic wording for the new strings (including plural forms of day counts, avoided by showing numbers) | Draft; needs a native clinical reader |
