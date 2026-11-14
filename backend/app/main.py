@@ -35,6 +35,7 @@ from .auth import user_out
 from .imaging import router as imaging_router
 from .oasis2_api import router as oasis2_router
 from .agent_analysis_api import router as agent_router
+from .activity_analysis_api import router as activity_router
 from .native_imaging_api import ImagingRequestGuard, router as native_imaging_router
 from .security import current_user, get_db, require_evidence_access
 
@@ -302,6 +303,7 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
     app.include_router(imaging_router)
     app.include_router(oasis2_router)
     app.include_router(agent_router)
+    app.include_router(activity_router)
     app.include_router(native_imaging_router)
 
     @app.get("/api/demo-accounts")

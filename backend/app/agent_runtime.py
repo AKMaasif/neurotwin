@@ -76,6 +76,23 @@ class MockClient:
 
     def complete(self, system: str, user: str, json_mode: bool = False, images: list[bytes] | None = None) -> llm.Reply:
         ids = [ln.split(":")[0] for ln in user.splitlines() if ln.startswith("F-")]
+        if "ACTIVITY_SUMMARISER" in system:   # scripted: restates facts it was given, nothing more
+            rows = [ln.split(": ", 1) for ln in user.splitlines() if ln.startswith("F-") and ": " in ln]
+            order = ("F-range", "F-quality", "F-gap", "F-sessions", "F-m-", "F-c-", "F-routine")
+            picks = [r for key in order for r in rows if r[0].startswith(key)][:6] + [r for r in rows if r[0] == "F-uncertainty"]
+            return llm.Reply(json.dumps({"statements": [{"text": "Scripted demo: " + t[:360], "cites": [i]} for i, t in picks]}), self.provider, self.model)
+        if "ACTIVITY_CHALLENGER" in system:
+            have = set(ids)
+            gap = "F-gap" if "F-gap" in have else ("F-quality" if "F-quality" in have else (ids[0] if ids else "F-uncertainty"))
+            return llm.Reply(json.dumps({"doubts": [{"text": f"Scripted demo doubt: see fact {gap}.", "cites": [gap]},
+                                                    {"text": "Scripted demo doubt: see fact F-uncertainty.", "cites": ["F-uncertainty"]}],
+                                         "questions": [{"text": f"Scripted demo question: what does fact {gap} leave open?", "cites": [gap]}]}), self.provider, self.model)
+        if "ACTIVITY_CHECKER" in system:
+            n = user.count("Statement ")
+            return llm.Reply(json.dumps({"checks": [{"index": i, "supported": True, "reason": "Scripted demo: no check was made."} for i in range(n)]}), self.provider, self.model)
+        if "ACTIVITY_CHARTS" in system:
+            ms = [i for i in ids if i.startswith("F-m-")][:2]
+            return llm.Reply(json.dumps({"charts": [{"measure": i[4:], "range": "all", "why": f"Scripted demo: see fact {i}.", "cites": [i]} for i in ms]}), self.provider, self.model)
         if "QUALITY_REVIEWER" in system:
             c = [i for i in ("F-interval", "F-uncertainty", "F-align") if i in ids] or ids[:1]
             return llm.Reply(json.dumps({"verdict": "proceed", "statements": [{"text": f"Scripted demo statement {chr(97 + k)}: see fact {i}.", "cites": [i]} for k, i in enumerate((c * 3)[:3])]}), self.provider, self.model)
