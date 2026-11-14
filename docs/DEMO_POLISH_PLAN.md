@@ -64,3 +64,9 @@ Not done: progress messages for Brain Analytics beyond the existing artifact-loa
 **Stated gap.** Import & processing, Compare visits, Agent Analysis and Source & quality are long research panes with English-only text. In Arabic they appear in a left-to-right English block under a visible Arabic note saying so. They are not machine-translated. Arabic wording throughout is a draft and needs native review.
 
 Checked in the browser at 1280 px and 390 px, English and Arabic: no horizontal overflow, no page errors. Not checked: real devices, screen readers.
+
+## Gap closure after Stage 4
+
+- **Hero video.** The clip has a black studio background and no alpha channel. It now sits directly on the hero colour: `mix-blend-mode: screen` turns the black into the page colour and a soft mask feathers the edges. The frame, border and black shade are gone. Browsers without blend support get the previous framed look. Play/pause, reduced-motion, Data Saver and the still poster are unchanged. Checked at 1280 px in English and Arabic and at 390 px. Limit: screen blending lightens dark parts of the clip slightly; a true alpha video would need the source footage.
+- **Footer provider state.** `/api/system/status` still never contacts a provider. A provider is shown **Available · answered a recent call** only when a real (not scripted) model call made by clinical work succeeded within the last hour, **Unavailable · latest call failed** after a failed call (until a later success), otherwise **Configured**. Records are in memory, so a server restart returns every provider to Configured. Tests: `test_provider_check_states`, `test_invoke_records_outcome`. Not verified against a live Gemini or Meta call.
+- **Patient and family screens** re-checked in the browser after the brand change (desktop English, 390 px Arabic and English): one NeuroTwin brand, no overflow, no page errors.
