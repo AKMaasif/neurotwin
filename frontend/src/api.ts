@@ -79,7 +79,8 @@ export type Observation = {
   measure: string; kind: "observed" | "self_reported"; value_num?: number | null; value_text?: string | null;
   unit?: string | null; missing_reason?: string | null;
 };
-export type ClinicianParticipant = User & { shared_since: string; open_items: number; last_activity: string | null };
+export type ClinicianParticipant = User & { shared_since: string; open_items: number; last_activity: string | null;
+  dataset: { id: string; label: string; note: string; sessions: number; from: string; to: string } | null };
 export type FamilyEntry = {
   participant_id: string; display_name: string; active: boolean; since: string; ended_at: string | null;
   recent: { protocol_code: string; status: string; at: string }[];

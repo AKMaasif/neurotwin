@@ -74,6 +74,7 @@ export default function Stage({ user, person, data, sel, onSelect, onReport, err
                 <b><bdi>{person.display_name}</bdi></b>{" "}
                 <span className="muted">· {sorted.length ? t("wsSummary", { s: t.num(sorted.length), from: t.date(sorted[0].started_at), to: t.date(sorted[sorted.length - 1].started_at) }) : t("wsNoSessions")}</span>
                 {person.is_demo && <> <span className="tag demo">{t("cDemo")}</span></>}
+                {person.dataset && <> <span className="tag demo" title={t("cSynNote", { n: t.num(person.dataset.sessions), from: t.date(person.dataset.from), to: t.date(person.dataset.to) })}>{t("cSynLabel")}</span></>}
               </span>
             )}
         </div>
