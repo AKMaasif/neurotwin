@@ -99,3 +99,17 @@ Last updated with Stage 2. Items are labelled: **Verified** (automated test or b
 | The person sees an in-app update badge when the clinician acknowledges, reviews or closes | Verified (browser, AR) after a defect found on review |
 | Arabic phone-width run of the whole report flow | Verified (390 px, RTL, no page errors) |
 | Native review of Arabic wording | Planned |
+
+## Stage 7 — Emergency access
+
+| Item | State |
+|---|---|
+| "Urgent help" button in the header of every patient screen (high contrast, 44 px target); needs no server or model to open | Verified (browser, 390 px, EN and AR) |
+| Urgent screen with tap-to-dial `tel:` links; numbers come from `NEUROTWIN_EMERGENCY_NUMBERS`, with built-in 998 / 999 if the server cannot be reached or the setting is invalid | Verified (tests + browser) |
+| Numbers are labelled "not checked by the people running this prototype" unless the owner sets `NEUROTWIN_EMERGENCY_VERIFIED=1` | Verified; **owner must verify the numbers for the deployment region** |
+| Screen states plainly that NeuroTwin cannot place the call, cannot tell whether it went through, and cannot send anyone | Verified (copy scan in EN and AR forbids "help is coming", "contacted", "notified" and similar) |
+| Written steps for when the person cannot use the screen | Verified |
+| One trusted person, chosen and typed by the user: Call and Text open the phone's own dialer / messages; number validated, visible only to the user, kept out of the audit log; removable | Verified (tests + browser) |
+| Opening the screen is not logged, and the module has no way to call, message or notify anyone | Verified (test) |
+| Real calls to services, location sharing, automatic alerts to family or clinicians | Not built, by design |
+| Real-device check that `tel:` / `sms:` open the dialer; screen reader; Arabic native review | Planned |

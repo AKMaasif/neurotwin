@@ -152,3 +152,9 @@
 /* footer links on sub-screens stay quiet */
 .personal .p-foot { background: transparent; border: 0; color: var(--pt-muted); }
 .personal.has-tabs .p-foot { display: none; }
+
+/* Always-visible urgent help: high contrast, large target, in the header of every patient screen. */
+.personal .p-urgent-btn { min-height: 44px; padding: 8px 14px; border-radius: 10px; border: 2px solid #8a1c1c; background: #fff; color: #8a1c1c; font-weight: 700; font-size: 16px; cursor: pointer; }
+.personal .p-urgent-btn:focus-visible { outline: 3px solid #1b4fd8; outline-offset: 2px; }
+.personal .em-call { font-size: 20px; min-height: 60px; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; }
+.personal .p-bar .who { flex-wrap: wrap; gap: 8px; }

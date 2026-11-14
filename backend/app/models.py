@@ -288,6 +288,8 @@ class PatientPreference(Base):
     __tablename__ = "patient_preferences"
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), primary_key=True)
     timezone: Mapped[str] = mapped_column(String(64), default="Asia/Dubai")
+    trusted_name: Mapped[str | None] = mapped_column(String(80), nullable=True)    # someone the person chose to ring in an emergency
+    trusted_phone: Mapped[str | None] = mapped_column(String(24), nullable=True)   # used only to open the phone's own dialer; never contacted by us
     assistant_memory: Mapped[bool] = mapped_column(Boolean, default=True)   # keep the assistant conversation so follow-ups make sense
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
