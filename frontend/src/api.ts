@@ -209,6 +209,8 @@ export type Activity = {
   note: string | null; nodes: ActNode[]; events: ActEvent[]; last_seq: number; started_at: string | null;
 };
 
+export type EmergencyConfig = { region: string; numbers: { id: string; number: string }[]; verified: boolean; trusted: { name: string; phone: string } | null };
+
 export const api = {
   agentTools: () => get<{ alignment: { available: boolean; needs: string | null } }>("/api/imaging/agent/tools"),
   agentWorkflow: () => get<Activity>("/api/imaging/agent/workflow"),
@@ -295,6 +297,9 @@ export const api = {
   assistantMemory: (enabled: boolean) => put<{ memory: boolean }>("/api/assistant/memory", { enabled }),
   assistantCancel: (confirmation_id: string) => post<{ ok: boolean }>("/api/assistant/cancel", { confirmation_id }),
   assistantConfirm: (confirmation_id: string) => post<{ ok: boolean; duplicate: boolean; tool: string }>("/api/assistant/confirm", { confirmation_id }),
+  emergencyConfig: () => get<EmergencyConfig>("/api/emergency/config"),
+  setTrusted: (name: string, phone: string) => put<{ name: string; phone: string }>("/api/emergency/trusted", { name, phone }),
+  clearTrusted: () => del<{ ok: boolean }>("/api/emergency/trusted"),
   concernInfo: () => get<{ monitoring_hours: string | null; recipients: { id: string; name: string }[] }>("/api/concerns/info"),
   concerns: () => get<Concern[]>("/api/concerns"),
   createConcern: (b: { topic: string; since: string; text: string }) => post<Concern>("/api/concerns", b),
