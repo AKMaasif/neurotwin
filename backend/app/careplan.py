@@ -47,6 +47,12 @@ def notify(db: Session, user_id: str | None, kind: str, plan: CarePlan) -> None:
         db.add(Notification(user_id=user_id, kind=kind, ref_id=plan.id, about_id=plan.participant_id))
 
 
+def db_notify(db: Session, user_id: str | None, kind: str, about: str | None = None, ref: int | None = None) -> None:
+    """A pointer for someone, from any feature: the kind of event and the record id only, never words."""
+    if user_id:
+        db.add(Notification(user_id=user_id, kind=kind, ref_id=ref, about_id=about))
+
+
 def notifications(db: Session, user: User) -> list[dict]:
     rows = db.scalars(select(Notification).where(Notification.user_id == user.id).order_by(Notification.id.desc()).limit(50))
     return [{"id": n.id, "kind": n.kind, "plan_id": n.ref_id, "about_id": n.about_id, "about": _name(db, n.about_id) if user.role == "clinician" else None,

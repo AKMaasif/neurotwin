@@ -5,16 +5,18 @@ import { useT } from "../i18n";
 import { Mark } from "../ui";
 import type { Data, Sel } from "./ClinicianApp";
 import Decide from "./Decide";
+import Concerns from "./Concerns";
 
 const SESSION_LEVEL = new Set(["interrupted_session", "abandoned_session", "missing_required", "unknown_protocol"]);
 const initials = (name: string) => name.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 
 export default function Caseload({ people, person, onPerson, data, sel, onSelect, tab, setTab, onChanged }: {
   user: User; people: ClinicianParticipant[] | null; person: ClinicianParticipant | null; onPerson: (id: string) => void;
-  data: Data | null; sel: Sel; onSelect: (s: Sel) => void; tab: "people" | "check"; setTab: (t: "people" | "check") => void;
+  data: Data | null; sel: Sel; onSelect: (s: Sel) => void; tab: "people" | "check" | "concerns"; setTab: (t: "people" | "check" | "concerns") => void;
   onChanged: () => void;
 }) {
   const { t } = useT();
+  const [waiting, setWaiting] = useState(0);
   const open = useMemo(() => (data?.items ?? []).filter((i) => i.status === "open"), [data]);
 
   return (
@@ -29,8 +31,11 @@ export default function Caseload({ people, person, onPerson, data, sel, onSelect
         <button role="tab" className="subtab" aria-selected={tab === "check"} onClick={() => setTab("check")}>
           {t("tabCheck")} {open.length > 0 && <span className="badge warn">{t.num(open.length)}</span>}
         </button>
+        <button role="tab" className="subtab" aria-selected={tab === "concerns"} onClick={() => setTab("concerns")}>
+          {t("cnInbox")} {waiting > 0 && <span className="badge warn">{t.num(waiting)}</span>}
+        </button>
       </div>
-      {tab === "people"
+      {tab === "concerns" ? <div style={{ padding: "0 12px 12px", display: "grid", gap: 8 }}><Concerns onCount={setWaiting} /></div> : tab === "people"
         ? <People people={people} person={person} onPerson={onPerson} goCheck={(id) => { onPerson(id); setTab("check"); }} />
         : <Queue person={person} items={open} data={data} sel={sel} onSelect={onSelect} onChanged={onChanged} />}
     </>

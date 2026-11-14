@@ -152,3 +152,31 @@
 /* footer links on sub-screens stay quiet */
 .personal .p-foot { background: transparent; border: 0; color: var(--pt-muted); }
 .personal.has-tabs .p-foot { display: none; }
+
+/* Always-visible urgent help: high contrast, large target, in the header of every patient screen. */
+.personal .p-urgent-btn { min-height: 44px; padding: 8px 14px; border-radius: 10px; border: 2px solid #8a1c1c; background: #fff; color: #8a1c1c; font-weight: 700; font-size: 16px; cursor: pointer; }
+.personal .p-urgent-btn:focus-visible { outline: 3px solid #1b4fd8; outline-offset: 2px; }
+.personal .em-call { font-size: 20px; min-height: 60px; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; }
+.personal .p-bar .who { flex-wrap: wrap; gap: 8px; }
+
+/* Picture memory */
+.personal .mem-stage { min-height: 220px; display: grid; place-items: center; align-content: center; gap: 12px; border: 3px solid var(--pt-line); border-radius: 22px; background: #fff; }
+.personal .mem-name { font-size: 24px; font-weight: 700; }
+.personal .mem-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.personal .mem-pic { position: relative; min-height: 112px; border: 3px solid var(--pt-line); border-radius: 22px; background: #fff; display: grid; place-items: center; align-content: center; gap: 4px; font-size: 18px; font-weight: 700; cursor: pointer; }
+.personal .mem-pic:disabled { background: #fff7ee; border-color: var(--pt-orange); opacity: 1; cursor: default; }
+.personal .mem-n { position: absolute; top: 8px; inset-inline-start: 10px; min-width: 28px; height: 28px; border-radius: 14px; background: var(--pt-deep); color: #fff; display: grid; place-items: center; font-size: 16px; }
+
+/* Reading and display choices (per device) */
+/* Sizes in this app are in px, so the content area is scaled rather than the root font. */
+.personal.txt-l .p-main { zoom: 1.15; width: calc(100% / 1.15); box-sizing: border-box; } .personal.txt-x .p-main { zoom: 1.3; width: calc(100% / 1.3); box-sizing: border-box; }
+.personal.hc { --pt-line: #1a1a1a; --pt-muted: #333; color: #000; }
+.personal.hc .btn, .personal.hc .choice, .personal.hc .p-card, .personal.hc .mem-pic { border-color: #000; }
+.personal.calm *, .personal.calm *::before, .personal.calm *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+.personal .rp h2 { font-size: 22px; margin-top: 18px; }
+@media print {
+  .personal .p-bar, .personal .p-foot, .personal .pt-tabs, .personal .no-print, .personal .choices { display: none !important; }
+  .personal, .personal .p-card { background: #fff !important; box-shadow: none !important; }
+  .personal .p-card { border: 1px solid #999; break-inside: avoid; }
+}
+.personal.txt-l .p-main > *, .personal.txt-x .p-main > * { min-width: 0; overflow-wrap: anywhere; }
