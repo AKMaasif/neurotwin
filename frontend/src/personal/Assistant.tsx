@@ -6,7 +6,7 @@ import { ErrorNote, Heading } from "../ui";
 import type { Screen } from "./PersonalApp";
 
 type Msg = { who: "you" | "bot"; text?: string | null; reply?: AssistantReply | null; fresh?: boolean };
-const NAV: Record<string, Screen> = { concern: "concern", reminders: "reminders", messages: "messages", records: "records", home: "home", urgent: "urgent", checkin: "checkin", reaction: "reaction" };
+const NAV: Record<string, Screen> = { concern: "concern", reminders: "reminders", messages: "messages", records: "records", home: "home", urgent: "urgent", checkin: "checkin", reaction: "reaction", memory: "memory", wellbeing: "wellbeing" };
 
 /** A typed or spoken assistant with a short fixed list of things it can do. It matches words by fixed rules (no model) and follows the
  *  conversation: "it", "the other one", "yes" and "and the water?" are read against the last few minutes. The conversation is kept only for

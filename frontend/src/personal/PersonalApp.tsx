@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { BellRing, ChartNoAxesColumn, ChevronRight, Info as InfoIcon, MessageCircle, MessageCircleHeart, Phone, ShieldCheck, Users, UserRound, Zap, House } from "lucide-react";
+import { BellRing, ChartNoAxesColumn, ChevronRight, Info as InfoIcon, MessageCircle, MessageCircleHeart, Phone, ShieldCheck, Users, UserRound, Zap, House, Images, HeartPulse } from "lucide-react";
 import { api, Consent, Session, User } from "../api";
 import { useT } from "../i18n";
 import { Brand, ErrorNote, Heading, LangSwitch } from "../ui";
 import ConsentScreen from "./Consent";
 import Checkin from "./Checkin";
 import Reaction from "./Reaction";
+import Memory from "./Memory";
+import Who5 from "./Who5";
 import Sharing from "./Sharing";
 import Records from "./Records";
 import Emergency from "./Emergency";
@@ -16,7 +18,7 @@ import Messages from "./Messages";
 import Account from "../Account";
 import "./patient.css";
 
-export type Screen = "home" | "consent" | "checkin" | "reaction" | "sharing" | "reminders" | "messages" | "records" | "account" | "urgent" | "about" | "assistant" | "concern";
+export type Screen = "home" | "consent" | "checkin" | "reaction" | "sharing" | "reminders" | "messages" | "records" | "account" | "urgent" | "about" | "assistant" | "concern" | "memory" | "wellbeing";
 
 const TAB_SCREENS: Screen[] = ["home", "reminders", "messages", "records"];
 
@@ -57,6 +59,8 @@ export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut
     body = <ConsentScreen consent={consent} onChanged={home} onClose={home} />;
   else if (screen === "checkin") body = <Checkin onDone={home} />;
   else if (screen === "reaction") body = <Reaction onDone={home} />;
+  else if (screen === "memory") body = <Memory onDone={home} />;
+  else if (screen === "wellbeing") body = <Who5 onDone={home} />;
   else if (screen === "messages") body = <Messages onBack={home} />;
   else if (screen === "reminders") body = <Reminders onBack={home} />;
   else if (screen === "assistant") body = <Assistant go={go} onBack={home} />;
@@ -134,12 +138,14 @@ function Home({ user, sessions, participating, unread, waiting, concernNews, go 
   const activities = [
     { code: "daily_checkin", screen: "checkin" as Screen, title: t("checkinTitle"), meta: t("checkinMeta"), Icon: MessageCircleHeart, tone: "a" },
     { code: "reaction_time", screen: "reaction" as Screen, title: t("reactionTitle"), meta: t("reactionMeta"), Icon: Zap, tone: "g" },
+    { code: "picture_sequence", screen: "memory" as Screen, title: t("memTitle"), meta: t("memMeta"), Icon: Images, tone: "a" },
   ];
   const next = activities.find((a) => !doneToday(a.code));
   const done = activities.filter((a) => doneToday(a.code)).length;
   const ringLabel = t("ptProgress", { n: t.num(done), total: t.num(activities.length) });
 
   const manage = [
+    { s: "wellbeing" as Screen, title: t("w5Title"), meta: t("w5Meta"), Icon: HeartPulse, cls: "c1" },
     { s: "consent" as Screen, title: t("consentTitle"), meta: t("consentMeta"), Icon: ShieldCheck, cls: "c1" },
     { s: "sharing" as Screen, title: t("sharingTitle"), meta: t("sharingMeta"), Icon: Users, cls: "c2" },
     { s: "about" as Screen, title: t("aboutTitle"), meta: t("aboutLink"), Icon: InfoIcon, cls: "c4" },
