@@ -63,6 +63,28 @@ _add(Protocol(
 ))
 
 
+_add(Protocol(
+    code="picture_sequence", version="0.1", kind="performance", review_status=PROTOTYPE,
+    measures=(
+        Measure("rounds_correct", "observed", "count", "number", 0, 4),
+        Measure("rounds_shown", "observed", "count", "number", 0, 4),
+        Measure("longest_correct", "observed", "count", "number", 0, 6),
+    ),
+    rules=("picture_sequence_rounds",),
+))
+
+# WHO-5 Well-Being Index (WHO, 1998 version), English wording and 0-5 scoring exactly as published. Raw total 0-25.
+# The owner chose to include it. NeuroTwin adds no cut-off, no "meaningful change" label and no interpretation, and no translation:
+# an Arabic version is offered only once the owner supplies the official text.
+PUBLISHED = "published_instrument_english_unmodified_not_reviewed_here"
+_add(Protocol(
+    code="who5", version="1998-en", kind="self_report", review_status=PUBLISHED,
+    measures=tuple(Measure(f"who5_{i}", "self_reported", "0-5", "number", 0, 5) for i in range(1, 6))
+    + (Measure("who5_raw", "self_reported", "0-25", "number", 0, 25),),
+    rules=("who5_total",),
+))
+
+
 def get(code: str, version: str) -> Protocol | None:
     return PROTOCOLS.get((code, version))
 

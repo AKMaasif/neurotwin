@@ -19,7 +19,7 @@ ORDER = {"usable": 0, "doubtful": 1, "unusable": 2}
 # Reasons that raise a "To check" item for a clinician. Others are recorded but need no action.
 NEEDS_REVIEW = {
     "unknown_protocol", "unknown_measure", "out_of_range", "too_few_valid_trials", "many_anticipations",
-    "interrupted_session", "abandoned_session", "missing_required",
+    "interrupted_session", "abandoned_session", "missing_required", "inconsistent_total",
 }
 # Reasons about the whole session: one "To check" item per session, not one per record in it.
 SESSION_LEVEL = {"interrupted_session", "abandoned_session", "missing_required", "unknown_protocol"}
@@ -117,6 +117,10 @@ def assess_session(protocol: P.Protocol | None, ctx: SessionContext,
                     v.add("doubtful", "missing_required")
         if "reaction_time_trials" in protocol.rules:
             _reaction_time_trials(by_code, observations, verdicts)
+        if "picture_sequence_rounds" in protocol.rules:
+            _picture_sequence_rounds(by_code, observations, verdicts)
+        if "who5_total" in protocol.rules:
+            _who5_total(by_code, observations, verdicts)
 
     return verdicts
 
@@ -136,3 +140,28 @@ def _reaction_time_trials(by_code, observations, verdicts) -> None:
             v.add("unusable", "too_few_valid_trials")
         if early is not None and early.value_num is not None and early.value_num >= 2:
             v.add("doubtful", "many_anticipations")
+
+
+def _picture_sequence_rounds(by_code, observations, verdicts) -> None:
+    """Fewer than 3 rounds shown is doubtful, and more correct than shown is impossible. Engineering defaults, not clinical thresholds."""
+    shown, right = by_code.get("rounds_shown"), by_code.get("rounds_correct")
+    for obs, v in zip(observations, verdicts):
+        if obs.measure not in ("rounds_correct", "longest_correct"):
+            continue
+        if shown is None or shown.value_num is None or shown.value_num < 3:
+            v.add("doubtful", "too_few_rounds")
+        if obs.measure == "rounds_correct" and shown and shown.value_num is not None and obs.value_num is not None \
+                and obs.value_num > shown.value_num:
+            v.add("unusable", "inconsistent_total")
+
+
+def _who5_total(by_code, observations, verdicts) -> None:
+    """The raw score is the plain sum of the five answers, as published. If it is present it must equal that sum; it is never
+    estimated from fewer than five answers and never filled in."""
+    items = [by_code.get(f"who5_{i}") for i in range(1, 6)]
+    have = [o.value_num for o in items if o is not None and o.value_num is not None]
+    for obs, v in zip(observations, verdicts):
+        if obs.measure != "who5_raw" or obs.value_num is None:
+            continue
+        if len(have) < 5 or obs.value_num != sum(have):
+            v.add("unusable", "inconsistent_total")
