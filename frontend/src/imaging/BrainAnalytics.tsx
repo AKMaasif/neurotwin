@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Brain, ChevronRight, Layers, Maximize2, RotateCcw, Search, SlidersHorizontal, ZoomIn, ZoomOut } from "lucide-react";
+import { Brain, ChevronRight, Layers, Maximize2, RotateCcw, Search, SlidersHorizontal, ZoomIn, ZoomOut } from "lucide-react";
 import BrainScene, { SceneActions } from "./BrainScene";
 import SliceView from "./SliceView";
 import NativeWorkflow from "./NativeWorkflow";
@@ -8,7 +8,7 @@ import AgentAnalysis from "./AgentAnalysis";
 import { BrainData, Cursor, Selection, Settings, initialSettings, loadBrain, offset, world } from "./data";
 import "./imaging.css";
 
-export default function BrainAnalytics({ onClose }: { onClose: () => void }) {
+export default function BrainAnalytics(_props: { onClose: () => void }) {
   const [data, setData] = useState<BrainData | null>(null), [error, setError] = useState("");
   const [progress, setProgress] = useState("Opening research imaging…"), [attempt, setAttempt] = useState(0);
   const [settings, setSettings] = useState<Settings>({ ...initialSettings });
@@ -42,8 +42,7 @@ export default function BrainAnalytics({ onClose }: { onClose: () => void }) {
   };
   return <main className="brain-workspace" dir="ltr" lang="en">
     <header className="brain-header">
-      <button className="brain-back" onClick={onClose}><ArrowLeft size={17} /> Clinical workspace</button>
-      <div className="brain-brand"><Brain size={23} /><div><strong>NeuroTwin <span>/ Brain Analytics</span></strong><small>Single-participant research workspace</small></div></div>
+      <div className="brain-brand"><div><strong>Brain Analytics</strong><small>Single-participant research workspace</small></div></div>
       <span className="brain-badge">RESEARCH PREVIEW</span>
     </header>
     <nav className="brain-tabs" aria-label="Brain analytics sections">

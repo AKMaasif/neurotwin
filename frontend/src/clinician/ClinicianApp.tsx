@@ -4,6 +4,7 @@ import { api, AuditRow, ChangeResult, ClinicianParticipant, Evidence, ReviewItem
 import { useT } from "../i18n";
 import { ErrorNote } from "../ui";
 import Caseload from "./Caseload";
+import Shell from "./Shell";
 import Stage from "./Stage";
 import Detail from "./Detail";
 import Dock from "./Dock";
@@ -84,9 +85,17 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
 
   const person = people?.find((p) => p.id === pid) ?? null;
 
-  if (imaging) return <Suspense fallback={<p role="status">Opening Brain Analytics…</p>}><BrainAnalytics onClose={() => { setPane("stage"); setImaging(false); }} /></Suspense>;
+  if (imaging) {
+    const back = () => { setPane("stage"); setImaging(false); };
+    return (
+      <Shell user={user} page="brain" onBack={back} onDetails={() => setImaging(true)} onSignOut={onSignOut}>
+        <Suspense fallback={<p role="status">Opening Brain Analytics…</p>}><BrainAnalytics onClose={back} /></Suspense>
+      </Shell>
+    );
+  }
 
   return (
+    <Shell user={user} page="workspace" onDetails={() => setImaging(true)} onSignOut={onSignOut}>
     <div className="ws" data-pane={pane}>
       <aside className="ws-left" aria-label={t("wsCaseload")}>
         <Caseload
@@ -96,7 +105,7 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
       </aside>
       <section className="ws-stage" aria-label={t("wsTimeline")}>
         <Stage
-          user={user} person={person} data={data} sel={sel} onSelect={select} onSignOut={onSignOut}
+          user={user} person={person} data={data} sel={sel} onSelect={select}
           onReport={() => setReport(true)} error={error} onRetry={refresh}
           withDoubtful={withDoubtful} setWithDoubtful={setWithDoubtful}
           onImaging={() => setImaging(true)}
@@ -117,5 +126,6 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
       {report && person && <ReportView personId={person.id} onClose={() => setReport(false)} />}
       {!people && error ? <div style={{ position: "fixed", bottom: 16, insetInlineStart: 16 }}><ErrorNote error={error} onRetry={refresh} /></div> : null}
     </div>
+    </Shell>
   );
 }

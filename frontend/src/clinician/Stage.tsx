@@ -8,13 +8,13 @@ import EvidenceTable from "./EvidenceTable";
 import Account from "../Account";
 import Timeline from "./Timeline";
 
-export default function Stage({ user, person, data, sel, onSelect, onSignOut, onReport, error, onRetry, withDoubtful, setWithDoubtful, onImaging }: {
+export default function Stage({ user, person, data, sel, onSelect, onReport, error, onRetry, withDoubtful, setWithDoubtful, onImaging }: {
   user: User; person: ClinicianParticipant | null; data: Data | null; sel: Sel; onSelect: (s: Sel) => void;
-  onSignOut: () => void; onReport: () => void; error: unknown; onRetry: () => void;
+  onReport: () => void; error: unknown; onRetry: () => void;
   withDoubtful: boolean; setWithDoubtful: (v: boolean) => void;
   onImaging: () => void;
 }) {
-  const { t, setLang } = useT();
+  const { t } = useT();
   const [mode, setMode] = useState<"timeline" | "table">("timeline");
   const [history, setHistory] = useState(false);
   const [withHistory, setWithHistory] = useState<Evidence[] | null>(null);
@@ -85,13 +85,9 @@ export default function Stage({ user, person, data, sel, onSelect, onSignOut, on
             {menu && (
               <div className="menu" role="menu">
                 <small>{user.display_name} · {t("roleClinician")}</small>
-                <button role="menuitem" lang={t.lang === "en" ? "ar" : "en"} onClick={() => { setLang(t.lang === "en" ? "ar" : "en"); setMenu(false); }}>{t("switchTo")}</button>
-                <div className="sep" />
                 <small>{t("cScopeNote")}</small>
                 <small>{t("wsKeys")}</small>
                 {!user.is_demo && <button role="menuitem" onClick={() => { setAccount(true); setMenu(false); }}>{t("acLink")}</button>}
-                <div className="sep" />
-                <button role="menuitem" onClick={onSignOut}>{t("signOut")}</button>
               </div>
             )}
           </div>
