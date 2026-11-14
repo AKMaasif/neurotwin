@@ -238,11 +238,26 @@ class AssistantAction(Base):
     outcome: Mapped[str | None] = mapped_column(String(10), nullable=True)   # succeeded | failed
 
 
+class AssistantMessage(Base):
+    """The assistant conversation, kept so a follow-up ("it", "the other one", "yes") makes sense. This is conversational memory only:
+    it is separate from clinical evidence and care messages, is shown to nobody but the person, is never given to a model, a clinician or
+    family, and can be cleared or switched off by the person at any time. Old messages are pruned automatically."""
+    __tablename__ = "assistant_messages"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    who: Mapped[str] = mapped_column(String(4))                 # you | bot
+    text: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)   # what the bot answered, so the screen can be rebuilt
+    ctx: Mapped[dict | None] = mapped_column(JSON, nullable=True)       # what "it", "yes" and "the other one" would refer to next
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
+
+
 class PatientPreference(Base):
     """Settings that belong to the person. The time zone decides what "today" means for their routines."""
     __tablename__ = "patient_preferences"
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), primary_key=True)
     timezone: Mapped[str] = mapped_column(String(64), default="Asia/Dubai")
+    assistant_memory: Mapped[bool] = mapped_column(Boolean, default=True)   # keep the assistant conversation so follow-ups make sense
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
