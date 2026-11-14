@@ -119,6 +119,8 @@ def parse(text: str, rows: list[tuple[CarePlanItem, dict]]) -> dict:
         if len(matches) == 1:
             return {"tool": "explain_instruction", "arguments": {"item_id": matches[0].id}}
         return {"tool": None, "reason": "which", "choices": [i.id for i in (matches or [r[0] for r in rows])]}
+    if len(t.split()) > 6:       # a long, mixed sentence is not a plain request to open something; ask again rather than act
+        return {"tool": None, "reason": "not_understood"}
     for rx, name in _ACTIVITY:
         if rx.search(t):
             return {"tool": "start_activity", "arguments": {"activity": name}}
