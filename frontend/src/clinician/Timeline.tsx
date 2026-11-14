@@ -6,13 +6,15 @@ import type { Data, Sel } from "./ClinicianApp";
 
 type Lane = { key: string; measure: string; label: string; height: number; fixed?: [number, number]; unit: string };
 
-const LABEL_W = 210, PAD_R = 28, AXIS_H = 30, SES_H = 64, GAP = 14;
+const LABEL_EN = 210, LABEL_AR = 250, PAD_R = 28, AXIS_H = 30, SES_H = 64, GAP = 14;
 const DAY = 864e5;
 
 /** One person, over time, one lane per measure. Only records from the same activity version share a lane, unusable
  *  and withdrawn records sit on the lane's floor as crosses (counted, not plotted), and nothing is fitted or averaged. */
 export default function Timeline({ data, sel, onSelect }: { data: Data; sel: Sel; onSelect: (s: Sel) => void }) {
   const { t } = useT();
+  const LABEL_W = t.lang === "ar" ? LABEL_AR : LABEL_EN;
+  const lx = t.lang === "ar" ? LABEL_W - 50 : 12, anchor = t.lang === "ar" ? "end" : "start";
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(900);
   useEffect(() => {
@@ -61,9 +63,9 @@ export default function Timeline({ data, sel, onSelect }: { data: Data; sel: Sel
         ))}
 
         {/* Sessions lane: one row per activity */}
-        <text className="lane-label" x={12} y={sesY + 14}>{t("wsLaneSessions")}</text>
-        <text x={12} y={sesY + 32}>{t.code("reaction_time")}</text>
-        <text x={12} y={sesY + 52}>{t.code("daily_checkin")}</text>
+        <text className="lane-label" x={lx} textAnchor={anchor} y={sesY + 14}>{t("wsLaneSessions")}</text>
+        <text x={lx} textAnchor={anchor} y={sesY + 32}>{t.code("reaction_time")}</text>
+        <text x={lx} textAnchor={anchor} y={sesY + 52}>{t.code("daily_checkin")}</text>
         <line x1={LABEL_W} x2={width - PAD_R} y1={sesY + SES_H} y2={sesY + SES_H} stroke="var(--line)" />
         {sessions.map((s) => {
           const cx = x(s.started_at), cy = sesY + (s.protocol_code === "reaction_time" ? 28 : 48);
@@ -109,6 +111,8 @@ function LaneView({ lane, top, width, x, records, change, selectedId, onSelect, 
   onSelect: (id: number) => void; onKey: (fn: () => void) => (e: React.KeyboardEvent) => void;
 }) {
   const { t } = useT();
+  const LABEL_W = t.lang === "ar" ? LABEL_AR : LABEL_EN;
+  const lx = t.lang === "ar" ? LABEL_W - 50 : 12, anchor = t.lang === "ar" ? "end" : "start", wrapAt = t.lang === "ar" ? 20 : 30;
   const plotted = records.filter((e) => e.status === "current" && e.quality !== "unusable" && e.value_num !== null)
     .sort((a, b) => a.recorded_at.localeCompare(b.recorded_at));
   const floor = records.filter((e) => !plotted.includes(e));
@@ -141,13 +145,13 @@ function LaneView({ lane, top, width, x, records, change, selectedId, onSelect, 
     <g>
       {change?.baseline && band(change.baseline, "rgba(5,38,64,0.05)", t("chBaseline"))}
       {change?.recent && band(change.recent, change.status === "outside" ? "rgba(138,86,0,0.09)" : "rgba(15,125,146,0.08)", t("chRecent"))}
-      <text className="lane-label" x={12} y={top + 14}>{lane.label}</text>
+      <text className="lane-label" x={lx} textAnchor={anchor} y={top + 14}>{lane.label}</text>
       {change && (
-        <text x={12} y={top + 32} style={{ fontSize: 11, fill: change.status === "outside" ? "var(--warn)" : "var(--muted)" }}>
-          {headline.length > 30 ? <><tspan x={12}>{headline.slice(0, headline.lastIndexOf(" ", 30))}</tspan><tspan x={12} dy={14}>{headline.slice(headline.lastIndexOf(" ", 30) + 1)}</tspan></> : headline}
+        <text x={lx} textAnchor={anchor} y={top + 32} style={{ fontSize: 11, fill: change.status === "outside" ? "var(--warn)" : "var(--muted)" }}>
+          {headline.length > wrapAt ? <><tspan x={lx} textAnchor={anchor}>{headline.slice(0, headline.lastIndexOf(" ", wrapAt))}</tspan><tspan x={lx} textAnchor={anchor} dy={14}>{headline.slice(headline.lastIndexOf(" ", wrapAt) + 1)}</tspan></> : headline}
         </text>
       )}
-      {floor.length > 0 && <text x={12} y={floorY + 4}>{t("wsNotPlotted")} · {t.num(floor.length)}</text>}
+      {floor.length > 0 && <text x={lx} textAnchor={anchor} y={floorY + 4}>{t("wsNotPlotted")} · {t.num(floor.length)}</text>}
       {ticks.map((v) => (
         <g key={v}>
           <line x1={LABEL_W} x2={width - PAD_R} y1={y(v)} y2={y(v)} stroke="var(--line-soft)" />

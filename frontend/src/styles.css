@@ -371,3 +371,5 @@ textarea.note { width: 100%; min-height: 64px; border: 1px solid var(--line); bo
 @keyframes entry-spin { to { transform: rotate(360deg); } }
 .welcome-toast { position: fixed; inset-inline: 0; bottom: 44px; margin: 0 auto; width: fit-content; max-width: 90vw; background: var(--navy, #052640); color: #fff; padding: 10px 18px; border-radius: 999px; font-size: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.2); }
 @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+/* Phone: keep the brand on one line; the page name is already the pane title below. */
+@media (max-width: 560px) { .shell-bar .brand-page { white-space: nowrap; font-size: .75em; } .shell-bar .brand { flex-wrap: nowrap; } .welcome-toast { bottom: 150px; } }
