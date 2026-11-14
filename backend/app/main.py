@@ -280,6 +280,9 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
         with app.state.db.SessionLocal() as db:
             seed(db)
             ensure_demo_credentials(db, demo_password or config.DEMO_PASSWORD)
+            if config.SEED_HISTORY:
+                from . import synthetic_history
+                synthetic_history.apply(db)
     app.state.demo = bool(config.SEED_DEMO if seed_demo is None else seed_demo)
     app.state.get_llm = llm.get_client
     app.state.get_stt = llm.get_stt_client
@@ -790,8 +793,12 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
                                                      ReviewItem.status == "open").count()
             last = db.scalar(select(ActivitySession.started_at).where(ActivitySession.participant_id == p.id)
                              .order_by(ActivitySession.started_at.desc()).limit(1))
+            from . import synthetic_history as SH
+            syn = SH.summary(db, p.id) if p.is_demo else None
             out.append({**user_out(p), "shared_since": iso(g.created_at), "open_items": open_items,
-                        "last_activity": iso(last)})
+                        "last_activity": iso(last),
+                        "dataset": {"id": syn["id"], "label": syn["label"], "note": syn["note"], "sessions": syn["sessions"],
+                                    "from": syn["from"], "to": syn["to"]} if syn else None})
         return out
 
     @app.get("/api/family/shared")
