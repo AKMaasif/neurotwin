@@ -373,3 +373,18 @@ textarea.note { width: 100%; min-height: 64px; border: 1px solid var(--line); bo
 @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
 /* Phone: keep the brand on one line; the page name is already the pane title below. */
 @media (max-width: 560px) { .shell-bar .brand-page { white-space: nowrap; font-size: .75em; } .shell-bar .brand { flex-wrap: nowrap; } .welcome-toast { bottom: 150px; } }
+
+/* Clinician charts */
+.range-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 4px 8px 8px; font-size: 13px; }
+.range-bar .chip { min-height: 32px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; font: inherit; }
+.range-bar .chip[aria-pressed="true"] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.range-bar .range-note { flex: 1 1 100%; font-size: 12px; }
+.chart-tip { position: absolute; width: max-content; transform: translate(-50%, -100%); background: #0b2b44; color: #fff; border-radius: 8px; padding: 8px 10px; font-size: 12px; line-height: 1.45; z-index: 5; pointer-events: none; max-width: 240px; box-shadow: 0 6px 18px rgba(11,43,68,.3); }
+.chart-tip .tip-head { font-weight: 700; }
+.chart-tables { padding: 4px 8px 8px; display: grid; gap: 4px; }
+.chart-tables summary { cursor: pointer; font-size: 13px; padding: 6px 0; }
+.chart-table-wrap { max-height: 260px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+.chart-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.chart-table th, .chart-table td { padding: 5px 8px; border-bottom: 1px solid var(--line-soft); text-align: start; white-space: nowrap; }
+.chart-table thead th { position: sticky; top: 0; background: var(--surface); }
+.sheet { overflow-x: auto; }   /* a narrow screen scrolls the chart sideways instead of cutting it off */
