@@ -15,7 +15,7 @@ export default function CarePlan({ person }: { person: ClinicianParticipant }) {
   const [notices, setNotices] = useState<Notice[]>([]);
   const load = useCallback(() => {
     api.carePlan(person.id).then(setData).catch(setError);
-    api.notices().then((n) => setNotices(n.filter((x) => !x.read && x.about_id === person.id))).catch(() => {});
+    api.notices().then((n) => setNotices(n.filter((x) => !x.read && x.about_id === person.id && x.kind.startsWith("plan_")))).catch(() => {});
   }, [person.id]);
   useEffect(load, [load]);
 
