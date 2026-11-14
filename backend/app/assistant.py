@@ -37,7 +37,7 @@ CONTEXT_MINUTES = 30      # how long a topic stays "the thing we were talking ab
 KEEP_DAYS = 30
 KEEP_MESSAGES = 200
 SCREENS = {"concern": "concern", "today": "reminders", "reminders": "reminders", "messages": "messages", "record": "records", "records": "records",
-           "home": "home", "urgent": "urgent", "checkin": "checkin", "reaction": "reaction"}
+           "home": "home", "urgent": "urgent", "checkin": "checkin", "reaction": "reaction", "memory": "memory", "wellbeing": "wellbeing"}
 TOOLS = {  # name: (kind, needs confirmation)
     "open_screen": ("navigation", False), "read_today": ("read", False), "explain_instruction": ("read", False),
     "mark_done": ("change", True), "mark_not_today": ("change", True), "snooze": ("change", True),
@@ -52,7 +52,7 @@ _TODAY = re.compile(r"\b(what.*(today|to do)|my (tasks|routines|reminders)|today
 _EXPLAIN = re.compile(r"\b(explain|what does .* mean|what is .* for|tell me about|why)\b|اشرح|ماذا يعني|ما معنى", re.I)
 _OPEN = [(re.compile(r"\b(messages?|inbox)\b|رسائل|الرسائل", re.I), "messages"), (re.compile(r"\b(my record|records?|history)\b|سجلي|سجلّي|سجل", re.I), "records"),
          (re.compile(r"\b(reminders?|today)\b|التذكيرات|اليوم", re.I), "today"), (re.compile(r"\b(home|start)\b|الرئيسية", re.I), "home")]
-_ACTIVITY = [(re.compile(r"\b(check-?in|questions|daily check)\b|الأسئلة|الاستبيان", re.I), "checkin"), (re.compile(r"\b(reaction|game|tap)\b|اللعبة|سرعة الاستجابة|التفاعل", re.I), "reaction")]
+_ACTIVITY = [(re.compile(r"\b(pictures?|memory game|sequence)\b|الصور|لعبة الذاكرة", re.I), "memory"), (re.compile(r"\b(well-?being|how i have been feeling|who-?5)\b|الرفاه|العافية", re.I), "wellbeing"), (re.compile(r"\b(check-?in|questions|daily check)\b|الأسئلة|الاستبيان", re.I), "checkin"), (re.compile(r"\b(reaction|game|tap)\b|اللعبة|سرعة الاستجابة|التفاعل", re.I), "reaction")]
 _MIN = re.compile(r"(\d{1,3})\s*(?:min|minutes?|دقيقة|دقائق)", re.I)
 _HOUR = re.compile(r"(\d)\s*(?:hours?|hrs?|ساعة|ساعات)|\b(an hour|ساعة)\b", re.I)
 _CONCERN = re.compile(r"\b(report|raise|tell (my|the) (doctor|clinician)|message (my|the) (doctor|clinician)).{0,25}\b(concern|problem|worry|worried|symptom|issue)\b|\b(i have|i've got|i am having) (a )?(concern|worry|problem)\b|\bsomething (is|feels) wrong\b|أريد الإبلاغ|لدي قلق|عندي مشكلة|لدي مشكلة|أشعر بقلق", re.I)
