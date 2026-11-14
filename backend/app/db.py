@@ -52,11 +52,28 @@ class Database:
             self._add_missing_columns()
         cfg = Config()
         cfg.set_main_option("script_location", str(Path(__file__).resolve().parents[1] / "migrations"))
-        with self.engine.begin() as conn:
-            cfg.attributes["connection"] = conn
-            if legacy:
-                command.stamp(cfg, BASELINE)
-            command.upgrade(cfg, "head")
+        with self.engine.connect() as conn:
+            sqlite = conn.dialect.name == "sqlite"
+            if sqlite:
+                # SQLite changes a table by rebuilding it (copy, drop, rename). With foreign keys enforced, dropping a table that other
+                # tables point at fails as soon as it holds rows. SQLite documents turning enforcement off for the rebuild and checking
+                # afterwards; the switch must happen outside a transaction.
+                conn.exec_driver_sql("PRAGMA foreign_keys=OFF")
+                conn.commit()
+            try:
+                before = len(conn.exec_driver_sql("PRAGMA foreign_key_check").fetchall()) if sqlite else 0
+                conn.commit()
+                with conn.begin():
+                    cfg.attributes["connection"] = conn
+                    if legacy:
+                        command.stamp(cfg, BASELINE)
+                    command.upgrade(cfg, "head")
+                    if sqlite and len(conn.exec_driver_sql("PRAGMA foreign_key_check").fetchall()) > before:
+                        raise RuntimeError("The upgrade left rows that point at missing rows. Restore your backup copy of the database file and report this.")
+            finally:
+                if sqlite:
+                    conn.exec_driver_sql("PRAGMA foreign_keys=ON")
+                    conn.commit()
 
     def _add_missing_columns(self) -> None:
         """Columns added after a database was first made. Additive only: nothing is dropped or rewritten."""
