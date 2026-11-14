@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, AwaitingPlan, DifficultyReason, Reminder } from "../api";
+import { api, AwaitingPlan, DifficultyReason, History, Reminder } from "../api";
 import { useT } from "../i18n";
 import { ErrorNote, Heading } from "../ui";
 
@@ -14,6 +14,7 @@ export default function Reminders({ onBack }: { onBack: () => void }) {
   const [day, setDay] = useState("");
   const [tz, setTz] = useState("");
   const [plans, setPlans] = useState<AwaitingPlan[]>([]);
+  const [hist, setHist] = useState<History | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
   const load = useCallback(() => {
@@ -43,6 +44,7 @@ export default function Reminders({ onBack }: { onBack: () => void }) {
       <div style={{ display: "grid", gap: 12 }}>
         {items?.map((i) => <Task key={i.id} item={i} answer={answer} />)}
       </div>
+      {!hist ? <button className="btn block" onClick={() => api.history().then(setHist).catch(setError)}>{t("histOpen")}</button> : <Record hist={hist} />}
       {tz && <p className="hint">{t("remTimezone", { tz })}</p>}
       <button className="btn block" onClick={onBack}>{t("backHome")}</button>
     </>
@@ -151,6 +153,33 @@ function Task({ item: i, answer }: {
           </div>
         </fieldset>
       )}
+    </section>
+  );
+}
+
+function Record({ hist }: { hist: History }) {
+  const { t } = useT();
+  return (
+    <section className="p-card" aria-label={t("histTitle")}>
+      <Heading level={2}>{t("histTitle")}</Heading>
+      <p className="muted">{t("histLede")} {hist.since} – {hist.until}</p>
+      {hist.days.length === 0 && <p className="muted">{t("histNone")}</p>}
+      {hist.days.map((d) => (
+        <div key={d.day}>
+          <p className="eyebrow">{t.date(d.day)}</p>
+          <ul style={{ paddingInlineStart: 20, margin: "4px 0" }}>
+            {d.entries.map((e) => {
+              const text = (t.lang === "ar" ? e.text_ar ?? e.text_en : e.text_en ?? e.text_ar) ?? "";
+              return <li key={e.item_id}>{e.title ? `${e.title}: ` : ""}{text}{e.reply ? ` · ${e.reply === "done" ? t("remDone") : t("remNotToday")}` : ""}
+                {e.difficulty ? ` · ${t("histHard")}` : ""}{e.snoozed ? ` · ${t("histSnoozed")}` : ""}</li>;
+            })}
+          </ul>
+        </div>
+      ))}
+      {hist.plans.some((p) => p.your_answers.length > 0) && <p className="eyebrow">{t("histAnswers")}</p>}
+      {hist.plans.flatMap((p) => p.your_answers.map((a, k) => (
+        <p key={`${p.plan_id}-${k}`} className="muted">{t.date(a.at, true)} · {a.reviewed ? t("histRead") : t("histNotRead")}</p>
+      )))}
     </section>
   );
 }

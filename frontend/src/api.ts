@@ -38,8 +38,23 @@ export type CareItemClinician = CareItem & {
 export type CarePlanView = {
   id: number; version: number; status: PlanStatus; legacy: boolean; created_at: string; sent_at: string | null; responded_at: string | null;
   written_by: string | null; sent_by: string | null; items: CareItemClinician[];
-  responses: { response: "accept" | "question" | "decline"; note: string | null; at: string }[];
+  responses: { id: number; reviewed_at: string | null; reviewed_by: string | null; review_note: string | null; response: "accept" | "question" | "decline"; note: string | null; at: string }[];
 };
+export type Notice = { id: number; kind: string; plan_id: number | null; about_id: string | null; about: string | null; created_at: string; read: boolean };
+export type Suggestion = { source: "rules"; fields: { day_part: DayPart | null; weekdays: number[]; time_hhmm: string | null; quantity: number | null; unit: string | null }; flags: { field: string; code: string; message: string }[] };
+export type History = {
+  since: string; until: string; timezone: string; label: "patient_reported";
+  plans: { plan_id: number; version: number; status: string; legacy: boolean; sent_at: string | null; responded_at: string | null; by: string | null; your_answers: { response: string; at: string; reviewed: boolean }[] }[];
+  days: { day: string; entries: { item_id: number; text_en: string | null; text_ar: string | null; title: string | null; reply: "done" | "not_today" | null; difficulty: string | null; snoozed: boolean }[] }[];
+};
+export type AssistantItem = { id: number; title: string | null; text_en: string | null; text_ar: string | null; time_hhmm: string | null; day_part: DayPart; quantity: number | null; unit: string | null; precautions: string | null; written_by: string | null };
+export type AssistantReply = {
+  understood: boolean; reason?: string; choices?: AssistantItem[]; tool?: string | null; needs_confirmation?: boolean; confirmation_id?: string;
+  item?: AssistantItem | null; items?: (AssistantItem & { reply: string | null })[]; minutes?: number | null; navigate?: string | null; confirmed?: boolean;
+  cancelled?: boolean; kind?: "greeting" | "thanks" | "capabilities"; said?: string | null; entries?: { item: AssistantItem; reply: string | null }[];
+  via?: "context" | "answer" | "yes" | "words" | "order" | "other" | "only" | null; already?: "done" | "not_today" | null; pending?: boolean; expires_minutes?: number; ok?: boolean;
+};
+export type AssistantHistory = { memory: boolean; keeps_days: number; messages: { id: number; who: "you" | "bot"; text: string | null; payload: AssistantReply | null; at: string }[] };
 export type CarePlanClinician = { plans: CarePlanView[]; draft_id: number | null };
 export type AwaitingPlan = { id: number; version: number; sent_at: string | null; sent_by: string | null; written_by: string | null; items: CareItem[]; questions_asked: number };
 export type DifficultyReason = "too_tiring" | "unclear" | "inaccessible" | "need_help";
@@ -122,6 +137,8 @@ async function call<R>(method: string, path: string, body?: unknown): Promise<R>
 
 const get = <R,>(p: string) => call<R>("GET", p);
 const post = <R,>(p: string, b?: unknown) => call<R>("POST", p, b ?? {});
+const put = <R,>(p: string, b?: unknown) => call<R>("PUT", p, b ?? {});
+const del = <R,>(p: string) => call<R>("DELETE", p);
 export const imagingPost = <R,>(path: string, body?: FormData) => call<R>("POST", `/api/imaging/native/${path}`, body);
 
 export type Oasis2Visit = {
@@ -260,6 +277,17 @@ export const api = {
   carePlan: (pid: string) => get<CarePlanClinician>(`/api/participants/${encodeURIComponent(pid)}/care-plan`),
   addCareItem: (pid: string, b: NewCareItem) => post<CareItem>(`/api/participants/${encodeURIComponent(pid)}/care-plan`, b),
   stopCareItem: (id: number, note: string) => post<CareItem>(`/api/care-plan/${id}/stop`, { note: note || null }),
+  suggestFields: (pid: string, text_en: string | null, text_ar: string | null) => post<Suggestion>(`/api/participants/${encodeURIComponent(pid)}/care-plan/suggest`, { text_en, text_ar }),
+  reviewPlanResponse: (id: number, note: string) => post<{ ok: boolean }>(`/api/plan-responses/${id}/review`, { note: note || null }),
+  notices: () => get<Notice[]>("/api/notifications"),
+  readNotice: (id: number) => post<{ ok: boolean }>(`/api/notifications/${id}/read`),
+  history: () => get<History>("/api/care-plan/history"),
+  assistantSay: (text: string) => post<AssistantReply>("/api/assistant/message", { text }),
+  assistantHistory: () => get<AssistantHistory>("/api/assistant/history"),
+  assistantClear: () => del<{ cleared: number }>("/api/assistant/history"),
+  assistantMemory: (enabled: boolean) => put<{ memory: boolean }>("/api/assistant/memory", { enabled }),
+  assistantCancel: (confirmation_id: string) => post<{ ok: boolean }>("/api/assistant/cancel", { confirmation_id }),
+  assistantConfirm: (confirmation_id: string) => post<{ ok: boolean; duplicate: boolean; tool: string }>("/api/assistant/confirm", { confirmation_id }),
   sendCarePlan: (id: number) => post<unknown>(`/api/care-plans/${id}/send`),
   recallCarePlan: (id: number) => post<unknown>(`/api/care-plans/${id}/recall`),
   plansAwaiting: () => get<AwaitingPlan[]>("/api/care-plan/awaiting"),

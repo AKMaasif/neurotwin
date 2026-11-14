@@ -15,6 +15,8 @@ from sqlalchemy.orm import Session
 from . import change as C
 from . import config
 from . import careplan as CP
+from . import extraction as EX
+from . import assistant as AS
 from . import drafts as D
 from . import llm
 from . import messages as M
@@ -24,7 +26,7 @@ from . import quality as Q
 from . import services as S
 from .db import Database
 from .logs import SafeRequestLog
-from .models import AccessGrant, ActivitySession, AuditEvent, CarePlan, CarePlanItem, Draft, FamilyMessage, Evidence, ReviewItem, User
+from .models import AccessGrant, ActivitySession, AuditEvent, CarePlan, CarePlanItem, Draft, FamilyMessage, Evidence, PlanResponse, ReviewItem, User
 from .auth import router as auth_router
 from .auth import user_out
 from .imaging import router as imaging_router
@@ -57,6 +59,23 @@ class CarePlanIn(BaseModel):
 class PlanResponseIn(BaseModel):
     response: Literal["accept", "question", "decline"]
     note: str | None = Field(default=None, max_length=300)
+
+
+class AssistantIn(BaseModel):
+    text: str = Field(max_length=300)
+
+
+class AssistantConfirmIn(BaseModel):
+    confirmation_id: str = Field(min_length=8, max_length=40)
+
+
+class MemoryIn(BaseModel):
+    enabled: bool
+
+
+class SuggestIn(BaseModel):
+    text_en: str | None = Field(default=None, max_length=300)
+    text_ar: str | None = Field(default=None, max_length=300)
 
 
 class TimezoneIn(BaseModel):
@@ -575,6 +594,66 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
         _, dup = CP.reply(db, user, item, CP.reply_day(db, user, body.day), body.reply, idem_key=body.idem_key,
                           snooze_minutes=body.snooze_minutes, reason=body.reason, note=body.note)
         return {"ok": True, "duplicate": dup}
+
+    @app.get("/api/care-plan/history")
+    def my_history(days: int = 14, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        if user.role != "participant":
+            raise HTTPException(404, "Not found, or you do not have access.")
+        return CP.history(db, user, days)
+
+    @app.get("/api/notifications")
+    def my_notifications(user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return CP.notifications(db, user)
+
+    @app.post("/api/notifications/{nid}/read")
+    def read_notification(nid: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        CP.mark_read(db, user, nid)
+        return {"ok": True}
+
+    @app.post("/api/plan-responses/{rid}/review")
+    def review_plan_response(rid: int, body: CarePlanStopIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        row = db.get(PlanResponse, rid)
+        if row is None:
+            raise HTTPException(404, "Not found, or you do not have access.")
+        _clinician_for(db, user, row.participant_id)
+        r = CP.review_response(db, user, rid, body.note)
+        return {"ok": True, "reviewed_at": CP._iso(r.reviewed_at)}
+
+    @app.post("/api/participants/{pid}/care-plan/suggest")
+    def suggest_fields(pid: str, body: SuggestIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        """Fields read from the clinician's own text by fixed rules, with flags. Nothing is saved; the clinician decides."""
+        _clinician_for(db, user, pid)
+        text = " ".join(filter(None, [body.text_en, body.text_ar]))
+        fields = EX.propose(text)
+        return {"source": "rules", "fields": fields, "flags": EX.check(text, fields)}
+
+    @app.post("/api/assistant/message")
+    def assistant_message(body: AssistantIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return AS.message(db, user, body.text)
+
+    @app.post("/api/assistant/confirm")
+    def assistant_confirm(body: AssistantConfirmIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return AS.confirm(db, user, body.confirmation_id)
+
+    @app.post("/api/assistant/cancel")
+    def assistant_cancel(body: AssistantConfirmIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return AS.cancel(db, user, body.confirmation_id)
+
+    @app.get("/api/assistant/history")
+    def assistant_history(user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return AS.history(db, user)
+
+    @app.delete("/api/assistant/history")
+    def assistant_clear(user: User = Depends(current_user), db: Session = Depends(get_db)):
+        if user.role != "participant":
+            raise HTTPException(404, "Not found, or you do not have access.")
+        return {"cleared": AS.clear(db, user)}
+
+    @app.put("/api/assistant/memory")
+    def assistant_memory(body: MemoryIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        if user.role != "participant":
+            raise HTTPException(404, "Not found, or you do not have access.")
+        return {"memory": AS.set_memory(db, user, body.enabled)}
 
     @app.get("/api/me/preferences")
     def my_preferences(user: User = Depends(current_user), db: Session = Depends(get_db)):
