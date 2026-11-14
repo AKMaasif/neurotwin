@@ -8,6 +8,7 @@ import Checkin from "./Checkin";
 import Reaction from "./Reaction";
 import Sharing from "./Sharing";
 import Records from "./Records";
+import Emergency from "./Emergency";
 import Reminders from "./Reminders";
 import Assistant from "./Assistant";
 import ConcernScreen from "./Concern";
@@ -69,7 +70,7 @@ export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut
       <button className="btn block" onClick={home}>{t("backHome")}</button>
     </>
   );
-  else if (screen === "urgent") body = <Info title={t("urgentTitle")} lines={[t("urgentBody"), t("urgentUAE")]} onBack={home} />;
+  else if (screen === "urgent") body = <Emergency onBack={home} />;
   else if (screen === "about") body = <Info title={t("aboutTitle")} lines={[t("aboutBody"), t("prototypeLong")]} onBack={home} />;
   else body = <Home user={user} sessions={sessions} participating={participating} unread={unread} waiting={waiting} concernNews={concernNews} go={go} />;
 
@@ -80,6 +81,7 @@ export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut
       <header className="p-bar">
         <Brand />
         <div className="who">
+          {screen !== "urgent" && <button className="p-urgent-btn" onClick={() => go("urgent")}>{t("urgentHelp")}</button>}
           <LangSwitch />
           <button className="link" onClick={onSignOut}>{t("signOut")}</button>
         </div>
