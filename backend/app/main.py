@@ -19,6 +19,7 @@ from . import extraction as EX
 from . import assistant as AS
 from . import concerns as CN
 from . import emergency as EM
+from . import patient_report as PR
 from . import drafts as D
 from . import llm
 from . import messages as M
@@ -728,6 +729,10 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
     def emergency_trusted_clear(user: User = Depends(current_user), db: Session = Depends(get_db)):
         EM.clear_trusted(db, user)
         return {"ok": True}
+
+    @app.get("/api/me/report")
+    def my_report(days: int = 11, end: str | None = None, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return PR.build(db, user, days, end)
 
     @app.get("/api/me/preferences")
     def my_preferences(user: User = Depends(current_user), db: Session = Depends(get_db)):
