@@ -106,7 +106,7 @@ export default function Stage({ user, person, data, sel, onSelect, onReport, err
       <div className="canvas">
         <ErrorNote error={error} onRetry={onRetry} />
         {data && (mode === "timeline"
-          ? <Timeline data={data} sel={sel} onSelect={onSelect} />
+          ? <Timeline data={data} sel={sel} onSelect={onSelect} pid={person?.id ?? ""} />
           : <EvidenceTable evidence={history && withHistory ? withHistory : data.evidence} history={history} setHistory={setHistory}
               onOpen={(id) => onSelect({ kind: "record", id })} />)}
       </div>

@@ -19,6 +19,9 @@ export type Evidence = {
   status: "current" | "amended" | "withdrawn"; supersedes_id: number | null; superseded_by_id: number | null;
   change_reason: string | null; recorded_at: string;
 };
+export type RoutineReplies = { label: string; since: string; note: string;
+  weeks: { week_start: string; done: number; not_today: number; difficulty: number; snooze: number }[];
+  rows: { id: number; item_id: number; day: string; reply: string; reason: string | null }[] };
 export type ReviewItem = {
   id: number; participant_id: string; evidence_id: number | null; session_id: number | null; reason: string;
   raised_by: string; status: string; decision: "keep" | "exclude" | null; resolved_by: string | null; resolution_note: string | null; created_at: string;
@@ -290,6 +293,7 @@ export const api = {
   resolve: (id: number, note: string, decision: Decision) => post<ReviewItem>(`/api/review-items/${id}/resolve`, { note, decision }),
   resolveBatch: (ids: number[], note: string, decision: Decision) => post<ReviewItem[]>("/api/review-items/resolve-batch", { ids, note, decision }),
   report: (pid: string) => get<Report>(`/api/participants/${encodeURIComponent(pid)}/report`),
+  routineReplies: (pid: string) => get<RoutineReplies>(`/api/participants/${encodeURIComponent(pid)}/routine-replies`),
   change: (pid: string, includeDoubtful = false) =>
     get<ChangeResult[]>(`/api/participants/${encodeURIComponent(pid)}/change${includeDoubtful ? "?include_doubtful=true" : ""}`),
   aiStatus: () => get<AiStatus>("/api/ai/status"),
