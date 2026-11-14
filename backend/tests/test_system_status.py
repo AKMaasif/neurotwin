@@ -31,3 +31,41 @@ def test_idle_when_nothing_runs_and_stale_runs_do_not_count(client, tmp_path, mo
     old = f.stat().st_mtime - 3600
     os.utime(f, (old, old))
     assert client.get("/api/system/status").json()["analysis"] == {"state": "idle", "running": 0}
+
+
+def test_provider_check_states(client, monkeypatch):
+    """A provider is 'checked_ok' only after a real successful call, 'check_failed' after a failed one, never from a scripted call."""
+    from app import agent_runtime as R
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    monkeypatch.setenv("GEMINI_MODEL", "m")
+    monkeypatch.setenv("NEUROTWIN_AGENTS_MODE", "live")
+    monkeypatch.setattr(R, "_checks", {})
+    sign_in(client, "demo-dr-layla")
+    d = client.get("/api/system/status").json()
+    assert d["checked"] is None and d["providers"]["gemini"]["state"] == "configured"
+    R.record_check("mock-gemini", True)
+    assert client.get("/api/system/status").json()["checked"] is None
+    R.record_check("gemini", True)
+    d = client.get("/api/system/status").json()
+    assert d["providers"]["gemini"]["state"] == "checked_ok" and d["providers"]["meta"]["state"] == "not_configured"
+    R._checks["gemini"]["ts"] -= 7200          # a stale success no longer counts
+    assert client.get("/api/system/status").json()["providers"]["gemini"]["state"] == "configured"
+    R.record_check("gemini", False)
+    assert client.get("/api/system/status").json()["providers"]["gemini"]["state"] == "check_failed"
+
+
+def test_invoke_records_outcome(tmp_path, monkeypatch):
+    from app import agent_runtime as R, llm
+    monkeypatch.setattr(R, "_checks", {})
+
+    class Ok:
+        provider, model = "gemini", "m"
+        def complete(self, *a, **k): return llm.Reply("{}", "gemini", "m")
+
+    class Bad(Ok):
+        def complete(self, *a, **k): raise llm.ModelError("boom")
+
+    R.invoke(tmp_path, "a", "gemini", "s", "u", [], client=Ok())
+    assert R.recent_checks()["gemini"]["ok"] is True
+    R.invoke(tmp_path, "a", "gemini", "s", "u", [], client=Bad())
+    assert R.recent_checks()["gemini"]["ok"] is False
