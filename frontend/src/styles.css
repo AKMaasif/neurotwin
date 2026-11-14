@@ -357,3 +357,17 @@ textarea.note { width: 100%; min-height: 64px; border: 1px solid var(--line); bo
 .shell-foot b { color: var(--ink); font-weight: 600; }
 .shell-foot .link { margin-inline-start: auto; font-size: 12.5px; }
 @media (max-width: 1100px) { .shell-body > .ws { height: auto; } .shell-who { display: none; } .shell-foot .muted { display: none; } }
+
+/* Entry screens: workspace loader and the Brain Analytics notice */
+.entry { max-width: 560px; margin: 8vh auto; padding: 0 20px; display: grid; gap: 18px; }
+.entry h1 { font-size: 26px; margin: 0; outline: none; }
+.entry-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.entry-steps li { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 16px; }
+.entry-steps li.done { color: var(--ink); } .entry-steps li.done svg { color: #1f8a5b; }
+.entry-steps li.active { color: var(--ink); font-weight: 600; } .entry-steps li.bad { color: #9b2c2c; font-weight: 600; }
+.entry-notice { font-size: 17px; line-height: 1.55; margin: 0; }
+.entry-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.spin { animation: entry-spin 1s linear infinite; }
+@keyframes entry-spin { to { transform: rotate(360deg); } }
+.welcome-toast { position: fixed; inset-inline: 0; bottom: 44px; margin: 0 auto; width: fit-content; max-width: 90vw; background: var(--navy, #052640); color: #fff; padding: 10px 18px; border-radius: 999px; font-size: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.2); }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
