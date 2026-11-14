@@ -95,4 +95,7 @@ Last updated with Stage 2. Items are labelled: **Verified** (automated test or b
 | Audit and notifications hold events and ids, never the person's words | Verified |
 | Delivery by SMS, email or push | Not built; "delivered" means in-app inbox only |
 | Real-time alerting of clinicians; clinical response times; who covers when the clinician is away | **Needs owner / clinical decision**; nothing is promised to the person |
-| Arabic phone-width check of the report flow; native review of Arabic wording | Planned |
+| Editing after preview keeps one draft; unsent drafts are listed with Continue / Discard; discarded drafts are not shown as sent | Verified (browser, AR) after a defect found on review |
+| The person sees an in-app update badge when the clinician acknowledges, reviews or closes | Verified (browser, AR) after a defect found on review |
+| Arabic phone-width run of the whole report flow | Verified (390 px, RTL, no page errors) |
+| Native review of Arabic wording | Planned |

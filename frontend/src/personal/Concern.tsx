@@ -17,11 +17,15 @@ export default function ConcernScreen({ go, onBack }: { go: (s: Screen) => void;
   const [topic, setTopic] = useState<ConcernTopic | "">("");
   const [since, setSince] = useState<ConcernSince | "">("");
   const [text, setText] = useState("");
-  const [draft, setDraft] = useState<Concern | null>(null);
+  const [draft, setDraft] = useState<Concern | null>(null);       // the saved draft this form is working on (kept while editing)
+  const [previewing, setPreviewing] = useState(false);
   const [to, setTo] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
-  const load = useCallback(() => { api.concerns().then(setList).catch(setError); api.concernInfo().then(setInfo).catch(setError); }, []);
+  const load = useCallback(() => {
+    api.concerns().then(setList).catch(setError); api.concernInfo().then(setInfo).catch(setError);
+    api.notices().then((n) => n.filter((x) => !x.read && x.kind.startsWith("concern_")).forEach((x) => api.readNotice(x.id).catch(() => {}))).catch(() => {});
+  }, []);
   useEffect(load, [load]);
   const ready = topic && since && text.trim();
 
@@ -30,6 +34,7 @@ export default function ConcernScreen({ go, onBack }: { go: (s: Screen) => void;
     try {
       const body = { topic, since, text };
       setDraft(draft ? await api.editConcern(draft.id, body) : await api.createConcern(body));
+      setPreviewing(true);
       if (info?.recipients.length === 1) setTo(info.recipients[0].id);
     } catch (e) { setError(e); }
   };
@@ -38,8 +43,13 @@ export default function ConcernScreen({ go, onBack }: { go: (s: Screen) => void;
     setError(null);
     try {
       await api.sendConcern(draft.id, draft.rev, to || undefined);
-      setDraft(null); setTopic(""); setSince(""); setText(""); setNotice(t("cnSentOk")); load();
+      setDraft(null); setPreviewing(false); setTopic(""); setSince(""); setText(""); setNotice(t("cnSentOk")); load();
     } catch (e) { setError(e); }
+  };
+  const resume = (c: Concern) => { setDraft(c); setTopic(c.topic); setSince(c.since); setText(c.text); setPreviewing(false); setNotice(null); };
+  const discard = async (c: Concern) => {
+    setError(null);
+    try { await api.withdrawConcern(c.id); if (draft?.id === c.id) { setDraft(null); setTopic(""); setSince(""); setText(""); } load(); } catch (e) { setError(e); }
   };
   const withdraw = async (id: number) => { setError(null); try { await api.withdrawConcern(id); load(); } catch (e) { setError(e); } };
   const stateLine = (c: Concern) => t(`cnSt_${c.status}` as Key, { name: c.recipient ?? "" });
@@ -53,7 +63,7 @@ export default function ConcernScreen({ go, onBack }: { go: (s: Screen) => void;
       <ErrorNote error={error} />
       {notice && <p role="status">{notice}</p>}
 
-      {!draft ? (
+      {!previewing || !draft ? (
         <section className="p-card" style={{ display: "grid", gap: 10 }}>
           <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
             <legend><b>{t("cnAbout")}</b></legend>
@@ -90,13 +100,23 @@ export default function ConcernScreen({ go, onBack }: { go: (s: Screen) => void;
               </select></label>
           )}
           <button className="btn primary block" disabled={!info || info.recipients.length === 0 || !to} onClick={send}>{t("cnSend")}</button>
-          <button className="btn block" onClick={() => setDraft(null)}>{t("cnEdit")}</button>
+          <button className="btn block" onClick={() => setPreviewing(false)}>{t("cnEdit")}</button>
         </section>
       )}
 
       <Heading level={2}>{t("cnYours")}</Heading>
       {list.length === 0 && <p className="muted">{t("cnNone")}</p>}
-      {list.filter((c) => c.status !== "draft").map((c) => (
+      {list.filter((c) => c.status === "draft" && c.id !== draft?.id).map((c) => (
+        <section key={c.id} className="p-card" style={{ display: "grid", gap: 6 }}>
+          <p className="eyebrow">{t.date(c.created_at)} · {t(`cnTopic_${c.topic}` as Key)} · {t("cnSt_draft")}</p>
+          <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{c.text}</p>
+          <div style={{ display: "flex", gap: 12 }}>
+            <button className="btn" onClick={() => resume(c)}>{t("cnContinue")}</button>
+            <button className="link" onClick={() => discard(c)}>{t("cnDiscard")}</button>
+          </div>
+        </section>
+      ))}
+      {list.filter((c) => c.status !== "draft" && (c.status !== "withdrawn" || c.events.some((e) => e.kind === "sent"))).map((c) => (
         <section key={c.id} className="p-card" style={{ display: "grid", gap: 6 }}>
           <p className="eyebrow">{t.date(c.created_at)} · {t(`cnTopic_${c.topic}` as Key)}</p>
           <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{c.text}</p>
