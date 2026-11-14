@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { BellRing, ChartNoAxesColumn, ChevronRight, Info as InfoIcon, MessageCircle, MessageCircleHeart, Phone, ShieldCheck, Users, UserRound, Zap, House, Images, HeartPulse } from "lucide-react";
+import { BellRing, ChartNoAxesColumn, ChevronRight, Info as InfoIcon, MessageCircle, MessageCircleHeart, Phone, ShieldCheck, Users, UserRound, Zap, House, Images, HeartPulse, CalendarCheck } from "lucide-react";
 import { api, Consent, Session, User } from "../api";
 import { useT } from "../i18n";
 import { Brand, ErrorNote, Heading, LangSwitch } from "../ui";
@@ -7,6 +7,8 @@ import ConsentScreen from "./Consent";
 import Checkin from "./Checkin";
 import Reaction from "./Reaction";
 import Memory from "./Memory";
+import Report from "./Report";
+import DisplaySettings, { displayClasses, loadDisplay } from "./Display";
 import Who5 from "./Who5";
 import Sharing from "./Sharing";
 import Records from "./Records";
@@ -18,13 +20,14 @@ import Messages from "./Messages";
 import Account from "../Account";
 import "./patient.css";
 
-export type Screen = "home" | "consent" | "checkin" | "reaction" | "sharing" | "reminders" | "messages" | "records" | "account" | "urgent" | "about" | "assistant" | "concern" | "memory" | "wellbeing";
+export type Screen = "home" | "consent" | "checkin" | "reaction" | "sharing" | "reminders" | "messages" | "records" | "account" | "urgent" | "about" | "assistant" | "concern" | "memory" | "wellbeing" | "report" | "prep" | "display";
 
 const TAB_SCREENS: Screen[] = ["home", "reminders", "messages", "records"];
 
 export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   const { t } = useT();
   const [screen, setScreen] = useState<Screen>("home");
+  const [display, setDisplay] = useState(loadDisplay);
   const [consent, setConsent] = useState<Consent | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [unread, setUnread] = useState(0);
@@ -59,6 +62,9 @@ export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut
     body = <ConsentScreen consent={consent} onChanged={home} onClose={home} />;
   else if (screen === "checkin") body = <Checkin onDone={home} />;
   else if (screen === "reaction") body = <Reaction onDone={home} />;
+  else if (screen === "report") body = <Report onBack={home} />;
+  else if (screen === "prep") body = <Report prep onBack={home} />;
+  else if (screen === "display") body = <DisplaySettings value={display} onChange={setDisplay} onBack={home} />;
   else if (screen === "memory") body = <Memory onDone={home} />;
   else if (screen === "wellbeing") body = <Who5 onDone={home} />;
   else if (screen === "messages") body = <Messages onBack={home} />;
@@ -81,7 +87,7 @@ export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut
   const tabbed = ready && TAB_SCREENS.includes(screen) && !needsConsent;
 
   return (
-    <div className={`personal ${tabbed ? "has-tabs" : ""}`}>
+    <div className={`personal ${tabbed ? "has-tabs" : ""} ${displayClasses(display)}`}>
       <header className="p-bar">
         <Brand />
         <div className="who">
@@ -145,6 +151,9 @@ function Home({ user, sessions, participating, unread, waiting, concernNews, go 
   const ringLabel = t("ptProgress", { n: t.num(done), total: t.num(activities.length) });
 
   const manage = [
+    { s: "report" as Screen, title: t("rpOpen"), meta: t("rpMeta"), Icon: ChartNoAxesColumn, cls: "c2" },
+    { s: "prep" as Screen, title: t("rpPrepOpen"), meta: t("rpQTitle"), Icon: CalendarCheck, cls: "c4" },
+    { s: "display" as Screen, title: t("dsTitle"), meta: t("dsMeta"), Icon: InfoIcon, cls: "c5" },
     { s: "wellbeing" as Screen, title: t("w5Title"), meta: t("w5Meta"), Icon: HeartPulse, cls: "c1" },
     { s: "consent" as Screen, title: t("consentTitle"), meta: t("consentMeta"), Icon: ShieldCheck, cls: "c1" },
     { s: "sharing" as Screen, title: t("sharingTitle"), meta: t("sharingMeta"), Icon: Users, cls: "c2" },
