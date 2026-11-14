@@ -91,3 +91,16 @@ def test_clinician_without_grant_cannot_get_estimates(client, login, yousef):
     for _ in range(5):
         run_reaction(client, yousef)
     assert client.get("/api/participants/demo-yousef/change", headers=login("demo-dr-layla")).status_code == 404
+
+
+def test_who5_gets_no_change_label():
+    """The published WHO-5 is shown as recorded; the change engine never labels it."""
+    from datetime import datetime, timedelta, timezone
+    from app.change import compare_all
+    from app.models import Evidence
+    base = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    rows = [Evidence(id=i, participant_id="p", session_id=i, kind="self_reported", measure="who5_raw", value_num=10 + i % 3, unit="0-25",
+                     protocol_code="who5", protocol_version="1998-en", producer_type="person", producer_id="p", producer_version="x",
+                     derived_from=[], quality="usable", quality_reasons=[], status="current", recorded_at=base + timedelta(days=14 * i))
+            for i in range(8)]
+    assert compare_all(rows) == []
