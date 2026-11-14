@@ -220,7 +220,7 @@ export type PatientReport = {
   concerns_sent: { id: number; topic: string; status: string; sent_on: string }[];
 };
 
-export type SystemStatus = { mode: "live" | "mock" | "off"; providers: Record<string, { state: "configured" | "not_configured"; role: string }>; checked: string | null; analysis: { state: "idle" | "running"; running: number } };
+export type SystemStatus = { mode: "live" | "mock" | "off"; providers: Record<string, { state: "configured" | "not_configured" | "checked_ok" | "check_failed"; role: string }>; checked: Record<string, { ok: boolean; at: string }> | null; analysis: { state: "idle" | "running"; running: number } };
 
 export const api = {
   systemStatus: () => get<SystemStatus>("/api/system/status"),

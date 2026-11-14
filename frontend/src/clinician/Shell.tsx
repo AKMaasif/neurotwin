@@ -48,10 +48,10 @@ function StatusFooter({ onDetails }: { onDetails: () => void }) {
         <>
           <span>{t("shAiMode")}: <b>{t(`shMode_${s.mode}` as "shMode_off")}</b></span>
           {Object.entries(s.providers).map(([k, v]) => (
-            <span key={k}>{name[k] ?? k}: <b>{t(v.state === "configured" ? "shConfigured" : "shNotConfigured")}</b></span>
+            <span key={k}>{name[k] ?? k}: <b>{t(v.state === "checked_ok" ? "shCheckedOk" : v.state === "check_failed" ? "shCheckFailed" : v.state === "configured" ? "shConfigured" : "shNotConfigured")}</b></span>
           ))}
           <span aria-live="polite">{t("shAnalysis")}: <b>{t(s.analysis.state === "running" ? "shRunning" : "shIdle")}</b></span>
-          <span className="muted">{t("shNotChecked")}</span>
+          {!s.checked && <span className="muted">{t("shNotChecked")}</span>}
         </>
       )}
       <button className="link" onClick={onDetails}>{t("shDetails")}</button>

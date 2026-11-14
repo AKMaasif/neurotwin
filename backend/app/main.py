@@ -329,8 +329,9 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
     @app.get("/api/system/status")
     def system_status(user: User = Depends(current_user)):
         """For the clinician footer. Names, states and counts only: no keys, no addresses, no provider calls are made to answer this.
-        "configured" means a key and a model id are set. It does not mean the model is reachable; nothing has been checked here, so no
-        provider is ever reported as available or live from this endpoint."""
+        "configured" means a key and a model id are set. It does not mean the model is reachable. A provider is reported
+        "checked_ok" only when a real call made by clinical work succeeded within the last hour, and "check_failed" when its latest call failed;
+        this endpoint itself never contacts a provider. Scripted (mock) calls never count as a check."""
         if user.role != "clinician":
             raise HTTPException(404, "Not found, or you do not have access.")
         from . import agent_runtime as R
@@ -340,9 +341,15 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
             running = AA.active_runs()
         except Exception:
             running = 0
+        checks = R.recent_checks()
+        def state(k, v):
+            if not v["available"]:
+                return "not_configured"
+            c = (checks or {}).get(k)
+            return "configured" if c is None else ("checked_ok" if c["ok"] else "check_failed")
         return {"mode": st["mode"],
-                "providers": {k: {"state": "configured" if v["available"] else "not_configured", "role": v["role"]} for k, v in st["providers"].items()},
-                "checked": None, "analysis": {"state": "running" if running else "idle", "running": running}}
+                "providers": {k: {"state": state(k, v), "role": v["role"]} for k, v in st["providers"].items()},
+                "checked": checks, "analysis": {"state": "running" if running else "idle", "running": running}}
 
     @app.get("/api/voice/status")
     def voice_status(request: Request, _: User = Depends(current_user)):

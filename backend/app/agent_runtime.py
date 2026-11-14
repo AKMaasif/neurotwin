@@ -27,6 +27,23 @@ VERSION = "agent-runtime/0.1"
 EGRESS, TRACE = "egress.jsonl", "agents.jsonl"
 ROLES = {"gemini": "drafts and explains", "meta": "checks independently"}
 _cap = {"day": None, "n": 0}
+# The outcome of the most recent real (non-scripted) call per provider, kept in memory only: it is how the footer can say a
+# provider answered recently. Nothing here ever calls a provider; it only records calls a clinician's work already made.
+_checks: dict[str, dict] = {}
+CHECK_FRESH_SECONDS = 3600
+
+
+def record_check(provider: str, ok: bool) -> None:
+    if provider.startswith("mock"):
+        return
+    _checks[provider] = {"ok": ok, "at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "ts": time.time()}
+
+
+def recent_checks(now: float | None = None) -> dict | None:
+    """{provider: {"ok", "at"}} for checks still fresh, or None when there are none. A failure is shown until a later success."""
+    now = time.time() if now is None else now
+    out = {k: {"ok": v["ok"], "at": v["at"]} for k, v in _checks.items() if not v["ok"] or now - v["ts"] <= CHECK_FRESH_SECONDS}
+    return out or None
 
 
 def mode(env: dict | None = None) -> str:
@@ -208,8 +225,10 @@ def invoke(run_dir: Path, agent: str, provider: str, system: str, user: str, fac
     try:
         reply = c.complete(system, user, json_mode=json_mode, **({"images": [b for _, b in images]} if images else {}))
     except llm.ModelError as e:
+        record_check(c.provider, False)
         _append(run_dir, TRACE, {**base, "provider": c.provider, "model": c.model, "status": "failed", "reason": str(e), "prompt_sha256": sha, "ms": round(1000 * (time.monotonic() - t0))})
         return {"status": "failed", "text": None, "provider": c.provider, "model": c.model, "reason": str(e)}
+    record_check(c.provider, True)
     _append(run_dir, TRACE, {**base, "provider": c.provider, "model": c.model, "status": "completed", "prompt_sha256": sha, "chars_out": len(reply.text),
                              "ms": round(1000 * (time.monotonic() - t0)), "output": reply.text, "scripted": mock})
     return {"status": "completed", "text": reply.text, "provider": c.provider, "model": c.model, "reason": None}
