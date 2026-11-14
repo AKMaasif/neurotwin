@@ -98,3 +98,20 @@ Observed: the existing timeline and change panel load the history but are not ye
 - Phone: the chart scrolls sideways inside its card instead of being cut off.
 
 Checked in the browser (English and Arabic, desktop and 390 px): hover details, range filter, new lanes, no overflow, no page errors. Not checked: screen-reader reading of the SVG points, real touch devices. The chart plot is left-to-right in Arabic (time runs left to right) with Arabic labels right-aligned.
+
+## Stage 7 — Activity analysis (backend + bounded model use)
+
+- `backend/app/activity_analysis.py`, `activity_analysis_api.py`. A clinician starts a run for one participant and range (6 weeks / 3 months / 6 months). Nothing starts by opening the page.
+- Chain: collect records → profile data quality → describe the person against themselves → build numbered facts (software); draft statements → challenge → independent check → propose charts (AI model); validate wording and numbers (software); clinician decision (human).
+- Every AI statement must cite fact ids, add no number not in the facts and avoid forbidden wording; failures are shown as refused, not hidden. Charts are only *proposed* by a model and are drawn by software from recorded values.
+- Modes: `live` (real provider, demo data only), `mock` (scripted stand-ins, labelled), `off`. Real participant data is never sent to an external provider.
+- Runs are stored as files under `activity_runs/` (git-ignored); no new database tables.
+- Status: implemented and unit-tested with the scripted client. **Not verified against a live model.**
+
+## Stage 8 — Agent Activity panel and clinician review (frontend)
+
+- `frontend/src/clinician/ActivityAnalysis.tsx`, opened from "Analyze activity history" on the participant stage.
+- Compact panel shows run id, progress and each step with a Software / AI model / Clinician badge and status; expanded view adds summary, provider, model, prompt version, scripted/verified flag and timestamps.
+- Statements show citation chips that reveal the fact text, the independent-check result, and validator problems. Doubts, questions and proposed charts (with a values table and dropped suggestions) can each be marked Keep or Discard; a note and "Save my decisions" record only the clinician's own decisions.
+- English and Arabic (RTL); step names and notes are localised, model text stays English and is labelled as such.
+- Verified: TypeScript build, production build, browser check at desktop (EN) and phone width (AR). Not verified: real devices, screen readers, native Arabic review.
