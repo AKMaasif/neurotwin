@@ -10,11 +10,12 @@ import Sharing from "./Sharing";
 import Records from "./Records";
 import Reminders from "./Reminders";
 import Assistant from "./Assistant";
+import ConcernScreen from "./Concern";
 import Messages from "./Messages";
 import Account from "../Account";
 import "./patient.css";
 
-export type Screen = "home" | "consent" | "checkin" | "reaction" | "sharing" | "reminders" | "messages" | "records" | "account" | "urgent" | "about" | "assistant";
+export type Screen = "home" | "consent" | "checkin" | "reaction" | "sharing" | "reminders" | "messages" | "records" | "account" | "urgent" | "about" | "assistant" | "concern";
 
 const TAB_SCREENS: Screen[] = ["home", "reminders", "messages", "records"];
 
@@ -25,6 +26,7 @@ export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut
   const [sessions, setSessions] = useState<Session[]>([]);
   const [unread, setUnread] = useState(0);
   const [waiting, setWaiting] = useState(0);
+  const [concernNews, setConcernNews] = useState(0);
   const [error, setError] = useState<unknown>(null);
   const [ready, setReady] = useState(false);
 
@@ -36,6 +38,7 @@ export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut
       setSessions(ss);
       setUnread(inbox.filter((m) => !m.read).length);
       setWaiting(pl.length);
+      api.notices().then((n) => setConcernNews(n.filter((x) => !x.read && x.kind.startsWith("concern_")).length)).catch(() => {});
     } catch (e) { setError(e); }
     setReady(true);
   }, [user.id]);
@@ -56,6 +59,7 @@ export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut
   else if (screen === "messages") body = <Messages onBack={home} />;
   else if (screen === "reminders") body = <Reminders onBack={home} />;
   else if (screen === "assistant") body = <Assistant go={go} onBack={home} />;
+  else if (screen === "concern") body = <ConcernScreen go={go} onBack={home} />;
   else if (screen === "sharing") body = <Sharing onBack={home} />;
   else if (screen === "records") body = <Records user={user} onBack={home} />;
   else if (screen === "account") body = (
@@ -67,7 +71,7 @@ export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut
   );
   else if (screen === "urgent") body = <Info title={t("urgentTitle")} lines={[t("urgentBody"), t("urgentUAE")]} onBack={home} />;
   else if (screen === "about") body = <Info title={t("aboutTitle")} lines={[t("aboutBody"), t("prototypeLong")]} onBack={home} />;
-  else body = <Home user={user} sessions={sessions} participating={participating} unread={unread} waiting={waiting} go={go} />;
+  else body = <Home user={user} sessions={sessions} participating={participating} unread={unread} waiting={waiting} concernNews={concernNews} go={go} />;
 
   const tabbed = ready && TAB_SCREENS.includes(screen) && !needsConsent;
 
@@ -120,8 +124,8 @@ function Ring({ done, total, label }: { done: number; total: number; label: stri
   );
 }
 
-function Home({ user, sessions, participating, unread, waiting, go }: {
-  user: User; sessions: Session[]; participating: boolean; unread: number; waiting: number; go: (s: Screen) => void;
+function Home({ user, sessions, participating, unread, waiting, concernNews, go }: {
+  user: User; sessions: Session[]; participating: boolean; unread: number; waiting: number; concernNews: number; go: (s: Screen) => void;
 }) {
   const { t } = useT();
   const doneToday = (code: string) => sessions.some((s) => s.protocol_code === code && s.status === "completed" && isToday(s.started_at));
@@ -183,6 +187,12 @@ function Home({ user, sessions, participating, unread, waiting, go }: {
         <span className="ico v"><BellRing size={32} aria-hidden="true" /></span>
         <span className="t"><b>{t("remTitle")}</b><span>{waiting > 0 ? t("remPending") : t("remMeta")}</span></span>
         {waiting > 0 && <span className="pt-badge" aria-hidden="true">{t.num(waiting)}</span>}
+        <ChevronRight className="go" size={26} aria-hidden="true" />
+      </button>
+      <button className="pt-tile" onClick={() => go("concern")}>
+        <span className="ico v"><MessageCircle size={32} aria-hidden="true" /></span>
+        <span className="t"><b>{t("cnTitle")}</b><span>{concernNews > 0 ? t("cnUpdate") : t("cnMeta")}</span></span>
+        {concernNews > 0 && <span className="pt-badge" aria-hidden="true">{t.num(concernNews)}</span>}
         <ChevronRight className="go" size={26} aria-hidden="true" />
       </button>
       <button className="pt-tile" onClick={() => go("assistant")}>

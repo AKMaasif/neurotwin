@@ -79,3 +79,23 @@ Last updated with Stage 2. Items are labelled: **Verified** (automated test or b
 | Understanding is still fixed English/Arabic patterns, **not a model**. It follows short, task-focused conversations; it does not hold free conversation, give advice or answer health questions | By design |
 | Arabic follow-ups use the same rough root matching; need native-speaker testing | Known limit |
 | The stored conversation includes the person's own words and routine text. Retention period and whether it needs its own consent scope | **Needs owner decision** |
+
+## Stage 6: concern reporting and clinician inbox
+
+| Item | State |
+|---|---|
+| Guided report: fixed topic, how long, own words (typed or dictated); preview of exactly what will be sent; Send only works if nothing changed since the preview | Verified (tests + browser, EN) |
+| Recipient chosen by the server from the person's active clinical_review grants; a typed id is accepted only if on that list; no clinician chosen means the draft is kept and cannot be sent | Verified |
+| States are each backed by an event with actor and time: draft, sent, delivered, acknowledged, reviewed, closed, withdrawn. "Delivered" means it is in the clinician's in-app inbox. Opening the inbox is not an acknowledgement. The person is shown only states that have an event | Verified |
+| Clinician inbox: newest first, no urgency label, no ranking, no interpretation; Acknowledge, Mark reviewed, Close with optional notes; steps cannot be skipped | Verified (tests + browser, desktop) |
+| Revoking sharing hides the report from the clinician; the person's record is kept | Verified |
+| Withdraw before acknowledgement | Verified |
+| Page states it is not an emergency route and shows Urgent help; monitoring hours are shown only if the owner sets `NEUROTWIN_MONITORING_HOURS`, otherwise it says the time is not stated | Verified; **owner must supply real monitoring hours** |
+| Assistant ("report a concern", "something is wrong") only opens the flow; it creates and sends nothing | Verified |
+| Audit and notifications hold events and ids, never the person's words | Verified |
+| Delivery by SMS, email or push | Not built; "delivered" means in-app inbox only |
+| Real-time alerting of clinicians; clinical response times; who covers when the clinician is away | **Needs owner / clinical decision**; nothing is promised to the person |
+| Editing after preview keeps one draft; unsent drafts are listed with Continue / Discard; discarded drafts are not shown as sent | Verified (browser, AR) after a defect found on review |
+| The person sees an in-app update badge when the clinician acknowledges, reviews or closes | Verified (browser, AR) after a defect found on review |
+| Arabic phone-width run of the whole report flow | Verified (390 px, RTL, no page errors) |
+| Native review of Arabic wording | Planned |
