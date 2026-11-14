@@ -95,3 +95,19 @@ def test_old_demo_database_gets_sign_in_details(tmp_path):
                      demo_password="upgrade-demo-password")
     r = TestClient(app).post("/api/auth/login", json={"username": "omar", "password": "upgrade-demo-password"})
     assert r.status_code == 200
+
+
+def test_old_database_ends_with_every_current_table(tmp_path):
+    """Guards the list of later-migration tables in Database.migrate: an old database must end with the same tables as a new one."""
+    import sqlite3
+    from app.db import Base
+    from app.main import create_app
+    from app import models  # noqa: F401
+    path = tmp_path / "old2.db"
+    con = sqlite3.connect(path)
+    con.execute("CREATE TABLE review_items (id INTEGER PRIMARY KEY, participant_id VARCHAR(40), evidence_id INTEGER, session_id INTEGER, reason VARCHAR(60),"
+                " raised_by VARCHAR(80), status VARCHAR(10), resolved_by VARCHAR(40), resolution_note VARCHAR(500), created_at DATETIME, resolved_at DATETIME)")
+    con.commit(); con.close()
+    create_app(database_url=f"sqlite:///{path}", seed_demo=False, serve_frontend=False)
+    have = {r[0] for r in sqlite3.connect(path).execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    assert set(Base.metadata.tables) <= have
