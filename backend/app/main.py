@@ -326,6 +326,24 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
         """Whether a model provider is configured. Names and booleans only."""
         return llm.status()
 
+    @app.get("/api/system/status")
+    def system_status(user: User = Depends(current_user)):
+        """For the clinician footer. Names, states and counts only: no keys, no addresses, no provider calls are made to answer this.
+        "configured" means a key and a model id are set. It does not mean the model is reachable; nothing has been checked here, so no
+        provider is ever reported as available or live from this endpoint."""
+        if user.role != "clinician":
+            raise HTTPException(404, "Not found, or you do not have access.")
+        from . import agent_runtime as R
+        from . import agent_analysis as AA
+        st = R.status()
+        try:
+            running = AA.active_runs()
+        except Exception:
+            running = 0
+        return {"mode": st["mode"],
+                "providers": {k: {"state": "configured" if v["available"] else "not_configured", "role": v["role"]} for k, v in st["providers"].items()},
+                "checked": None, "analysis": {"state": "running" if running else "idle", "running": running}}
+
     @app.get("/api/voice/status")
     def voice_status(request: Request, _: User = Depends(current_user)):
         c = request.app.state.get_stt()
