@@ -113,3 +113,19 @@ Last updated with Stage 2. Items are labelled: **Verified** (automated test or b
 | Opening the screen is not logged, and the module has no way to call, message or notify anyone | Verified (test) |
 | Real calls to services, location sharing, automatic alerts to family or clinicians | Not built, by design |
 | Real-device check that `tel:` / `sms:` open the dialer; screen reader; Arabic native review | Planned |
+
+## Stage 8 — Activities and instruments
+
+| Item | State |
+|---|---|
+| Reaction-time activity (existing) | Unchanged; prototype, not clinically reviewed |
+| Picture memory (new): 2-picture practice then 4 saved rounds of 3, 3, 4, 4 distinct pictures, shown one at a time, tapped back in order; no timing; Stop with confirmation (saved as stopped early); leaving the tab is recorded as an interruption; helper question | Verified (tests for the quality rules; browser at 390 px, EN and AR) |
+| Picture memory is labelled a prototype: no published accuracy, norms or thresholds apply; "too few rounds" and "more correct than shown" are flagged by simple rules, never corrected | Verified (tests) |
+| WHO-5 Well-Being Index added on the owner's instruction: published English wording, six response options and 0-5 scoring unchanged; raw total (0-25) is the plain sum of five answers | Verified (tests; browser, EN and AR UI) |
+| WHO-5 never estimates a total: a skipped question is stored as skipped and the total as missing, not zero; a stored total that does not equal the sum is marked unusable | Verified (tests) |
+| WHO-5 adds no cut-off, no "low" or "changed" label, no interpretation, and shows the person no score | Verified (by design; a test checks the protocol definition holds no threshold or interpretation) |
+| WHO-5 in Arabic | **Not offered.** Items stay English (marked lang=en) with an Arabic notice. Needs the official Arabic text from the owner; no machine translation |
+| Terms of use of WHO-5 | Owner has taken responsibility; not checked by this prototype |
+| Clinician view of WHO-5 totals and change over time | Planned (Stage 9 reports); no change thresholds will be invented |
+| Assistant can open both activities ("pictures", "well-being") | Verified (test) |
+| Arabic UI wording for the new screens | Draft; needs a native clinical reader |
