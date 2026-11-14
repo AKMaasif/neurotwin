@@ -10,6 +10,7 @@ import Stage from "./Stage";
 import Detail from "./Detail";
 import Dock from "./Dock";
 import ReportView from "./Report";
+import ActivityAnalysis from "./ActivityAnalysis";
 const BrainAnalytics = lazy(() => import("../imaging/BrainAnalytics"));
 
 export type Sel = { kind: "record"; id: number } | { kind: "session"; id: number } | null;
@@ -31,6 +32,7 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
   const [dockOpen, setDockOpen] = useState(true);
   const [pane, setPane] = useState<Pane>("left");
   const [report, setReport] = useState(false);
+  const [analysis, setAnalysis] = useState(false);
   const [withDoubtful, setWithDoubtful] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [imaging, setImaging] = useState(false);
@@ -131,7 +133,7 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
           user={user} person={person} data={data} sel={sel} onSelect={select}
           onReport={() => setReport(true)} error={error} onRetry={refresh}
           withDoubtful={withDoubtful} setWithDoubtful={setWithDoubtful}
-          onImaging={() => setGate(true)}
+          onImaging={() => setGate(true)} onAnalyze={() => setAnalysis(true)}
         />
       </section>
       <aside className="ws-right" aria-label={t("wsInspector")}>
@@ -146,6 +148,7 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
           <button key={k} aria-current={pane === k} onClick={() => setPane(k)}><Icon size={20} aria-hidden="true" />{label}</button>
         ))}
       </nav>
+      {analysis && person && <ActivityAnalysis person={person} evidence={data?.evidence ?? []} onClose={() => setAnalysis(false)} />}
       {report && person && <ReportView personId={person.id} onClose={() => setReport(false)} />}
       {!people && error ? <div style={{ position: "fixed", bottom: 16, insetInlineStart: 16 }}><ErrorNote error={error} onRetry={refresh} /></div> : null}
     </div>)}
