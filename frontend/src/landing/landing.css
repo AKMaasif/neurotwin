@@ -218,3 +218,19 @@ html { scroll-behavior: smooth; }
   .lp-card { padding: 22px; }
   .lp-card-tag { margin-top: 12px; }
 }
+
+/* Portal buttons: in the first screen, clinician first and most prominent */
+.lp-portals { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 6px; }
+.lp-portal { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 48px; padding: 0 20px; border-radius: 999px; font-weight: 700; font-size: 16px; color: #fff; border: 2px solid rgba(255,255,255,.75); background: rgba(255,255,255,.08); cursor: pointer; text-decoration: none; }
+.lp-portal:hover { background: rgba(255,255,255,.18); }
+.lp-portal.main { background: #fff; color: var(--lp-ink); border-color: #fff; min-height: 54px; padding: 0 28px; font-size: 17px; }
+.lp-portal.main:hover { background: #e9f2f7; }
+.lp-portal:focus-visible { outline: 3px solid #7fd3e3; outline-offset: 3px; }
+.lp-portal:disabled { opacity: .6; cursor: progress; }
+@media (max-width: 560px) { .lp-portals { flex-direction: column; } .lp-portal, .lp-portal.main { width: 100%; } .lp-portal.main { order: -1; } }
+/* Phones: keep all three portal buttons in the first screen by dropping the in-page links (the sections are still reachable by scrolling) */
+@media (max-width: 560px) {
+  .lp-links, .lp-nav-end .lp-btn.light { display: none; }
+  .lp-portals { gap: 8px; margin-top: 14px; }
+  .lp-portal, .lp-portal.main { min-height: 46px; }
+}
