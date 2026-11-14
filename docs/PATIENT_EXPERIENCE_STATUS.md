@@ -147,3 +147,38 @@ Last updated with Stage 2. Items are labelled: **Verified** (automated test or b
 | Reading aloud and speech-rate setting | **Not built**; the settings page says so |
 | Screen reader, keyboard-only, Dynamic Type / OS font scaling, real-device check, colour-contrast measurement | Planned |
 | Arabic wording for the new strings (including plural forms of day counts, avoided by showing numbers) | Draft; needs a native clinical reader |
+
+## Stage 10 — End-to-end verification and overall status (14 Nov 2026)
+
+### What was run, and what each result means
+
+| Check | Result | What it does and does not show |
+|---|---|---|
+| Full backend test suite | 553 passed (including the Stage 10 journey test) | Software behaviour only. **Not** diagnostic accuracy, speech quality or Arabic suitability |
+| One whole-journey API test (`test_end_to_end_journey.py`): plan sent → not active until accepted → accepted → answer one routine, leave one unanswered → assistant change needs confirmation and runs once → check-in, picture memory, WHO-5 → concern previewed, sent, acknowledged → emergency config and private trusted contact → own report (no performance numbers, no WHO-5 values, no "missed") → other people see none of it → revoking sharing hides it from the clinician but keeps the person's record | Passes | Demo data, mocked providers. A workflow test, not evidence of usefulness |
+| Old-database adoption and Alembic upgrade/downgrade tests | Pass (part of the suite, migrations 0001–0007) | Checked on SQLite; Postgres only when `NEUROTWIN_TEST_DATABASE_URL` is set |
+| Browser sweep of the patient app at 390 px: English and Arabic, normal and extra-large text | **21 of 60 targets were reached by the script**; in those, the Urgent help button was present, there was no sideways scroll and no page error. The other 39 targets were not reached by the script (label mismatches, or links hidden on tabbed screens), so this sweep is **partial**. Each screen was also checked individually in its own stage (EN and AR, 390 px) | A layout and error check, not a usability study |
+| Clinician app, desktop English: caseload, concerns, care plan load | Opened without page errors | Clinician screens at phone width and in Arabic were **not** checked |
+
+### Overall status by stage
+
+| Stage | Pull request | State |
+|---|---|---|
+| 1 Inventory and plan | #62 | Document |
+| 2 Care-plan acceptance, Today | #63 | Verified (software) |
+| 3 Notifications, history, clinician review, rule-checked suggestions | #64 | Verified (software) |
+| 4 Text assistant | #65 | Verified (software); rule-based, no model |
+| 5 Voice | #67 | Verified with mocks; **live speech accuracy not evaluated** |
+| Assistant memory | #68 | Verified (software) |
+| 6 Concern reports, clinician inbox | #69 | Verified (software); no SMS/email/push; response times not promised |
+| 7 Emergency access | #70 | Verified (software, browser); `tel:`/`sms:` **not tried on a real phone**; numbers unverified unless the owner sets the flag |
+| 8 Picture memory (prototype), WHO-5 (English only) | #71 | Verified (software, browser); Arabic WHO-5 awaits the official text |
+| 9 My last days, appointment preparation, display settings | #72 | Verified (software, browser); print and reading aloud not verified/built |
+| 10 This verification | this PR | Done as described above, with the partial sweep stated |
+
+### Still not done, and who must act
+
+- **Owner:** official Arabic WHO-5 text; real monitoring hours and who covers the clinician inbox; whether SMS, email or push are wanted; conversation-memory retention and consent scope; emergency numbers verified for the deployment region; WHO-5 terms (owner accepted responsibility).
+- **Qualified people:** native Arabic clinical review of every new Arabic string; clinical review of both activities before any clinical use; no cut-offs or "meaningful change" rules exist for either activity.
+- **Testing not yet done:** real phones and tablets, screen readers, keyboard-only use, colour-contrast measurement, printing, microphone and live speech evaluation, usability with older adults and caregivers, clinician screens on small screens and in Arabic, full Playwright coverage of every screen.
+- **Merging:** pull requests #62–#72 are stacked and must be merged in order, retargeting each to `develop` as the one beneath it merges.
