@@ -141,12 +141,19 @@ def compare(records: list[Evidence], include_doubtful: bool = False) -> ChangeRe
     return result
 
 
+# A published instrument is shown as recorded. No "within usual variation" or "outside" label is computed for it: that would be
+# an interpretation nobody has validated for this implementation.
+NO_CHANGE_LABEL = {"who5"}
+
+
 def compare_all(records: list[Evidence], include_doubtful: bool = False) -> list[ChangeResult]:
     """Group by activity, version and measure; numeric observed and self-reported measures only. Records of
     different versions are never pooled."""
     groups: dict[tuple, list[Evidence]] = {}
     for e in records:
         if e.kind == "inferred" or e.unit in (None, "count") or e.protocol_code is None:
+            continue
+        if e.protocol_code in NO_CHANGE_LABEL:
             continue
         groups.setdefault((e.protocol_code, e.protocol_version, e.measure), []).append(e)
     return [compare(rows, include_doubtful) for _, rows in sorted(groups.items(), key=lambda kv: kv[0])]

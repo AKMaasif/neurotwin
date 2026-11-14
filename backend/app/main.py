@@ -519,6 +519,15 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
             raise HTTPException(404, "Not found, or you do not have access.")
         require_evidence_access(db, user, pid)
 
+    @app.get("/api/participants/{pid}/routine-replies")
+    def routine_replies(pid: str, days: int = 190, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        """What the person marked about their routines, by week, for the clinician's chart. Self-reported. A day with no reply has no
+        row and is never counted as missed; there is no adherence figure."""
+        _clinician_for(db, user, pid)
+        S.audit(db, user.id, "routine_replies.viewed", pid, None)
+        db.commit()
+        return CP.reply_weeks(db, pid, max(1, min(days, 400)))
+
     @app.get("/api/participants/{pid}/drafts")
     def list_drafts(pid: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
         _clinician_for(db, user, pid)

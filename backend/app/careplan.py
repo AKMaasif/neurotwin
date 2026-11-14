@@ -442,6 +442,33 @@ def history(db: Session, participant: User, days: int = 14) -> dict:
     return {"since": since, "until": today.isoformat(), "timezone": tz_name(db, participant), "label": "patient_reported", "plans": plans, "days": out}
 
 
+def reply_weeks(db: Session, participant_id: str, days: int) -> dict:
+    """Replies grouped by week (Monday start) for a chart, plus the rows behind it. The latest of done / not_today per routine and
+    day counts; a difficulty or a snooze is counted on its own. Nothing is inferred from silence."""
+    since = (datetime.now(timezone.utc).date() - timedelta(days=days)).isoformat()
+    rows = list(db.scalars(select(CarePlanReply).where(CarePlanReply.participant_id == participant_id, CarePlanReply.day >= since)
+                           .order_by(CarePlanReply.id)))
+    latest: dict[tuple[int, str], CarePlanReply] = {}
+    other: list[CarePlanReply] = []
+    for r in rows:
+        if r.reply in ("done", "not_today"):
+            latest[(r.item_id, r.day)] = r
+        else:
+            other.append(r)
+    counted = list(latest.values()) + other
+    weeks: dict[str, dict] = {}
+    for r in counted:
+        d = date.fromisoformat(r.day)
+        w = (d - timedelta(days=d.weekday())).isoformat()
+        cell = weeks.setdefault(w, {"week_start": w, "done": 0, "not_today": 0, "difficulty": 0, "snooze": 0})
+        cell[r.reply] += 1
+    return {"label": "patient_reported", "since": since,
+            "note": "What the person chose to mark. A day without a reply is not a missed routine.",
+            "weeks": [weeks[k] for k in sorted(weeks)],
+            "rows": [{"id": r.id, "item_id": r.item_id, "day": r.day, "reply": r.reply, "reason": r.reason}
+                     for r in sorted(counted, key=lambda x: (x.day, x.id))]}
+
+
 def clinician_view(db: Session, participant_id: str) -> dict:
     """Every plan version with its routines, the person's answers to the plan, and what they chose to mark in the last two weeks."""
     since = (datetime.now(timezone.utc).date() - timedelta(days=HISTORY_DAYS)).isoformat()

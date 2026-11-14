@@ -156,3 +156,17 @@ def test_demo_clinician_can_see_both_people_and_a_withdrawn_grant_stays_withdraw
     H.apply(db, ref_date=REF)
     db.refresh(g)
     assert g.revoked_at is not None and db.scalar(select(func.count(AccessGrant.id)).where(AccessGrant.owner_id == "demo-yousef")) == 1
+
+
+def test_clinician_routine_reply_weeks_are_counts_without_an_adherence_figure(client):
+    from test_careplan import sign_in
+    sign_in(client, "demo-fatima")
+    client.post("/api/care-plan/1/reply", json={"day": "2026-11-10", "reply": "done"})
+    sign_in(client, "demo-dr-layla")
+    r = client.get("/api/participants/demo-fatima/routine-replies")
+    assert r.status_code == 200
+    d = r.json()
+    assert d["label"] == "patient_reported" and "missed" in d["note"]
+    assert not any(k in r.text for k in ("adherence", "compliance", "percent"))
+    sign_in(client, "demo-yousef")
+    assert client.get("/api/participants/demo-fatima/routine-replies").status_code in (403, 404)
