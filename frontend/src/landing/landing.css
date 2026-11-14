@@ -59,11 +59,16 @@ html { scroll-behavior: smooth; }
 .lp-fine { margin-top: clamp(12px, 2.4vh, 24px) !important; font-size: 15px !important; font-weight: 600 !important; }
 
 .lp-video { flex: 0 1 auto; min-width: 0; position: relative; margin-inline: auto; width: calc(var(--vh) * .8); max-width: 100%; }
-.lp-video-glow { position: absolute; inset: -40px; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,.5), rgba(255,255,255,0) 68%); }
+.lp-video-glow { display: none; }
 .lp-video { --vh: clamp(320px, calc(100vh - 230px), 640px); --vh: clamp(320px, calc(100svh - 230px), 640px); }
-.lp-video-frame { position: relative; margin: 0; height: var(--vh); width: 100%; aspect-ratio: 4 / 5; border-radius: 36px; overflow: hidden; background: #000; border: 6px solid rgba(255,255,255,.88); box-shadow: 0 30px 70px rgba(11,43,68,.4); }
+.lp-video-frame { position: relative; margin: 0; height: var(--vh); width: 100%; aspect-ratio: 4 / 5; background: none; }
+/* The clip has a black studio background and no alpha channel. "screen" blending turns that black into the page
+   colour behind it, and the soft mask feathers the edges so no rectangle shows. Browsers without blend support
+   fall back to the framed look below (@supports not). */
+.lp-video-frame video { mix-blend-mode: screen; -webkit-mask-image: radial-gradient(ellipse 75% 62% at 50% 42%, #000 68%, transparent 100%); mask-image: radial-gradient(ellipse 75% 62% at 50% 42%, #000 68%, transparent 100%); }
+@supports not (mix-blend-mode: screen) { .lp-video-frame { background: #000; border-radius: 36px; overflow: hidden; border: 6px solid rgba(255,255,255,.88); } .lp-video-frame video { -webkit-mask-image: none; mask-image: none; } }
 .lp-video-frame video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 38%; }
-.lp-video-shade { position: absolute; inset-inline: 0; bottom: 0; height: 90px; background: linear-gradient(transparent, rgba(0,0,0,.55)); }
+.lp-video-shade { display: none; }
 .lp-video-btn { position: absolute; inset-inline-end: 14px; bottom: 14px; width: 48px; height: 48px; border-radius: 50%; border: 0; background: rgba(255,255,255,.94); color: var(--lp-ink); display: grid; place-items: center; cursor: pointer; }
 .lp-video-btn:hover { background: #fff; }
 .lp-chip { position: absolute; display: inline-flex; align-items: center; gap: 10px; background: #fff; color: var(--lp-ink); border-radius: 999px; padding: 11px 20px 11px 16px; font-weight: 700; font-size: 15px; box-shadow: 0 12px 30px rgba(11,43,68,.22); animation: lp-bob 6s ease-in-out infinite; white-space: nowrap; }
