@@ -150,7 +150,8 @@ def test_audit_trail_records_access_without_values(client, login):
     client.get("/api/participants/demo-fatima/evidence", headers=dr)
     trail = client.get("/api/participants/demo-fatima/audit", headers=dr).json()
     assert any(a["action"] == "evidence.viewed" and a["actor_id"] == "demo-dr-layla" for a in trail)
-    assert "612" not in str(trail)
+    # Check the descriptive fields only: the timestamps contain digits, and "612" can turn up in their microseconds by chance.
+    assert "612" not in str([(a["action"], a.get("target")) for a in trail])
 
 
 # ---- Inferred records (service-level rule; nothing infers yet) -------------------------------------------------
