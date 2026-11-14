@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Printer, X } from "lucide-react";
 import { api, Report } from "../api";
 import { useT } from "../i18n";
-import { ErrorNote, Mark } from "../ui";
+import { Brand, ErrorNote } from "../ui";
 import { changeHeadline } from "./Change";
 
 /** A printable, factual summary built by the server from stored records. Counts, ranges and decisions only. */
@@ -36,7 +36,7 @@ export default function ReportView({ personId, onClose }: { personId: string; on
                 <p className="eyebrow">{t("appName")} · {t("prototype")}</p>
                 <h1 id="rep-h">{t("repTitle")}</h1>
               </div>
-              <Mark size={36} />
+              <Brand />
             </div>
             <table>
               <tbody>
