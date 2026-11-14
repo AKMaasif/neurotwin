@@ -14,3 +14,4 @@ backend/imaging_data/
 *.nii.gz
 *.img
 *.hdr
+activity_runs/
