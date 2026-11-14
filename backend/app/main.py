@@ -17,6 +17,9 @@ from . import config
 from . import careplan as CP
 from . import extraction as EX
 from . import assistant as AS
+from . import concerns as CN
+from . import emergency as EM
+from . import patient_report as PR
 from . import drafts as D
 from . import llm
 from . import messages as M
@@ -67,6 +70,22 @@ class AssistantIn(BaseModel):
 
 class AssistantConfirmIn(BaseModel):
     confirmation_id: str = Field(min_length=8, max_length=40)
+
+
+class ConcernIn(BaseModel):
+    topic: str = Field(max_length=24)
+    since: str = Field(max_length=14)
+    text: str = Field(max_length=700)
+
+
+class ConcernSendIn(BaseModel):
+    rev: int
+    recipient_id: str | None = Field(default=None, max_length=40)
+
+
+class TrustedIn(BaseModel):
+    name: str = Field(max_length=80)
+    phone: str = Field(max_length=24)
 
 
 class MemoryIn(BaseModel):
@@ -654,6 +673,66 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
         if user.role != "participant":
             raise HTTPException(404, "Not found, or you do not have access.")
         return {"memory": AS.set_memory(db, user, body.enabled)}
+
+    # Concern reports ------------------------------------------------------------------------------------------
+    @app.get("/api/concerns/info")
+    def concern_info(user: User = Depends(current_user), db: Session = Depends(get_db)):
+        if user.role != "participant":
+            raise HTTPException(404, "Not found, or you do not have access.")
+        return {"monitoring_hours": CN.monitoring_hours(), "recipients": CN.recipients(db, user)}
+
+    @app.get("/api/concerns")
+    def my_concerns(user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return CN.mine(db, user)
+
+    @app.post("/api/concerns")
+    def create_concern(body: ConcernIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return CN.out(db, CN.create(db, user, body.topic, body.since, body.text))
+
+    @app.put("/api/concerns/{rid}")
+    def edit_concern(rid: int, body: ConcernIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return CN.out(db, CN.edit(db, user, rid, body.topic, body.since, body.text))
+
+    @app.post("/api/concerns/{rid}/send")
+    def send_concern(rid: int, body: ConcernSendIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return CN.out(db, CN.send(db, user, rid, body.rev, body.recipient_id))
+
+    @app.post("/api/concerns/{rid}/withdraw")
+    def withdraw_concern(rid: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return CN.out(db, CN.withdraw(db, user, rid))
+
+    @app.get("/api/concerns/inbox")
+    def concern_inbox(user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return CN.inbox(db, user)
+
+    @app.post("/api/concerns/{rid}/acknowledge")
+    def acknowledge_concern(rid: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return CN.out(db, CN.acknowledge(db, user, rid), True)
+
+    @app.post("/api/concerns/{rid}/review")
+    def review_concern(rid: int, body: CarePlanStopIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return CN.out(db, CN.review(db, user, rid, body.note), True)
+
+    @app.post("/api/concerns/{rid}/close")
+    def close_concern(rid: int, body: CarePlanStopIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return CN.out(db, CN.close(db, user, rid, body.note), True)
+
+    @app.get("/api/emergency/config")
+    def emergency_config(user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return EM.config(db, user)
+
+    @app.put("/api/emergency/trusted")
+    def emergency_trusted(body: TrustedIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return EM.set_trusted(db, user, body.name, body.phone)
+
+    @app.delete("/api/emergency/trusted")
+    def emergency_trusted_clear(user: User = Depends(current_user), db: Session = Depends(get_db)):
+        EM.clear_trusted(db, user)
+        return {"ok": True}
+
+    @app.get("/api/me/report")
+    def my_report(days: int = 11, end: str | None = None, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return PR.build(db, user, days, end)
 
     @app.get("/api/me/preferences")
     def my_preferences(user: User = Depends(current_user), db: Session = Depends(get_db)):

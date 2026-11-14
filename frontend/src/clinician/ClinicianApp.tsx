@@ -25,7 +25,7 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
   const [pid, setPid] = useState<string | null>(null);
   const [data, setData] = useState<Data | null>(null);
   const [sel, setSel] = useState<Sel>(null);
-  const [leftTab, setLeftTab] = useState<"people" | "check">("people");
+  const [leftTab, setLeftTab] = useState<"people" | "check" | "concerns">("people");
   const [dockOpen, setDockOpen] = useState(true);
   const [pane, setPane] = useState<Pane>("left");
   const [report, setReport] = useState(false);

@@ -252,11 +252,44 @@ class AssistantMessage(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
 
 
+CONCERN_STATES = ("draft", "sent", "delivered", "acknowledged", "reviewed", "closed", "withdrawn")
+CONCERN_TOPICS = ("memory_or_thinking", "mood_or_worry", "sleep", "body_or_pain", "medicine_question", "something_else")
+CONCERN_SINCE = ("today", "few_days", "week_or_more", "not_sure")
+
+
+class ConcernReport(Base):
+    """Something the person wants their clinician to know. The words are the person's own and are labelled patient-reported. Nothing here is
+    triaged, scored or interpreted. The recipient is chosen by the server from the person's active clinical_review grants."""
+    __tablename__ = "concern_reports"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    participant_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    recipient_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(14), default="draft")
+    topic: Mapped[str] = mapped_column(String(24))
+    since: Mapped[str] = mapped_column(String(14))
+    text: Mapped[str] = mapped_column(String(600))
+    rev: Mapped[int] = mapped_column(Integer, default=1)        # bumped by every edit, so a Send only sends what the person previewed
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class ConcernEvent(Base):
+    """What happened to a report, in order, with who did it. The person only ever sees a state that has an event behind it."""
+    __tablename__ = "concern_events"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    report_id: Mapped[int] = mapped_column(ForeignKey("concern_reports.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(14))               # created | sent | delivered | acknowledged | reviewed | closed | withdrawn
+    actor_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    note: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class PatientPreference(Base):
     """Settings that belong to the person. The time zone decides what "today" means for their routines."""
     __tablename__ = "patient_preferences"
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), primary_key=True)
     timezone: Mapped[str] = mapped_column(String(64), default="Asia/Dubai")
+    trusted_name: Mapped[str | None] = mapped_column(String(80), nullable=True)    # someone the person chose to ring in an emergency
+    trusted_phone: Mapped[str | None] = mapped_column(String(24), nullable=True)   # used only to open the phone's own dialer; never contacted by us
     assistant_memory: Mapped[bool] = mapped_column(Boolean, default=True)   # keep the assistant conversation so follow-ups make sense
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
