@@ -13,7 +13,7 @@ export default function BrainAnalytics(_props: { onClose: () => void }) {
   const [progress, setProgress] = useState("Opening research imaging…"), [attempt, setAttempt] = useState(0);
   const [settings, setSettings] = useState<Settings>({ ...initialSettings });
   const [cursor, setCursor] = useState<Cursor>([128, 128, 128]), [selection, setSelection] = useState<Selection>(null);
-  const [query, setQuery] = useState(""), [tab, setTab] = useState("native"), [expanded, setExpanded] = useState(false);
+  const [query, setQuery] = useState(""), [tab, setTab] = useState("viewer"), [expanded, setExpanded] = useState(false);
   const [inside, setInside] = useState(false);
   const scene = useRef<SceneActions>(null);
   const set = <K extends keyof Settings>(key: K, value: Settings[K]) => setSettings(s => ({ ...s, [key]: value }));
@@ -48,10 +48,10 @@ export default function BrainAnalytics(_props: { onClose: () => void }) {
     <nav className="brain-tabs" aria-label="Brain analytics sections">
       {[["viewer", "Images & 3D"], ["native", "Import & processing"], ["compare", "Compare visits"], ["agent", "Agent Analysis"], ["measurements", "Measurements"], ["provenance", "Source & quality"]].map(([id, label]) =>
         <button key={id} aria-current={tab === id ? "page" : undefined} onClick={() => setTab(id)}>{label}</button>)}
-      <span>Observed anatomy · One visit · No prediction</span>
+      <span>{tab === "compare" || tab === "agent" ? "Two visits compared · No prediction" : tab === "native" ? "Import and processing · No prediction" : "Observed anatomy · One visit · No prediction"}</span>
     </nav>
     {tab === "native" ? <NativeWorkflow /> : tab === "compare" ? <CompareVisits /> : tab === "agent" ? <AgentAnalysis /> : error ? <div className="brain-loading" role="alert"><Brain size={40} /><h1>Research case unavailable</h1><p>{error}</p>
-      <p>The local case must be prepared and your account enabled for research imaging.</p><button onClick={() => setAttempt(v => v + 1)}>Try again</button></div>
+      <p>The 3D case is not available. It must be prepared on this computer and your account enabled for research imaging.</p><div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}><button onClick={() => setAttempt(v => v + 1)}>Try again</button><button onClick={() => setTab("native")}>Import &amp; processing</button><button onClick={() => setTab("compare")}>Compare visits</button></div></div>
       : !data ? <div className="brain-loading" role="status"><Brain size={40} /><h1>Opening your brain study</h1><p>{progress}</p><progress aria-label="Loading imaging artifacts" /></div>
       : <>
         <div className="brain-casebar"><span className="brain-case-icon"><Brain size={21} /></span><div><strong>{data.manifest.subject}</strong><small>OASIS-1 · Structural T1 MRI · {data.manifest.shape.join(" × ")} voxels</small></div>
