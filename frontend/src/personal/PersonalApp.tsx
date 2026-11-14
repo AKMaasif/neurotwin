@@ -10,11 +10,12 @@ import Sharing from "./Sharing";
 import Records from "./Records";
 import Reminders from "./Reminders";
 import Assistant from "./Assistant";
+import ConcernScreen from "./Concern";
 import Messages from "./Messages";
 import Account from "../Account";
 import "./patient.css";
 
-export type Screen = "home" | "consent" | "checkin" | "reaction" | "sharing" | "reminders" | "messages" | "records" | "account" | "urgent" | "about" | "assistant";
+export type Screen = "home" | "consent" | "checkin" | "reaction" | "sharing" | "reminders" | "messages" | "records" | "account" | "urgent" | "about" | "assistant" | "concern";
 
 const TAB_SCREENS: Screen[] = ["home", "reminders", "messages", "records"];
 
@@ -56,6 +57,7 @@ export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut
   else if (screen === "messages") body = <Messages onBack={home} />;
   else if (screen === "reminders") body = <Reminders onBack={home} />;
   else if (screen === "assistant") body = <Assistant go={go} onBack={home} />;
+  else if (screen === "concern") body = <ConcernScreen go={go} onBack={home} />;
   else if (screen === "sharing") body = <Sharing onBack={home} />;
   else if (screen === "records") body = <Records user={user} onBack={home} />;
   else if (screen === "account") body = (
@@ -183,6 +185,11 @@ function Home({ user, sessions, participating, unread, waiting, go }: {
         <span className="ico v"><BellRing size={32} aria-hidden="true" /></span>
         <span className="t"><b>{t("remTitle")}</b><span>{waiting > 0 ? t("remPending") : t("remMeta")}</span></span>
         {waiting > 0 && <span className="pt-badge" aria-hidden="true">{t.num(waiting)}</span>}
+        <ChevronRight className="go" size={26} aria-hidden="true" />
+      </button>
+      <button className="pt-tile" onClick={() => go("concern")}>
+        <span className="ico v"><MessageCircle size={32} aria-hidden="true" /></span>
+        <span className="t"><b>{t("cnTitle")}</b><span>{t("cnMeta")}</span></span>
         <ChevronRight className="go" size={26} aria-hidden="true" />
       </button>
       <button className="pt-tile" onClick={() => go("assistant")}>

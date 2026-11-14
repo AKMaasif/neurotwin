@@ -55,6 +55,13 @@ export type AssistantReply = {
   via?: "context" | "answer" | "yes" | "words" | "order" | "other" | "only" | null; already?: "done" | "not_today" | null; pending?: boolean; expires_minutes?: number; ok?: boolean;
 };
 export type AssistantHistory = { memory: boolean; keeps_days: number; messages: { id: number; who: "you" | "bot"; text: string | null; payload: AssistantReply | null; at: string }[] };
+export type ConcernTopic = "memory_or_thinking" | "mood_or_worry" | "sleep" | "body_or_pain" | "medicine_question" | "something_else";
+export type ConcernSince = "today" | "few_days" | "week_or_more" | "not_sure";
+export type Concern = {
+  id: number; status: "draft" | "sent" | "delivered" | "acknowledged" | "reviewed" | "closed" | "withdrawn"; topic: ConcernTopic; since: ConcernSince;
+  text: string; rev: number; created_at: string; recipient: string | null; label: "patient_reported";
+  events: { kind: string; by: string | null; at: string; note: string | null }[]; participant_id?: string; participant?: string;
+};
 export type CarePlanClinician = { plans: CarePlanView[]; draft_id: number | null };
 export type AwaitingPlan = { id: number; version: number; sent_at: string | null; sent_by: string | null; written_by: string | null; items: CareItem[]; questions_asked: number };
 export type DifficultyReason = "too_tiring" | "unclear" | "inaccessible" | "need_help";
@@ -288,6 +295,16 @@ export const api = {
   assistantMemory: (enabled: boolean) => put<{ memory: boolean }>("/api/assistant/memory", { enabled }),
   assistantCancel: (confirmation_id: string) => post<{ ok: boolean }>("/api/assistant/cancel", { confirmation_id }),
   assistantConfirm: (confirmation_id: string) => post<{ ok: boolean; duplicate: boolean; tool: string }>("/api/assistant/confirm", { confirmation_id }),
+  concernInfo: () => get<{ monitoring_hours: string | null; recipients: { id: string; name: string }[] }>("/api/concerns/info"),
+  concerns: () => get<Concern[]>("/api/concerns"),
+  createConcern: (b: { topic: string; since: string; text: string }) => post<Concern>("/api/concerns", b),
+  editConcern: (id: number, b: { topic: string; since: string; text: string }) => put<Concern>(`/api/concerns/${id}`, b),
+  sendConcern: (id: number, rev: number, recipient_id?: string) => post<Concern>(`/api/concerns/${id}/send`, { rev, recipient_id: recipient_id ?? null }),
+  withdrawConcern: (id: number) => post<Concern>(`/api/concerns/${id}/withdraw`),
+  concernInbox: () => get<Concern[]>("/api/concerns/inbox"),
+  acknowledgeConcern: (id: number) => post<Concern>(`/api/concerns/${id}/acknowledge`),
+  reviewConcern: (id: number, note: string) => post<Concern>(`/api/concerns/${id}/review`, { note: note || null }),
+  closeConcern: (id: number, note: string) => post<Concern>(`/api/concerns/${id}/close`, { note: note || null }),
   sendCarePlan: (id: number) => post<unknown>(`/api/care-plans/${id}/send`),
   recallCarePlan: (id: number) => post<unknown>(`/api/care-plans/${id}/recall`),
   plansAwaiting: () => get<AwaitingPlan[]>("/api/care-plan/awaiting"),
