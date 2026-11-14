@@ -211,7 +211,17 @@ export type Activity = {
 
 export type EmergencyConfig = { region: string; numbers: { id: string; number: string }[]; verified: boolean; trusted: { name: string; phone: string } | null };
 
+export type PatientReport = {
+  label: string; timezone: string; period: { from: string; to: string; days: number };
+  days: { date: string; sessions: { id: number; protocol_code: string; status: string; assisted: boolean; interruptions: number; unwell_today: boolean | null; shows_values: boolean;
+    values: { measure: string; kind: string; unit: string | null; value_num: number | null; value_text: string | null; missing_reason: string | null; quality: string }[] }[] }[];
+  routines: { item_id: number; title: string | null; text_en: string; text_ar: string | null; marked_done_days: number; not_today_days: number; difficulty_days: number; answered_days: number }[];
+  routine_plan_accepted: boolean; missing: { days_without_activity: string[]; skipped_answers: number; note: string };
+  concerns_sent: { id: number; topic: string; status: string; sent_on: string }[];
+};
+
 export const api = {
+  myReport: (days = 11) => get<PatientReport>(`/api/me/report?days=${days}`),
   agentTools: () => get<{ alignment: { available: boolean; needs: string | null } }>("/api/imaging/agent/tools"),
   agentWorkflow: () => get<Activity>("/api/imaging/agent/workflow"),
   agentActivity: (id: string, after: number) => get<Activity>(`/api/imaging/agent/runs/${id}/activity?after=${after}`),
