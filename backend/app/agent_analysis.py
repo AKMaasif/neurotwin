@@ -497,6 +497,23 @@ def run_all(run_id: str) -> dict:
     return analyze(run_id)
 
 
+def active_runs(max_age_seconds: int = 900) -> int:
+    """How many runs are executing now. A run file that says "running" but has not been touched for a while belongs to a process that
+    stopped (a restart, a crash), so it is not counted: the footer must not claim work that is not happening."""
+    import time
+    root = runs_root()
+    n = 0
+    for d in root.glob("*/run.json") if root.is_dir() else []:
+        try:
+            if time.time() - d.stat().st_mtime > max_age_seconds:
+                continue
+            if json.loads(d.read_text()).get("state") in ("queued", "running", "aligned"):
+                n += 1
+        except Exception:
+            continue
+    return n
+
+
 def list_runs() -> list[dict]:
     """Finished runs on disk, newest first, one entry per pair."""
     root = runs_root()
