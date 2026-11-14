@@ -29,6 +29,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* ---- Shared pieces ---------------------------------------------------------------------------------------- */
 .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: -0.01em; color: var(--navy); }
 .brand svg { flex: none; }
+.brand-word { font-family: var(--latin); font-weight: 700; letter-spacing: -0.01em; }
+.brand-sm .brand-word { font-size: 15px; } .brand-md .brand-word { font-size: 18px; } .brand-lg .brand-word { font-size: 26px; }
+.brand-light { color: #fff; } .brand-light .brand-page { color: rgba(255,255,255,.75); }
+.brand-page { font-weight: 500; font-size: .85em; color: var(--muted); display: inline-flex; gap: 6px; }
 .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--cyan); margin: 0; }
 .notice { border: 1px solid var(--line); border-inline-start: 3px solid var(--navy); background: var(--surface); border-radius: var(--radius); padding: 12px 14px; color: var(--muted); }
 .notice.warn { border-inline-start-color: var(--warn); background: var(--warn-soft); color: var(--ink); }
@@ -339,3 +343,17 @@ textarea.note { width: 100%; min-height: 64px; border: 1px solid var(--line); bo
 .field > span { font-size: 13px; color: var(--muted); }
 .field select, input.note { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; background: var(--paper, #fff); }
 .field select { min-height: 40px; }
+
+/* Clinician shell: one header, one narrow footer */
+.shell { height: 100vh; height: 100dvh; display: flex; flex-direction: column; background: var(--bg); }
+.shell-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 16px; background: var(--surface); border-bottom: 1px solid var(--line); min-height: 48px; flex: none; }
+.shell-end { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.shell-end .btn { min-height: 34px; padding: 0 12px; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; }
+.shell-who { font-size: 13px; color: var(--muted); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shell-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: auto; }
+.shell-body > .ws { height: auto; flex: 1; min-height: 0; }
+.shell-body > .brain-workspace { min-height: 0; flex: 1; }
+.shell-foot { flex: none; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 4px 16px; font-size: 12.5px; color: var(--muted); background: var(--surface); border-top: 1px solid var(--line); min-height: 28px; }
+.shell-foot b { color: var(--ink); font-weight: 600; }
+.shell-foot .link { margin-inline-start: auto; font-size: 12.5px; }
+@media (max-width: 1100px) { .shell-body > .ws { height: auto; } .shell-who { display: none; } .shell-foot .muted { display: none; } }

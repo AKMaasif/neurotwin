@@ -4,16 +4,24 @@ import { useT } from "./i18n";
 export function Mark({ size = 28 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-      <rect width="32" height="32" rx="8" fill="var(--navy)" />
+      <rect width="32" height="32" rx="8" fill="#052640" />
       <circle cx="13" cy="16" r="6.5" fill="none" stroke="#fff" strokeWidth="2" />
       <circle cx="19" cy="16" r="6.5" fill="none" stroke="#7fd3e3" strokeWidth="2" />
     </svg>
   );
 }
 
-export function Brand() {
-  const { t } = useT();
-  return <span className="brand"><Mark />{t("appName")}</span>;
+/** The one NeuroTwin brand: the two-ring mark and the wordmark. The wordmark is the product name and is not translated.
+ *  Used everywhere (landing, sign-in, loading, every portal, Brain Analytics). `size` picks a variant, `tone="light"` is for dark backgrounds. */
+export function Brand({ size = "md", tone = "dark", page }: { size?: "sm" | "md" | "lg"; tone?: "dark" | "light"; page?: string }) {
+  const px = size === "sm" ? 22 : size === "lg" ? 40 : 30;
+  return (
+    <span className={`brand brand-${size} brand-${tone}`}>
+      <Mark size={px} />
+      <span className="brand-word" lang="en" dir="ltr">NeuroTwin</span>
+      {page && <span className="brand-page"><span aria-hidden="true">/</span> {page}</span>}
+    </span>
+  );
 }
 
 const GLYPH: Record<string, string> = { usable: "✓", doubtful: "?", unusable: "✕", ok: "✓", warn: "!", fail: "✕", quiet: "–" };
