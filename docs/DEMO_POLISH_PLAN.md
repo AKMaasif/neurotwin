@@ -25,7 +25,7 @@ Source: the owner's brief of 14 Nov 2026 (17 sections, 9 delivery stages). Statu
 | 3 | Real loading stages, Brain Analytics access notice and default tab | **Done** (see below) |
 | 4 | Language persistence, RTL for Brain Analytics | Planned |
 | 5 | Six-month reproducible synthetic history | Planned |
-| 6 | Clinician charts and evidence summaries | Planned |
+| 6 | Clinician charts and evidence summaries | **Done** (see below) |
 | 7 | Activity-analysis agents, bounded model use | Planned (needs owner's verified model list and a decision on spend limits) |
 | 8 | Compact/expanded workflow panel | Planned |
 | 9 | Integrated verification and documentation | Planned |
@@ -85,3 +85,16 @@ Module `backend/app/synthetic_history.py`; tests `backend/tests/test_synthetic_h
 - **Switch.** Off by default (tests unchanged). `NEUROTWIN_SEED_HISTORY=1` applies it at startup; `start-imaging.ps1` now sets it. Also `python -m app.synthetic_history --seed N --ref-date YYYY-MM-DD --tz Asia/Dubai`.
 
 Observed: the existing timeline and change panel load the history but are not yet designed for six months (crowded axis labels, session markers overlap, the plot is wider than its pane). That is Stage 6.
+
+## Stage 6 — clinician charts (six months)
+
+- **Range filter** (6 weeks, 3 months, 6 months, all records) with the shown dates and the note "Each chart has its own scale. Nothing is combined into one score." Baseline/recent bands and change estimates are drawn only for "All records", because they are computed over the whole record.
+- **Axis** switches from weekly to month ticks for long spans; session markers shrink as days get crowded (A/U flags show only when there is room).
+- **Separate charts, each with its own scale:** reaction time, sleep hours, sleep quality, picture-memory rounds right (0–4), WHO-5 raw total (0–25, published English wording; no cut-off, no band, no change label), and routine replies per week as counts by what the person marked. The routine chart states that a day with no reply is not a missed routine and shows no percentage. There is no composite brain-health score anywhere.
+- **Tooltips** on hover and keyboard focus: value, date and time, quality with reasons, record id, session id, and for sessions whether it was helped and whether the person reported being unwell. Each record opens the existing detail pane (source record, producer, workings).
+- **Table alternative** under every chart (date, value, quality, record, session) plus a weekly table for routine replies; the existing Table view still lists every record.
+- **Backend:** `GET /api/participants/{id}/routine-replies` (clinician with a grant only; self-reported; audited; no adherence or "missed" figure).
+- **Rule enforced:** the change engine no longer produces any label for WHO-5 (`NO_CHANGE_LABEL`); tested.
+- Phone: the chart scrolls sideways inside its card instead of being cut off.
+
+Checked in the browser (English and Arabic, desktop and 390 px): hover details, range filter, new lanes, no overflow, no page errors. Not checked: screen-reader reading of the SVG points, real touch devices. The chart plot is left-to-right in Arabic (time runs left to right) with Arabic labels right-aligned.
