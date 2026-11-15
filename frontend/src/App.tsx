@@ -5,6 +5,7 @@ import SignIn from "./SignIn";
 import PersonalApp from "./personal/PersonalApp";
 import FamilyApp from "./family/FamilyApp";
 import ClinicianApp from "./clinician/ClinicianApp";
+import * as nav from "./nav";
 
 const LANG_KEY = "neurotwin.lang";
 // The language a person picked in this browser (landing page, sign-in or header). null = never chosen here.
@@ -39,6 +40,22 @@ export default function App() {
     const onSignedOut = () => setUser(null);
     window.addEventListener(SIGNED_OUT, onSignedOut);
     return () => window.removeEventListener(SIGNED_OUT, onSignedOut);
+  }, []);
+
+  // Browser history follows the sign-in state: signed in = Back stays on the dashboard; signed out = nothing of it remains.
+  useEffect(() => {
+    if (!checked) return;
+    if (user) nav.enter(); else nav.exit();
+  }, [user, checked]);
+
+  // A page restored from the browser's back/forward cache can show a dashboard that was visible before sign-out. Ask the server again.
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => {
+      if (!e.persisted) return;
+      api.session().then((s) => { setCsrf(s.csrf); setUser(s.user); }).catch(() => { setCsrf(null); setUser(null); });
+    };
+    window.addEventListener("pageshow", onShow);
+    return () => window.removeEventListener("pageshow", onShow);
   }, []);
 
   const setLang = (l: Lang) => {

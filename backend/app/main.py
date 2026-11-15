@@ -290,6 +290,15 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
     app.add_middleware(SafeRequestLog)
     app.add_middleware(ImagingRequestGuard)
 
+    @app.middleware("http")
+    async def _no_store(request: Request, call_next):
+        """Nothing behind a sign-in (API answers, the app shell) may be kept by the browser or its back/forward cache,
+        so Back after sign-out cannot show a dashboard. Hashed /assets files are not personal and stay cacheable."""
+        resp = await call_next(request)
+        if not request.url.path.startswith("/assets/") and "cache-control" not in resp.headers:
+            resp.headers["Cache-Control"] = "no-store"
+        return resp
+
     @app.exception_handler(S.Refused)
     async def _refused(_: Request, exc: S.Refused):
         return JSONResponse({"detail": exc.message}, status_code=exc.status)
