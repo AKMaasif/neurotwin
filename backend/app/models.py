@@ -27,7 +27,7 @@ PRODUCER_TYPES = ("person", "device", "rule", "model")
 QUALITY_LEVELS = ("usable", "doubtful", "unusable")
 EVIDENCE_STATUS = ("current", "amended", "withdrawn")
 SESSION_STATUS = ("in_progress", "completed", "interrupted", "abandoned")
-CONSENT_SCOPES = ("participation", "voice_recording", "family_imaging_summary")
+CONSENT_SCOPES = ("participation", "voice_recording", "family_imaging_summary", "assistant_model")
 GRANT_PURPOSES = ("participation_updates", "clinical_review")
 
 

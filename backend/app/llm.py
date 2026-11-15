@@ -98,6 +98,23 @@ class GeminiClient:
         except (httpx.HTTPError, KeyError, IndexError, ValueError) as e:
             _raise("Gemini", e)
 
+    def speak(self, text: str, voice: str | None, language: str) -> bytes:
+        """Text to speech through a Gemini speech model; returns a mono 24 kHz 16-bit WAV. The request and response shape follow Google's
+        documented audio-output interface but have NOT been checked against a live call from this project: `GEMINI_TTS_MODEL` must name a
+        model that supports audio output, and a failure here makes the app fall back to the browser's own voice, disclosed to the person."""
+        style = "Say this in clear, warm, calm Arabic" if language == "ar" else "Say this in a clear, warm, calm, friendly and moderately energetic way"
+        speech = {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice}}} if voice else {}
+        body = {"contents": [{"parts": [{"text": f"{style}: {text}"}]}],
+                "generationConfig": {"responseModalities": ["AUDIO"], **({"speechConfig": speech} if speech else {})}}
+        try:
+            r = self._http.post(f"/models/{self.model}:generateContent", json=body)
+            r.raise_for_status()
+            part = r.json()["candidates"][0]["content"]["parts"][0]
+            pcm = base64.b64decode((part.get("inlineData") or part["inline_data"])["data"])
+        except (httpx.HTTPError, KeyError, IndexError, ValueError, TypeError) as e:
+            _raise("Gemini", e)
+        return _wav(pcm, 24000)
+
 
 class MetaClient:
     provider = "meta"
@@ -149,6 +166,20 @@ def get_client(env: dict | None = None):
     chosen = (env.get("NEUROTWIN_AI_PROVIDER") or "").strip().lower()
     client = clients(env).get(chosen)
     return client if client is not None and client.model else None
+
+
+def _wav(pcm: bytes, rate: int) -> bytes:
+    import struct
+    return (b"RIFF" + struct.pack("<I", 36 + len(pcm)) + b"WAVEfmt " + struct.pack("<IHHIIHH", 16, 1, 1, rate, rate * 2, 2, 16)
+            + b"data" + struct.pack("<I", len(pcm)) + pcm)
+
+
+def get_tts_client(env: dict | None = None):
+    """Text to speech through Gemini, only when GEMINI_TTS_MODEL names a model. None otherwise (the browser's voice is used instead)."""
+    env = os.environ if env is None else env
+    if not env.get("GEMINI_API_KEY") or not env.get("GEMINI_TTS_MODEL"):
+        return None
+    return GeminiClient(env["GEMINI_API_KEY"], env["GEMINI_TTS_MODEL"])
 
 
 def get_stt_client(env: dict | None = None):
