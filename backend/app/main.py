@@ -1,12 +1,13 @@
 """HTTP API. Thin: it checks who is asking, hands the work to services.py and shapes the reply."""
 from __future__ import annotations
 
+import os
 import logging
 from datetime import datetime
 from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -24,6 +25,7 @@ from . import drafts as D
 from . import llm
 from . import messages as M
 from . import voice as V
+from . import companion as COMP
 from . import protocols as P
 from . import quality as Q
 from . import services as S
@@ -119,6 +121,11 @@ class CarePlanReplyIn(BaseModel):
     snooze_minutes: int | None = None
     reason: str | None = Field(default=None, max_length=30)
     note: str | None = Field(default=None, max_length=200)
+
+
+class SpeakIn(BaseModel):
+    text: str = Field(max_length=COMP.MAX_SPEAK_CHARS)
+    language: Lang = "en"
 
 
 class ConsentIn(BaseModel):
@@ -288,6 +295,7 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
     app.state.demo = bool(config.SEED_DEMO if seed_demo is None else seed_demo)
     app.state.get_llm = llm.get_client
     app.state.get_stt = llm.get_stt_client
+    app.state.get_tts = llm.get_tts_client
     app.add_middleware(SafeRequestLog)
     app.add_middleware(ImagingRequestGuard)
 
@@ -380,6 +388,17 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
             raise HTTPException(413, "That recording is too long. Keep it under a minute.")
         audio = await request.body()
         return V.transcribe(db, user, audio, request.headers.get("content-type", ""), language, request.app.state.get_stt())
+
+    @app.get("/api/companion/config")
+    def companion_config(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return COMP.config(db, user, request.app.state.get_stt(), request.app.state.get_tts(), llm.get_client() is not None)
+
+    @app.post("/api/voice/speak")
+    def voice_speak(body: SpeakIn, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        if not COMP.enabled():
+            raise HTTPException(404, "Not found.")
+        audio = COMP.speak(db, user, body.text, body.language, request.app.state.get_tts(), os.environ.get("GEMINI_TTS_VOICE") or None)
+        return Response(content=audio, media_type="audio/wav", headers={"Cache-Control": "no-store"})
 
     @app.get("/api/protocols")
     def list_protocols(_: User = Depends(current_user)):
