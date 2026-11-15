@@ -158,7 +158,7 @@ def parse(text: str, rows: list[tuple[CarePlanItem, dict]], ctx: dict | None = N
     if not t:
         return {"tool": None, "reason": "empty"}
     # a greeting or filler in front of a real request ("Hello, how is my day today?", "So, what ...") is not the request
-    lead = re.match(r"^\s*(?:(?:hi|hello|hey|so|ok|okay|well|please|um|good (?:morning|afternoon|evening)|salam|مرحبا|أهلا|اهلا)\b[\s,.!؟]*)+(?P<rest>.+)$", t, re.I | re.S)
+    lead = re.match(r"^\s*(?:(?:hi|hello|hey|so|ok|okay|well|please|um|good (?:morning|afternoon|evening)|salam|مرحبا|أهلا|اهلا)(?=[\s,.!؟])[\s,.!؟]*)+(?P<rest>.+)$", t, re.I | re.S)
     if lead and len(lead.group("rest").split()) >= 2 and not _EMERGENCY.search(t[: len(t) - len(lead.group("rest"))]):
         t = lead.group("rest").strip()
     if _EMERGENCY.search(t):

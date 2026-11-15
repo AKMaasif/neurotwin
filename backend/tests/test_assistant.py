@@ -151,3 +151,12 @@ def test_natural_ways_to_ask_for_todays_list_read_it_out(client, text):
 def test_a_greeting_in_front_of_a_help_word_still_goes_to_the_urgent_screen(client):
     h = two_tasks(client)
     assert say(client, h, "hello I need help")["tool"] == "emergency"
+
+
+@pytest.mark.parametrize("text,tool", [("well-being questions", "start_activity"), ("so-called pictures game", None), ("hello, what do I have today", "read_today"), ("ok what is on my list", "read_today")])
+def test_filler_is_removed_only_as_a_separate_word(client, text, tool):
+    h = two_tasks(client)
+    r = say(client, h, text)
+    assert (r.get("tool") == tool) if tool else True
+    if text.startswith("well-being"):
+        assert r["navigate"] == "wellbeing"
