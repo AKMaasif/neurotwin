@@ -193,7 +193,7 @@ export default function ActivityAnalysis({ person, evidence, onClose, onReport }
                     <p dir="ltr" lang="en">{c.why}</p><Cites cites={c.cites} />
                     <button className="btn" aria-expanded={chartOpen === `${i}`} onClick={() => setChartOpen(chartOpen === `${i}` ? null : `${i}`)}>{t("aaOpenChart")}</button>
                     <Decide kind="chart" i={i} />
-                    {chartOpen === `${i}` && <MiniChart measure={c.measure} range={c.range} evidence={evidence} />}
+                    {chartOpen === `${i}` && <MiniChart measure={c.measure} range={c.range} evidence={evidence} runId={run.run_id} synthetic={!!person.dataset} cites={c.cites} person={person.display_name} />}
                   </div>))}
                 {run.charts.dropped.length > 0 && <p className="hint">{t("aaDropped", { n: run.charts.dropped.length })}</p>}
               </section>
@@ -276,8 +276,9 @@ function AgentPanel({ run, done, expanded, setExpanded, roster, busy, onCancel, 
 }
 
 /** A chart a model proposed, drawn here from the recorded values. Its own scale; the same quality rules as the timeline. */
-function MiniChart({ measure, range, evidence }: { measure: string; range: string; evidence: Evidence[] }) {
+function MiniChart({ measure, range, evidence, runId, synthetic, cites, person }: { measure: string; range: string; evidence: Evidence[]; runId: string; synthetic: boolean; cites: string[]; person: string }) {
   const { t } = useT();
+  const svgRef = useRef<SVGSVGElement>(null);
   const version = MEASURE_VERSION[measure];
   const all = evidence.filter((e) => e.measure === measure && e.protocol_version === version && e.value_num !== null);
   const newest = all.length ? Math.max(...all.map((e) => Date.parse(e.recorded_at))) : 0;
@@ -292,9 +293,28 @@ function MiniChart({ measure, range, evidence }: { measure: string; range: strin
   const t0 = Date.parse(pts[0].recorded_at), t1 = Date.parse(pts[pts.length - 1].recorded_at) || t0 + DAY;
   const x = (iso: string) => L + ((Date.parse(iso) - t0) / Math.max(1, t1 - t0)) * (W - L - R);
   const y = (v: number) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+  const lines = [
+    `${measure} · protocol ${version} · ${range} · ${pts.length} usable records (ids ${pts.map((e) => "#" + e.id).join(" ")})`,
+    `Drawn by software from the recorded values. The chart was suggested by a model; the values were not. Run ${runId}. Facts: ${cites.join(", ")}.`,
+    `${synthetic ? "Synthetic demonstration data. " : ""}Research prototype. Not a diagnosis or a prediction.`];
+  const download = (name: string, body: string, type: string) => {
+    const url = URL.createObjectURL(new Blob([body], { type })); const a = document.createElement("a");
+    a.href = url; a.download = name; a.click(); URL.revokeObjectURL(url);
+  };
+  const exportSvg = () => {
+    if (!svgRef.current) return;
+    const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+    const inner = svgRef.current.innerHTML.replace(/var\(--line-soft\)/g, "#d8e0e6").replace(/var\(--muted\)/g, "#5b6b78").replace(/var\(--warn\)/g, "#b45309").replace(/var\(--navy\)/g, "#12304a");
+    const out = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H + 62}" width="${W}" height="${H + 62}" font-family="sans-serif"><title>${esc(measure)}</title><rect width="100%" height="100%" fill="#fff"/>${inner}` +
+      lines.map((l, i) => `<text x="${L}" y="${H + 14 + i * 16}" font-size="10" fill="#3d566b">${esc(l)}</text>`).join("") + `</svg>`;
+    download(`${runId}-${measure}.svg`, out, "image/svg+xml");
+  };
+  const exportCsv = () => download(`${runId}-${measure}.csv`, [...lines.map((l) => "# " + l), "record_id,recorded_at,value,quality,status",
+    ...rows.map((e) => [e.id, e.recorded_at, e.value_num, e.quality, e.status].join(","))].join("\n"), "text/csv");
+  void person;
   return (
     <div className="aa-minichart">
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={t.code(measure)} style={{ direction: "ltr" }}>
+      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={t.code(measure)} style={{ direction: "ltr" }}>
         {[lo, (lo + hi) / 2, hi].map((v) => <g key={v}><line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke="var(--line-soft)" /><text x={L - 6} y={y(v) + 4} textAnchor="end" fontSize="11" fill="var(--muted)">{t.num(v, 1)}</text></g>)}
         <text x={L} y={H - 6} fontSize="11" fill="var(--muted)">{t.date(pts[0].recorded_at)}</text>
         <text x={W - R} y={H - 6} fontSize="11" fill="var(--muted)" textAnchor="end">{t.date(pts[pts.length - 1].recorded_at)}</text>
@@ -303,6 +323,7 @@ function MiniChart({ measure, range, evidence }: { measure: string; range: strin
           ? <circle key={e.id} cx={x(e.recorded_at)} cy={y(e.value_num as number)} r="4" fill="#fff" stroke="var(--warn)" strokeWidth="2"><title>{`${t.date(e.recorded_at)} · ${t.num(e.value_num as number, 1)} · ${t(`quality_${e.quality}`)} · #${e.id}`}</title></circle>
           : <circle key={e.id} cx={x(e.recorded_at)} cy={y(e.value_num as number)} r="4" fill="var(--navy)"><title>{`${t.date(e.recorded_at)} · ${t.num(e.value_num as number, 1)} · ${t(`quality_${e.quality}`)} · #${e.id}`}</title></circle>)}
       </svg>
+      <div className="aa-export"><button className="btn" onClick={exportSvg}>{t("aaExportSvg")}</button><button className="btn" onClick={exportCsv}>{t("aaExportCsv")}</button></div>
       <details><summary>{t("aaTableOf")}</summary>
         <div className="chart-table-wrap"><table className="chart-table"><thead><tr><th>{t("chColDate")}</th><th>{t("chColValue")}</th><th>{t("chColQuality")}</th><th>{t("chColRecord")}</th></tr></thead>
           <tbody>{[...rows].reverse().map((e) => <tr key={e.id}><td>{t.date(e.recorded_at, true)}</td><td>{t.num(e.value_num as number, 1)}</td><td>{t(`quality_${e.quality}`)}{e.status !== "current" ? ` · ${t(`status_${e.status}`)}` : ""}</td><td>#{e.id}</td></tr>)}</tbody></table></div>
