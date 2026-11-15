@@ -127,3 +127,15 @@ def test_arabic_word_forms_meet_and_are_still_confirmed(client):
     r = say(client, h2, "أنهيت المشي")
     assert r["tool"] == "mark_done" and r["needs_confirmation"] and "امش" in r["item"]["text_ar"]
     assert client.get("/api/care-plan/today").json()["items"][0]["reply"] is None
+
+
+@pytest.mark.parametrize("text,screen", [
+    ("open my appointment preparation", "prep"), ("prepare for my appointment", "prep"), ("questions for my doctor", "prep"),
+    ("show my doctor's message", "messages"), ("read the follow-up", "messages"),
+    ("افتح موعدي", "prep"), ("show my report", "report"), ("open the report for the last 11 days", "report"),
+])
+def test_appointment_and_follow_up_open_the_right_screen_without_changes(client, text, screen):
+    h = two_tasks(client)
+    r = say(client, h, text)
+    assert r["understood"] is True and r["navigate"] == screen and r["needs_confirmation"] is False
+    assert client.get("/api/care-plan/history").json()["days"] == []     # opening a screen changes nothing
