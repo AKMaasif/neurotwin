@@ -35,6 +35,7 @@ from .auth import user_out
 from .imaging import router as imaging_router
 from .oasis2_api import router as oasis2_router
 from .agent_analysis_api import router as agent_router
+from .activity_analysis_api import router as activity_router
 from .native_imaging_api import ImagingRequestGuard, router as native_imaging_router
 from .security import current_user, get_db, require_evidence_access
 
@@ -280,6 +281,9 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
         with app.state.db.SessionLocal() as db:
             seed(db)
             ensure_demo_credentials(db, demo_password or config.DEMO_PASSWORD)
+            if config.SEED_HISTORY:
+                from . import synthetic_history
+                synthetic_history.apply(db)
     app.state.demo = bool(config.SEED_DEMO if seed_demo is None else seed_demo)
     app.state.get_llm = llm.get_client
     app.state.get_stt = llm.get_stt_client
@@ -299,6 +303,7 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
     app.include_router(imaging_router)
     app.include_router(oasis2_router)
     app.include_router(agent_router)
+    app.include_router(activity_router)
     app.include_router(native_imaging_router)
 
     @app.get("/api/demo-accounts")
@@ -325,6 +330,31 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
     def ai_status(_: User = Depends(current_user)):
         """Whether a model provider is configured. Names and booleans only."""
         return llm.status()
+
+    @app.get("/api/system/status")
+    def system_status(user: User = Depends(current_user)):
+        """For the clinician footer. Names, states and counts only: no keys, no addresses, no provider calls are made to answer this.
+        "configured" means a key and a model id are set. It does not mean the model is reachable. A provider is reported
+        "checked_ok" only when a real call made by clinical work succeeded within the last hour, and "check_failed" when its latest call failed;
+        this endpoint itself never contacts a provider. Scripted (mock) calls never count as a check."""
+        if user.role != "clinician":
+            raise HTTPException(404, "Not found, or you do not have access.")
+        from . import agent_runtime as R
+        from . import agent_analysis as AA
+        st = R.status()
+        try:
+            running = AA.active_runs()
+        except Exception:
+            running = 0
+        checks = R.recent_checks()
+        def state(k, v):
+            if not v["available"]:
+                return "not_configured"
+            c = (checks or {}).get(k)
+            return "configured" if c is None else ("checked_ok" if c["ok"] else "check_failed")
+        return {"mode": st["mode"],
+                "providers": {k: {"state": state(k, v), "role": v["role"]} for k, v in st["providers"].items()},
+                "checked": checks, "analysis": {"state": "running" if running else "idle", "running": running}}
 
     @app.get("/api/voice/status")
     def voice_status(request: Request, _: User = Depends(current_user)):
@@ -490,6 +520,15 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
         if user.role != "clinician":
             raise HTTPException(404, "Not found, or you do not have access.")
         require_evidence_access(db, user, pid)
+
+    @app.get("/api/participants/{pid}/routine-replies")
+    def routine_replies(pid: str, days: int = 190, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        """What the person marked about their routines, by week, for the clinician's chart. Self-reported. A day with no reply has no
+        row and is never counted as missed; there is no adherence figure."""
+        _clinician_for(db, user, pid)
+        S.audit(db, user.id, "routine_replies.viewed", pid, None)
+        db.commit()
+        return CP.reply_weeks(db, pid, max(1, min(days, 400)))
 
     @app.get("/api/participants/{pid}/drafts")
     def list_drafts(pid: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
@@ -765,8 +804,12 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
                                                      ReviewItem.status == "open").count()
             last = db.scalar(select(ActivitySession.started_at).where(ActivitySession.participant_id == p.id)
                              .order_by(ActivitySession.started_at.desc()).limit(1))
+            from . import synthetic_history as SH
+            syn = SH.summary(db, p.id) if p.is_demo else None
             out.append({**user_out(p), "shared_since": iso(g.created_at), "open_items": open_items,
-                        "last_activity": iso(last)})
+                        "last_activity": iso(last),
+                        "dataset": {"id": syn["id"], "label": syn["label"], "note": syn["note"], "sessions": syn["sessions"],
+                                    "from": syn["from"], "to": syn["to"]} if syn else None})
         return out
 
     @app.get("/api/family/shared")

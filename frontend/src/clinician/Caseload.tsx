@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { ClipboardCheck, Search } from "lucide-react";
 import { ClinicianParticipant, ReviewItem, User } from "../api";
 import { useT } from "../i18n";
-import { Mark } from "../ui";
 import type { Data, Sel } from "./ClinicianApp";
 import Decide from "./Decide";
 import Concerns from "./Concerns";
@@ -22,7 +21,7 @@ export default function Caseload({ people, person, onPerson, data, sel, onSelect
   return (
     <>
       <div className="pane-head">
-        <span className="pane-title"><Mark size={22} />{t("wsCaseload")}</span>
+        <span className="pane-title">{t("wsCaseload")}</span>
       </div>
       <div className="subtabs" role="tablist">
         <button role="tab" className="subtab" aria-selected={tab === "people"} onClick={() => setTab("people")}>

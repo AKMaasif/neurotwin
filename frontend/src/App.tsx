@@ -7,9 +7,11 @@ import FamilyApp from "./family/FamilyApp";
 import ClinicianApp from "./clinician/ClinicianApp";
 
 const LANG_KEY = "neurotwin.lang";
-function savedLang(): Lang {
-  try { return localStorage.getItem(LANG_KEY) === "ar" ? "ar" : "en"; } catch { return "en"; }
+// The language a person picked in this browser (landing page, sign-in or header). null = never chosen here.
+function chosenLang(): Lang | null {
+  try { const v = localStorage.getItem(LANG_KEY); return v === "ar" || v === "en" ? v : null; } catch { return null; }
 }
+function savedLang(): Lang { return chosenLang() ?? "en"; }
 
 export default function App() {
   const [lang, setLangState] = useState<Lang>(savedLang);
@@ -26,7 +28,13 @@ export default function App() {
 
   // Is this browser already signed in? The cookie is invisible to the page, so ask the server.
   useEffect(() => {
-    api.session().then((s) => { setCsrf(s.csrf); setUser(s.user); setLangState(s.user.language); })
+    api.session().then((s) => {
+      setCsrf(s.csrf); setUser(s.user);
+      // A choice made in this browser wins; the account language is only the starting point when there is none.
+      const mine = chosenLang();
+      if (mine) { setLangState(mine); if (mine !== s.user.language) api.setLanguage(mine).catch(() => undefined); }
+      else setLangState(s.user.language);
+    })
       .catch(() => setUser(null)).finally(() => setChecked(true));
     const onSignedOut = () => setUser(null);
     window.addEventListener(SIGNED_OUT, onSignedOut);
@@ -42,7 +50,10 @@ export default function App() {
   const signIn = (csrf: string, u: User) => {
     setCsrf(csrf);
     setUser(u);
-    setLang(u.language);
+    // Signing in must not change what the person is looking at: keep the language shown (landing choice or default)
+    // as their choice and save it to the account, instead of switching to the account's stored language.
+    try { localStorage.setItem(LANG_KEY, lang); } catch { /* storage blocked */ }
+    if (lang !== u.language) api.setLanguage(lang).catch(() => undefined);
   };
   const signOut = () => {
     api.logout().catch(() => undefined).finally(() => { setCsrf(null); setUser(null); });

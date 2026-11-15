@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Brain, CircleDashed, FileText, LineChart, Menu, Table2, X } from "lucide-react";
+import { Brain, CircleDashed, FileText, LineChart, Menu, Sparkles, Table2, X } from "lucide-react";
 import { api, ClinicianParticipant, Evidence, User } from "../api";
 import { useT } from "../i18n";
 import { ErrorNote } from "../ui";
@@ -8,13 +8,13 @@ import EvidenceTable from "./EvidenceTable";
 import Account from "../Account";
 import Timeline from "./Timeline";
 
-export default function Stage({ user, person, data, sel, onSelect, onSignOut, onReport, error, onRetry, withDoubtful, setWithDoubtful, onImaging }: {
+export default function Stage({ user, person, data, sel, onSelect, onReport, error, onRetry, withDoubtful, setWithDoubtful, onImaging, onAnalyze }: {
   user: User; person: ClinicianParticipant | null; data: Data | null; sel: Sel; onSelect: (s: Sel) => void;
-  onSignOut: () => void; onReport: () => void; error: unknown; onRetry: () => void;
+  onReport: () => void; error: unknown; onRetry: () => void;
   withDoubtful: boolean; setWithDoubtful: (v: boolean) => void;
-  onImaging: () => void;
+  onImaging: () => void; onAnalyze: () => void;
 }) {
-  const { t, setLang } = useT();
+  const { t } = useT();
   const [mode, setMode] = useState<"timeline" | "table">("timeline");
   const [history, setHistory] = useState(false);
   const [withHistory, setWithHistory] = useState<Evidence[] | null>(null);
@@ -74,24 +74,22 @@ export default function Stage({ user, person, data, sel, onSelect, onSignOut, on
                 <b><bdi>{person.display_name}</bdi></b>{" "}
                 <span className="muted">· {sorted.length ? t("wsSummary", { s: t.num(sorted.length), from: t.date(sorted[0].started_at), to: t.date(sorted[sorted.length - 1].started_at) }) : t("wsNoSessions")}</span>
                 {person.is_demo && <> <span className="tag demo">{t("cDemo")}</span></>}
+                {person.dataset && <> <span className="tag demo" title={t("cSynNote", { n: t.num(person.dataset.sessions), from: t.date(person.dataset.from), to: t.date(person.dataset.to) })}>{t("cSynLabel")}</span></>}
               </span>
             )}
         </div>
         <div className="stage-actions">
           <button className="btn" onClick={onImaging}><Brain size={16} aria-hidden="true" />{t.lang === "ar" ? "تحليل صور الدماغ" : "Brain Analytics"}</button>
+          <button className="btn" disabled={!person} onClick={onAnalyze}><Sparkles size={16} aria-hidden="true" />{t("aaOpen")}</button>
           <button className="btn primary" disabled={!person} onClick={onReport}><FileText size={16} aria-hidden="true" />{t("wsReport")}</button>
           <div style={{ position: "relative" }} ref={menuRef}>
             <button className="btn" aria-label={t("wsMenu")} aria-expanded={menu} onClick={() => setMenu((v) => !v)}><Menu size={18} /></button>
             {menu && (
               <div className="menu" role="menu">
                 <small>{user.display_name} · {t("roleClinician")}</small>
-                <button role="menuitem" lang={t.lang === "en" ? "ar" : "en"} onClick={() => { setLang(t.lang === "en" ? "ar" : "en"); setMenu(false); }}>{t("switchTo")}</button>
-                <div className="sep" />
                 <small>{t("cScopeNote")}</small>
                 <small>{t("wsKeys")}</small>
                 {!user.is_demo && <button role="menuitem" onClick={() => { setAccount(true); setMenu(false); }}>{t("acLink")}</button>}
-                <div className="sep" />
-                <button role="menuitem" onClick={onSignOut}>{t("signOut")}</button>
               </div>
             )}
           </div>
@@ -109,7 +107,7 @@ export default function Stage({ user, person, data, sel, onSelect, onSignOut, on
       <div className="canvas">
         <ErrorNote error={error} onRetry={onRetry} />
         {data && (mode === "timeline"
-          ? <Timeline data={data} sel={sel} onSelect={onSelect} />
+          ? <Timeline data={data} sel={sel} onSelect={onSelect} pid={person?.id ?? ""} />
           : <EvidenceTable evidence={history && withHistory ? withHistory : data.evidence} history={history} setHistory={setHistory}
               onOpen={(id) => onSelect({ kind: "record", id })} />)}
       </div>
