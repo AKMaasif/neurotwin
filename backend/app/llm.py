@@ -103,7 +103,7 @@ class GeminiClient:
         documented speech-generation interface (generationConfig.responseModalities AUDIO, speechConfig voice, speech_metadata.style). It has
         NOT yet been checked against a live call from this project. If the model rejects the style field, the same words are retried with the
         style written into the text; any failure makes the app fall back to the browser's own voice, which the panel tells the person."""
-        style = ("calm, warm, reassuring and unhurried, clear Arabic" if language == "ar" else "calm, warm, reassuring and unhurried")
+        style = ("very friendly, cheerful and energetic, in clear Arabic" if language == "ar" else "very friendly, cheerful and energetic, like a kind helper who is glad to see them, but never rushed")
         speech = {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice}}} if voice else {}
         gen = {"responseModalities": ["AUDIO"], **({"speechConfig": speech} if speech else {})}
         bodies = [{"contents": [{"role": "user", "parts": [{"text": text, "speech_metadata": {"style": style}}]}], "generationConfig": gen},
@@ -183,7 +183,7 @@ def _wav(pcm: bytes, rate: int) -> bytes:
 
 
 DEFAULT_TTS_MODEL = "gemini-3.8-flash-tts"      # from Google's speech-generation page; override with GEMINI_TTS_MODEL
-DEFAULT_TTS_VOICE = "Achird"                    # described as "Friendly"; the page does not label gender, so audition voices and set GEMINI_TTS_VOICE
+DEFAULT_TTS_VOICE = "Puck"                      # described as "Upbeat"; the page does not label gender, so audition voices and set GEMINI_TTS_VOICE
 
 
 def get_tts_client(env: dict | None = None):

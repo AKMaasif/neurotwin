@@ -408,7 +408,10 @@ export const api = {
   speak: async (text: string, language: string) => {
     const res = await fetch("/api/voice/speak", { method: "POST", credentials: "same-origin", body: JSON.stringify({ text, language }),
       headers: { "Content-Type": "application/json", ...(csrf ? { "X-CSRF-Token": csrf } : {}) } });
-    if (!res.ok) throw new ApiError(res.status, "Spoken replies are not available.");
+    if (!res.ok) {
+      const detail = await res.json().then((j) => j.detail).catch(() => null);
+      throw new ApiError(res.status, typeof detail === "string" ? detail : "Spoken replies are not available.");
+    }
     return res.blob();
   },
   audit: (pid: string) => get<AuditRow[]>(`/api/participants/${encodeURIComponent(pid)}/audit`),

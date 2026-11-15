@@ -20,6 +20,7 @@ export class Voice {
   private url: string | null = null;
   private gen = 0;
   server = false;
+  failed: string | null = null;   // why the server voice could not be used the last time, shown to the person
   last: string | null = null;      // what was last said, for the echo filter
 
   source(lang: "en" | "ar"): Source {
@@ -41,11 +42,12 @@ export class Voice {
         await new Promise<void>((res) => { a.onended = () => res(); a.onerror = () => res(); a.play().then(() => onStart?.()).catch(() => res()); });
         this.cleanup();
         return;
-      } catch { this.server = false; /* fall through to the browser voice */ }
+      } catch (e) { this.failed = e instanceof Error ? e.message : "error"; this.server = false; /* fall through to the browser voice */ }
     }
     if (!("speechSynthesis" in window)) return;
     await new Promise<void>((res) => {
       const u = new SpeechSynthesisUtterance(text);
+      u.pitch = 1.1;      // a little brighter for the browser voice
       u.lang = lang === "ar" ? "ar" : "en"; u.rate = this.speed; u.volume = this.volume;
       const v = pickVoice(lang); if (v) u.voice = v;
       u.onstart = () => onStart?.(); u.onend = () => res(); u.onerror = () => res();

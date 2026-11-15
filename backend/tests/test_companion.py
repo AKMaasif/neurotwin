@@ -80,7 +80,7 @@ def test_server_speech_needs_flag_provider_demo_account_and_consent(client, app,
     consent(client, h, "assistant_model")
     r = client.post("/api/voice/speak", json=body, headers=h)
     assert r.status_code == 200 and r.headers["content-type"] == "audio/wav" and r.headers["cache-control"] == "no-store"
-    assert tts.calls == [("Hello", "Achird", "en")]
+    assert tts.calls == [("Hello", "Puck", "en")]
     consent(client, h, "assistant_model", False)
     assert client.post("/api/voice/speak", json=body, headers=h).status_code == 403          # revoked: stops at once
 
@@ -168,6 +168,6 @@ def test_a_ready_made_wav_is_passed_through_and_a_rejected_style_is_retried_in_p
             return httpx.Response(400, json={"error": "unknown field"})
         return httpx.Response(200, json={"candidates": [{"content": {"parts": [{"inlineData": {"data": base64.b64encode(wav).decode()}}]}}]})
 
-    out = llm.GeminiClient("k", "m", transport=httpx.MockTransport(handler)).speak("Hello", "Achird", "en")
+    out = llm.GeminiClient("k", "m", transport=httpx.MockTransport(handler)).speak("Hello", "Puck", "en")
     assert out == wav and len(calls) == 2 and "speech_metadata" not in calls[1]["contents"][0]["parts"][0]
     assert calls[1]["contents"][0]["parts"][0]["text"].endswith("Hello")
