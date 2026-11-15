@@ -250,7 +250,12 @@ textarea.note { width: 100%; min-height: 64px; border: 1px solid var(--line); bo
 .stage-top .pill { flex: 0 1 auto; max-width: none; min-width: 0; }
 /* When the middle column is narrow, the three actions show icons only (their names stay as tooltips and screen-reader labels). */
 .ws-stage { container-type: inline-size; container-name: stage; }
-@container stage (max-width: 860px) { .stage-actions .btn .lbl { display: none; } .stage-actions .btn { width: 40px; padding: 0; } }
+@container stage (max-width: 860px) { .stage-actions .btn:not(.brain-cta) .lbl { display: none; } .stage-actions .btn:not(.brain-cta) { width: 40px; padding: 0; } }
+/* Brain Analytics is the centre of the project: it keeps its name and a distinct colour at every width. */
+.stage-actions .brain-cta { background: #1c6f88; border-color: #1c6f88; color: #fff; font-weight: 600; padding-inline: 14px; }
+.stage-actions .brain-cta:hover:not(:disabled) { background: #165b71; border-color: #165b71; }
+.stage-actions .brain-cta:focus-visible { outline: 3px solid #9fd3e3; outline-offset: 2px; }
+.stage-top .pill { max-width: 100%; }
 .canvas { flex: 1; min-width: 0; overflow: auto; padding: 64px 20px 20px 72px; }
 [dir="rtl"] .canvas { padding: 64px 72px 20px 20px; }
 .sheet { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 8px 4px; }
