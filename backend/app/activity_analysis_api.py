@@ -25,6 +25,7 @@ def _run_for(run_id: str, db: Session, user: User) -> dict:
     if run is None:
         raise HTTPException(404, NOT_FOUND)
     require_evidence_access(db, user, run["participant_id"])
+    run["source_status"] = AA.source_status(db, run)
     return run
 
 
@@ -56,6 +57,18 @@ def runs(pid: str, user: User = Depends(current_user), db: Session = Depends(get
     _clinician(user)
     require_evidence_access(db, user, pid)
     return AA.list_runs(pid)
+
+
+@router.get("/participants/{pid}/coverage")
+def coverage(pid: str, range_days: int = 183, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    _clinician(user)
+    require_evidence_access(db, user, pid)
+    if range_days not in AA.RANGES:
+        raise HTTPException(422, "Choose 6 weeks, 3 months or 6 months.")
+    result = AA.coverage(db, pid, range_days)
+    services.audit(db, user.id, "activity_analysis.coverage", pid, None)
+    db.commit()
+    return result
 
 
 @router.post("/participants/{pid}/runs")
@@ -118,7 +131,9 @@ def retry(run_id: str, background: BackgroundTasks, request: Request, user: User
 
 @router.post("/runs/{run_id}/review")
 def review(run_id: str, body: ReviewIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    _run_for(run_id, db, user)
+    existing = _run_for(run_id, db, user)
+    if existing["source_status"] == "changed":
+        raise HTTPException(409, "The source records changed. Run a new analysis before reviewing this draft.")
     try:
         run = AA.review(run_id, user, [d.model_dump() for d in body.decisions], body.note)
     except ValueError as e:

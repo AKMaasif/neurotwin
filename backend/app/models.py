@@ -384,3 +384,35 @@ class NativeRun(Base):
     producer_version: Mapped[str] = mapped_column(String(40), default="neurotwin-native/0.1")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CareJourney(Base):
+    """Links existing records without changing their clinical or acceptance states."""
+    __tablename__ = "care_journeys"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    concern_id: Mapped[int] = mapped_column(ForeignKey("concern_reports.id"), unique=True)
+    participant_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    clinician_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    plan_id: Mapped[int | None] = mapped_column(ForeignKey("care_plans.id"), nullable=True)
+    analysis_run_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    analysis_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    next_action: Mapped[str] = mapped_column(String(300), default="")
+    follow_up_on: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    outcome: Mapped[str] = mapped_column(String(30), default="open")
+    revision: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    __mapper_args__ = {"version_id_col": revision}
+
+
+class CareJourneyEvent(Base):
+    """Append-only clinician actions. Notes are explicitly shared with the patient."""
+    __tablename__ = "care_journey_events"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    journey_id: Mapped[int] = mapped_column(ForeignKey("care_journeys.id"), index=True)
+    actor_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    revision: Mapped[int] = mapped_column(Integer)
+    kind: Mapped[str] = mapped_column(String(30))
+    note: Mapped[str] = mapped_column(String(500), default="")
+    snapshot: Mapped[dict] = mapped_column(JSON)
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Printer } from "lucide-react";
-import { api, PatientReport } from "../api";
-import { useT } from "../i18n";
+import { api, CareJourney, PatientReport } from "../api";
+import { Key, useT } from "../i18n";
 import { ErrorNote, Heading } from "../ui";
 
 const PERIODS = [7, 11, 30];
@@ -11,13 +11,15 @@ function loadQs(): string[] { try { const v = JSON.parse(localStorage.getItem(KE
 function saveQs(q: string[]) { try { localStorage.setItem(KEY, JSON.stringify(q)); } catch { /* storage can be unavailable; the list still works on screen */ } }
 
 /** The person's own period report, and the appointment-preparation page that wraps it. Nothing here is a score or an interpretation. */
-export default function Report({ prep, onBack }: { prep?: boolean; onBack: () => void }) {
+export default function Report({ prep, onBack, userId }: { prep?: boolean; onBack: () => void; userId: string }) {
   const { t } = useT();
   const [days, setDays] = useState(11);
   const [r, setR] = useState<PatientReport | null>(null);
   const [error, setError] = useState<unknown>(null);
+  const [journeys, setJourneys] = useState<CareJourney[]>([]);
   const [qs, setQs] = useState<string[]>(loadQs);
   useEffect(() => { setR(null); api.myReport(days).then(setR).catch(setError); }, [days]);
+  useEffect(() => { let active = true; setJourneys([]); api.journeys(userId).then(j => { if (active) setJourneys(j); }).catch(e => { if (active) setError(e); }); return () => { active = false; }; }, [userId]);
   const fmt = (d: string) => new Intl.DateTimeFormat(t.lang === "ar" ? "ar-AE" : "en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(d + "T00:00:00Z"));
   const setQ = (next: string[]) => { setQs(next); saveQs(next); };
 
@@ -90,6 +92,18 @@ export default function Report({ prep, onBack }: { prep?: boolean; onBack: () =>
         </article>
       )}
 
+      <section aria-label={t("cjTitle")}>
+        <h2>{t("cjCurrent")}</h2>
+        {journeys.length === 0 && <p className="muted">{t("cjNoJourney")}</p>}
+        {journeys.map(j => <div className="p-card" key={j.id}>
+          <h3>#{j.id} · {j.clinician}</h3><p>{t(`cjState_${j.outcome}` as "cjState_open")}</p>
+          <p>{t("cjConcern")}: {t(`cnEv_${j.concern_status}` as Key)}</p>
+          {j.next_action && <p>{t("cjAction")}: {j.next_action}</p>}
+          {j.follow_up_on && <p>{t("cjDate")}: {fmt(j.follow_up_on)}</p>}
+          {j.plan && <p>{t("cjPlan")}: #{j.plan.id} · {t.code(j.plan.status)}</p>}
+          <ul>{j.events.filter(e => e.note).map(e => <li key={e.id}>{t.date(e.at)} · {e.note}</li>)}</ul>
+        </div>)}
+      </section>
       {prep && (
         <section aria-labelledby="rp-q">
           <h2 id="rp-q">{t("rpQTitle")}</h2>

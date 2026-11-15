@@ -5,6 +5,28 @@ from sqlalchemy import text
 from app.db import Base, Database
 
 
+def test_additive_journey_migration_round_trip_preserves_existing_data(tmp_path):
+    from pathlib import Path
+    from alembic import command
+    from alembic.config import Config
+    from sqlalchemy import inspect
+    db, _ = legacy_db_with_data(tmp_path)
+    db.migrate()  # use the application's safe legacy-table rebuild path first
+    cfg = Config()
+    cfg.set_main_option("script_location", str(Path(__file__).resolve().parents[1] / "migrations"))
+    with db.engine.begin() as conn:
+        cfg.attributes["connection"] = conn
+        command.downgrade(cfg, "0007")
+        before = conn.execute(text("SELECT * FROM care_plan_replies")).all()
+        command.upgrade(cfg, "0008")
+        assert {"care_journeys", "care_journey_events"} <= set(inspect(conn).get_table_names())
+        command.downgrade(cfg, "0007")
+        assert "care_journeys" not in inspect(conn).get_table_names()
+        assert conn.execute(text("SELECT * FROM care_plan_replies")).all() == before
+        command.upgrade(cfg, "0008")
+        assert conn.execute(text("SELECT * FROM care_plan_replies")).all() == before
+
+
 def legacy_db_with_data(tmp_path):
     """The schema exactly as it was at the baseline revision, with a routine and a reply already stored."""
     from pathlib import Path
@@ -48,7 +70,7 @@ def test_database_made_before_alembic_existed_with_data_upgrades_too(tmp_path):
     fresh.migrate()
     with fresh.engine.connect() as c:
         assert c.execute(text("SELECT COUNT(*) FROM care_plan_replies")).scalar() == 1
-        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0007"
+        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0008"
         assert c.execute(text("PRAGMA foreign_key_check")).all() == []
 
 
@@ -79,7 +101,7 @@ def test_database_left_half_upgraded_by_the_earlier_failure_recovers(tmp_path):
     fresh = Database(url)
     fresh.migrate()
     with fresh.engine.connect() as c:
-        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0007"
+        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0008"
         assert c.execute(text("SELECT COUNT(*) FROM care_plan_items")).scalar() == 1
         assert c.execute(text("SELECT COUNT(*) FROM care_plan_replies")).scalar() == 1
         assert c.execute(text("SELECT COUNT(*) FROM users")).scalar() == 2
@@ -114,6 +136,6 @@ def test_empty_leftover_tables_from_a_stopped_upgrade_are_cleared(tmp_path):
     fresh = Database(url)
     fresh.migrate()
     with fresh.engine.connect() as c:
-        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0007"
+        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0008"
         assert c.execute(text("SELECT COUNT(*) FROM care_plan_replies")).scalar() == 1
     assert not [n for n in inspect(fresh.engine).get_table_names() if n.startswith("_alembic_tmp_")]
