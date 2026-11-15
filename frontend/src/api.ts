@@ -87,6 +87,14 @@ export type AssistantReply = {
   cancelled?: boolean; kind?: "greeting" | "thanks" | "capabilities"; said?: string | null; entries?: { item: AssistantItem; reply: string | null }[];
   via?: "context" | "answer" | "yes" | "words" | "order" | "other" | "only" | null; already?: "done" | "not_today" | null; pending?: boolean; expires_minutes?: number; ok?: boolean;
 };
+export type CompanionConfig = {
+  enabled: boolean;
+  stt: { available: boolean; consented: boolean };
+  tts: { server: boolean; why_not: string | null };
+  model: { available: boolean; consented: boolean };
+  defaults: { silence_ms: number; min_speech_ms: number; max_turn_s: number; speed: number; volume: number };
+  limits: { speak_chars: number };
+};
 export type AssistantHistory = { memory: boolean; keeps_days: number; messages: { id: number; who: "you" | "bot"; text: string | null; payload: AssistantReply | null; at: string }[] };
 export type ConcernTopic = "memory_or_thinking" | "mood_or_worry" | "sleep" | "body_or_pain" | "medicine_question" | "something_else";
 export type ConcernSince = "today" | "few_days" | "week_or_more" | "not_sure";
@@ -395,6 +403,13 @@ export const api = {
       throw new ApiError(res.status, typeof detail === "string" ? detail : "Voice typing could not be used.");
     }
     return res.json() as Promise<{ text: string; provider: string; model: string }>;
+  },
+  companionConfig: () => get<CompanionConfig>("/api/companion/config"),
+  speak: async (text: string, language: string) => {
+    const res = await fetch("/api/voice/speak", { method: "POST", credentials: "same-origin", body: JSON.stringify({ text, language }),
+      headers: { "Content-Type": "application/json", ...(csrf ? { "X-CSRF-Token": csrf } : {}) } });
+    if (!res.ok) throw new ApiError(res.status, "Spoken replies are not available.");
+    return res.blob();
   },
   audit: (pid: string) => get<AuditRow[]>(`/api/participants/${encodeURIComponent(pid)}/audit`),
 

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import VoiceButton from "../voice";
 import { api, ApiError, AssistantItem, AssistantReply } from "../api";
-import { Key, useT } from "../i18n";
+import { useT } from "../i18n";
 import { ErrorNote, Heading } from "../ui";
 import type { Screen } from "./PersonalApp";
+import { itemTitle, replySentences } from "./replyText";
 
 type Msg = { who: "you" | "bot"; text?: string | null; reply?: AssistantReply | null; fresh?: boolean };
 const NAV: Record<string, Screen> = { report: "report", concern: "concern", reminders: "reminders", messages: "messages", records: "records", home: "home", urgent: "urgent", checkin: "checkin", reaction: "reaction", memory: "memory", wellbeing: "wellbeing" };
@@ -39,34 +40,8 @@ export default function Assistant({ go, onBack }: { go: (s: Screen) => void; onB
     return () => { window.speechSynthesis.cancel(); window.speechSynthesis.removeEventListener?.("voiceschanged", check); };
   }, [t.lang]);
 
-  const title = (i: AssistantItem) => [i.title, t.lang === "ar" ? i.text_ar ?? i.text_en : i.text_en ?? i.text_ar].filter(Boolean).join(": ");
-  const confirmLine = (r: AssistantReply) => t(r.tool === "mark_done" ? "asConfirmDone" : r.tool === "mark_not_today" ? "asConfirmNot" : "asConfirmSnooze", { n: r.minutes ?? 0 });
-  const answerWord = (a: string | null) => (a === "done" ? t("remDone") : a === "not_today" ? t("remNotToday") : "—");
-
-  /** What the bot said, as plain sentences (used for display of text-only parts and for reading aloud). */
-  const sentences = (r: AssistantReply): string[] => {
-    const out: string[] = [];
-    if (!r.understood) {
-      out.push(t(r.reason === "which" ? "asWhich" : (`as${r.reason![0].toUpperCase()}${r.reason!.slice(1)}` as Key)));
-    } else if (r.cancelled) out.push(t("asCancelled"));
-    else if (r.confirmed) out.push(r.ok === false ? t("asTooLate") : t("asDoneOk"));
-    else if (r.tool === "chat") out.push(t(r.kind === "greeting" ? "asGreeting" : r.kind === "thanks" ? "asThanks" : "asCapabilities"));
-    else if (r.tool === "recall") out.push(r.said ? t("asRecall", { said: r.said }) : t("asRecallNone"));
-    else if (r.tool === "recap") out.push(r.entries?.length ? t("asRecap") : t("asRecapNone"));
-    else if (r.tool === "emergency") out.push(t("asUrgentOpen"));
-    else if (r.navigate) out.push(t("asOpening"));
-    else if (r.tool === "read_today" && !r.items?.length) out.push(t("asNone"));
-    if ((r.via === "context" || r.via === "answer") && r.item) out.unshift(t(r.via === "context" ? "asVia_context" : "asVia_answer", { what: title(r.item) }));
-    if (r.needs_confirmation && r.item) out.push(...(r.already ? [t("asAlready", { answer: answerWord(r.already) })] : []), confirmLine(r), title(r.item));
-    r.items?.forEach((i) => out.push(`${i.time_hhmm ? `${i.time_hhmm}, ` : ""}${title(i)}`));
-    r.entries?.forEach((e) => out.push(`${title(e.item)}: ${answerWord(e.reply)}`));
-    if (!r.needs_confirmation && r.item && !r.confirmed && !r.cancelled && r.tool === "explain_instruction") {
-      const i = r.item;
-      out.push([i.time_hhmm, i.quantity != null && i.unit ? `${i.quantity} ${i.unit}` : null, i.precautions, t("remFrom", { who: i.written_by ?? "" })].filter(Boolean).join(" · "));
-    }
-    return out;
-  };
-
+  const title = (i: AssistantItem) => itemTitle(t, i);
+  const sentences = (r: AssistantReply) => replySentences(t, r);
   const read = (what: string) => {
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(what);
