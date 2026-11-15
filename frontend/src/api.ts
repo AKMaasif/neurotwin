@@ -26,6 +26,7 @@ export type AaStage = { id: string; kind: "software" | "ai" | "human"; name: str
   provider?: string | null; model?: string | null; prompt_version?: string | null; scripted?: boolean | null; deps?: string[] };
 export type AaStmt = { text: string; cites: string[] };
 export type AaRun = {
+  source_status?: "current" | "changed" | "unverified_legacy";
   run_id: string; participant_id: string; created_at: string; range_days: number; mode: string; state: string; demo_data: boolean; review_state: string; note: string;
   retry_of?: string; stages: AaStage[]; events: { at: string; stage: string | null; status: string; summary: string | null }[];
   ledger?: { facts: { id: string; kind: string; text: string }[] };
@@ -35,6 +36,19 @@ export type AaRun = {
   gate?: { passed: boolean; checks: { name: string; ok: boolean; required: boolean; warning?: boolean; detail: string }[] };
   charts?: { status: string; charts: { measure: string; range: string; why: string; cites: string[] }[]; dropped: { measure: string; reason: string }[] };
   review?: { by: string; at: string; decisions: { kind: string; index: number; decision: string; note: string; text?: string }[]; note: string };
+};
+export type CareJourney = {
+  id: number; concern_id: number; participant_id: string; clinician: string; revision: number; concern_status: string;
+  plan: { id: number; version: number; status: string } | null;
+  analysis: { run_id: string; state: string; source_status: string; review_unchanged: boolean } | null;
+  next_action: string; follow_up_on: string | null; outcome: string; created_at: string; updated_at: string;
+  responses: { done: number; not_today: number; difficulty: number; label: string };
+  events: { id: number; kind: string; by: string; at: string; revision: number; note: string; outcome: string }[];
+};
+export type ActivityCoverage = {
+  period: { from: string; to: string }; sessions: number; days_with_records: number;
+  quality: Record<string, number>; versions: string[]; clinical_validation: string;
+  comparisons: { measure: string; protocol_code: string; protocol_version: string; status: string; eligible_n: number }[];
 };
 export type AaRoster = { mode: string; sends: string; providers: Record<string, { role: string; configured: boolean; provider: string | null; model: string | null; scripted: boolean; verified: boolean; last_check: string | null }>;
   stages: { id: string; kind: "software" | "ai" | "human"; name: string; provider_slot?: string; prompt_version?: string; verified?: boolean; scripted?: boolean }[] };
@@ -348,6 +362,11 @@ export const api = {
   sendConcern: (id: number, rev: number, recipient_id?: string) => post<Concern>(`/api/concerns/${id}/send`, { rev, recipient_id: recipient_id ?? null }),
   withdrawConcern: (id: number) => post<Concern>(`/api/concerns/${id}/withdraw`),
   concernInbox: () => get<Concern[]>("/api/concerns/inbox"),
+  journeyFromConcern: (id: number) => post<CareJourney>(`/api/care-journeys/from-concern/${id}`),
+  journeys: (pid: string) => get<CareJourney[]>(`/api/care-journeys/participants/${encodeURIComponent(pid)}`),
+  journey: (id: number) => get<CareJourney>(`/api/care-journeys/${id}`),
+  updateJourney: (id: number, body: { expected_revision: number; plan_id?: number | null; analysis_run_id?: string | null; next_action?: string; follow_up_on?: string | null; outcome?: string; note?: string }) => post<CareJourney>(`/api/care-journeys/${id}`, body),
+  aaCoverage: (pid: string, days: number) => get<ActivityCoverage>(`/api/activity-analysis/participants/${encodeURIComponent(pid)}/coverage?range_days=${days}`),
   acknowledgeConcern: (id: number) => post<Concern>(`/api/concerns/${id}/acknowledge`),
   reviewConcern: (id: number, note: string) => post<Concern>(`/api/concerns/${id}/review`, { note: note || null }),
   closeConcern: (id: number, note: string) => post<Concern>(`/api/concerns/${id}/close`, { note: note || null }),

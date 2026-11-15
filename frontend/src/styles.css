@@ -440,3 +440,8 @@ textarea.note { width: 100%; min-height: 64px; border: 1px solid var(--line); bo
 .aa-chain.open { min-width: max-content; }
 .aa-chain.open .aa-stage { min-width: 160px; }
 .aa-export { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+/* Linked follow-up stays inside the existing report shell. */
+.cj-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:18px 0}
+.cj-grid label{display:grid;gap:6px;min-width:0}.cj-grid input,.cj-grid select,.cj-grid textarea{width:100%;max-width:100%;font:inherit;padding:9px;border:1px solid #a8bac7;border-radius:6px;background:#fff;color:#1b2b3c;box-sizing:border-box}
+.cj-grid textarea{min-height:80px;resize:vertical}.cj-actions{display:flex;gap:10px;flex-wrap:wrap}
+@media(max-width:650px){.cj-grid{grid-template-columns:1fr}}

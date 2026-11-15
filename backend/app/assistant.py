@@ -36,7 +36,7 @@ CONFIRM_MINUTES = 5
 CONTEXT_MINUTES = 30      # how long a topic stays "the thing we were talking about"
 KEEP_DAYS = 30
 KEEP_MESSAGES = 200
-SCREENS = {"concern": "concern", "today": "reminders", "reminders": "reminders", "messages": "messages", "record": "records", "records": "records",
+SCREENS = {"report": "report", "concern": "concern", "today": "reminders", "reminders": "reminders", "messages": "messages", "record": "records", "records": "records",
            "home": "home", "urgent": "urgent", "checkin": "checkin", "reaction": "reaction", "memory": "memory", "wellbeing": "wellbeing"}
 TOOLS = {  # name: (kind, needs confirmation)
     "open_screen": ("navigation", False), "read_today": ("read", False), "explain_instruction": ("read", False),
@@ -56,6 +56,7 @@ _ACTIVITY = [(re.compile(r"\b(pictures?|memory game|sequence)\b|الصور|لع�
 _MIN = re.compile(r"(\d{1,3})\s*(?:min|minutes?|دقيقة|دقائق)", re.I)
 _HOUR = re.compile(r"(\d)\s*(?:hours?|hrs?|ساعة|ساعات)|\b(an hour|ساعة)\b", re.I)
 _CONCERN = re.compile(r"\b(report|raise|tell (my|the) (doctor|clinician)|message (my|the) (doctor|clinician)).{0,25}\b(concern|problem|worry|worried|symptom|issue)\b|\b(i have|i've got|i am having) (a )?(concern|worry|problem)\b|\bsomething (is|feels) wrong\b|أريد الإبلاغ|لدي قلق|عندي مشكلة|لدي مشكلة|أشعر بقلق", re.I)
+_REPORT = re.compile(r"(?:please\s+)?(?:open|show)(?: me)? (?:my |the )?(?:report|activity report)(?: for (?:the )?(?:last |past )?(?:11|eleven) days)?[.!?]?|(?:افتح|أظهر|اعرض) (?:تقريري|التقرير)(?: (?:عن|لـ|ل) ?(?:آخر|اخر) (?:11|١١|أحد عشر|احد عشر) (?:يوما|يومًا|يوم))?[.!؟]?", re.I)
 _YES = re.compile(r"^\s*(yes|yeah|yep|ok|okay|sure|please do|do it|go ahead|confirm|that'?s right|correct|right)\b[\s.!]*$|^\s*(نعم|ايوه|أيوه|اي|أجل|تمام|موافق|نفذ|نفّذ|اكيد|أكيد)[\s.!]*$", re.I)
 _NO = re.compile(r"^\s*(no|nope|cancel|stop|don'?t|never mind|nevermind|not now|wrong)\b[\s.!]*$|^\s*(لا|الغ|ألغ|إلغاء|الغي|ألغي|توقف|ليس الآن)[\s.!]*$", re.I)
 _GREET = re.compile(r"^\s*(hi|hello|hey|good (morning|afternoon|evening)|salam)\b|^\s*(مرحبا|مرحباً|أهلا|اهلا|السلام عليكم|صباح الخير|مساء الخير)", re.I)
@@ -201,6 +202,8 @@ def parse(text: str, rows: list[tuple[CarePlanItem, dict]], ctx: dict | None = N
         return {"tool": change, "arguments": args, "via": via}
     if _CONCERN.search(t):
         return {"tool": "start_concern", "arguments": {}}
+    if _REPORT.fullmatch(t):
+        return {"tool": "open_screen", "arguments": {"screen": "report"}}
     if _RECALL_SAID.search(t):
         return {"tool": "recall", "arguments": {}}
     if _RECAP.search(t):
