@@ -125,3 +125,8 @@ Checked in the browser (English and Arabic, desktop and 390 px): hover details, 
 - Stages carry `deps`; the expanded panel lays out the workflow by dependency level, lists "After: …", shows the event timeline, and links to the proposed charts and the report.
 - Tests: 6 new in `tests/test_activity_analysis.py` (interrupted, cancel, duplicate start, internal failure + retry, edit, dependencies).
 - Still not covered: a real server kill mid-run (simulated here by an unclaimed "running" file), live provider failure/quota behaviour, keyboard-only and large-text audit.
+
+## Chart export and Brain Analytics preparation steps
+
+- Proposed charts can be downloaded as SVG or CSV. Each export carries the measure, protocol version, range, the ids of the plotted records, the run id and fact ids, a "drawn by software; suggested by a model" statement and the synthetic-data label where it applies. Verified by downloading both files from the running app.
+- Brain Analytics loading now shows four real steps (case, MRI volume and labels, left surfaces, right surfaces) in English or Arabic, driven by the actual artifact loads; no step is shown before it starts.

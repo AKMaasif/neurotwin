@@ -13,7 +13,7 @@ export default function BrainAnalytics(_props: { onClose: () => void }) {
   const { t } = useT();
   const rtl = t.lang === "ar";
   const [data, setData] = useState<BrainData | null>(null), [error, setError] = useState("");
-  const [progress, setProgress] = useState("Opening research imaging…"), [attempt, setAttempt] = useState(0);
+  const [progress, setProgress] = useState("case"), [attempt, setAttempt] = useState(0);
   const [settings, setSettings] = useState<Settings>({ ...initialSettings });
   const [cursor, setCursor] = useState<Cursor>([128, 128, 128]), [selection, setSelection] = useState<Selection>(null);
   const [query, setQuery] = useState(""), [tab, setTab] = useState("viewer"), [expanded, setExpanded] = useState(false);
@@ -55,7 +55,10 @@ export default function BrainAnalytics(_props: { onClose: () => void }) {
     </nav>
     {tab === "compare" || tab === "native" ? <div dir={rtl ? "rtl" : "ltr"}>{rtl && tab === "native" && <p className="brain-en-only">{t("baEnOnlyServer")}</p>}{tab === "native" ? <NativeWorkflow /> : <CompareVisits />}</div> : tab === "agent" ? <div dir="ltr" lang="en">{rtl && <p className="brain-en-only" dir="rtl" lang="ar">{t("baEnOnly")}</p>}<AgentAnalysis /></div> : error ? <div className="brain-loading" role="alert"><Brain size={40} /><h1>{t("baUnavailTitle")}</h1><p dir="ltr" lang="en">{error}</p>
       <p>{t("baUnavailBody")}</p><div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}><button onClick={() => setAttempt(v => v + 1)}>{t("baTryAgain")}</button><button onClick={() => setTab("native")}>{t("baTabNative")}</button><button onClick={() => setTab("compare")}>{t("baTabCompare")}</button></div></div>
-      : !data ? <div className="brain-loading" role="status"><Brain size={40} /><h1>{t("baOpening")}</h1><p dir="ltr" lang="en">{progress}</p><progress aria-label="Loading imaging artifacts" /></div>
+      : !data ? <div className="brain-loading" role="status"><Brain size={40} /><h1>{t("baOpening")}</h1><ol className="brain-steps" aria-live="polite">{["case", "volume", "lh", "rh"].map((k, i, all) => {
+        const at = all.indexOf(progress), state = i < at ? "done" : i === at ? "now" : "next";
+        return <li key={k} className={state} aria-current={state === "now" ? "step" : undefined}>{state === "done" ? "✓" : state === "now" ? "…" : "·"} {t(`baStep_${k}` as "baStep_case")}</li>;
+      })}</ol><progress aria-label={t("baLoadingAria")} /></div>
       : <>
         <div className="brain-casebar"><span className="brain-case-icon"><Brain size={21} /></span><div><strong>{data.manifest.subject}</strong><small dir="ltr">OASIS-1 · Structural T1 MRI · {data.manifest.shape.join(" × ")} voxels</small></div>
           <span className="brain-qc">○ {t("baImported")}</span><button onClick={exportStats}>{t("baExport")}</button></div>
