@@ -15,12 +15,13 @@ log = logging.getLogger("neurotwin.http")
 
 _NUMERIC = re.compile(r"/[0-9]+(?=/|$)")
 _PERSON = re.compile(r"(?<=/participants/)[^/]+")
-_IMAGING_RUN = re.compile(r"(?<=/native/runs/)[^/]+")
+_RUN = re.compile(r"(?<=/runs/)[^/]+")
+_VISIT = re.compile(r"(?<=/visits/)[^/]+")
 
 
 def mask_path(path: str) -> str:
     """Hide record ids and person ids. Run uvicorn with --no-access-log: its own log prints raw paths."""
-    return _NUMERIC.sub("/:id", _PERSON.sub(":person", _IMAGING_RUN.sub(":run", path)))
+    return _NUMERIC.sub("/:id", _PERSON.sub(":person", _VISIT.sub(":visit", _RUN.sub(":run", path))))
 
 
 class SafeRequestLog(BaseHTTPMiddleware):

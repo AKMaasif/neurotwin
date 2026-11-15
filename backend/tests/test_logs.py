@@ -8,6 +8,9 @@ def test_mask_path_hides_ids():
     assert mask_path("/api/participants/demo-fatima/evidence") == "/api/participants/:person/evidence"
     assert mask_path("/api/evidence/42/amend") == "/api/evidence/:id/amend"
     assert mask_path("/api/auth/demo-login") == "/api/auth/demo-login"
+    assert mask_path("/api/imaging/agent/runs/abcdef123456/activity") == "/api/imaging/agent/runs/:run/activity"
+    assert mask_path("/api/activity-analysis/runs/ah-123456abcdef") == "/api/activity-analysis/runs/:run"
+    assert mask_path("/api/imaging/oasis2/visits/OAS2_0001_MR2/slice.png") == "/api/imaging/oasis2/visits/:visit/slice.png"
 
 
 def test_logs_never_contain_values_tokens_or_bodies(client, yousef, caplog):

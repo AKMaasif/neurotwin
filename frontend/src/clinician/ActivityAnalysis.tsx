@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Cpu, Sparkles, UserRound, X } from "lucide-react";
-import { AaRoster, AaRun, AaStage, api, ClinicianParticipant, Evidence } from "../api";
+import { AaRoster, AaRun, AaStage, ActivityCoverage, api, ClinicianParticipant, Evidence } from "../api";
 import { useT } from "../i18n";
 import { ErrorNote } from "../ui";
 
@@ -15,6 +15,7 @@ const DAY = 864e5;
 export default function ActivityAnalysis({ person, evidence, onClose, onReport }: { person: ClinicianParticipant; evidence: Evidence[]; onClose: () => void; onReport: () => void }) {
   const { t } = useT();
   const [roster, setRoster] = useState<AaRoster | null>(null);
+  const [coverage, setCoverage] = useState<ActivityCoverage | null>(null);
   const [run, setRun] = useState<AaRun | null>(null);
   const [prev, setPrev] = useState<{ run_id: string; created_at: string; state: string; range_days: number; mode: string; reviewed: boolean }[]>([]);
   const [range, setRange] = useState(183);
@@ -32,6 +33,7 @@ export default function ActivityAnalysis({ person, evidence, onClose, onReport }
   const dialog = useRef<HTMLDivElement>(null);
 
   useEffect(() => { api.aaRoster().then(setRoster).catch(setError); api.aaRuns(person.id).then(setPrev).catch(() => undefined); }, [person.id]);
+  useEffect(() => { let active = true; setCoverage(null); api.aaCoverage(person.id, range).then(r => { if (active) setCoverage(r); }).catch(e => { if (active) setError(e); }); return () => { active = false; }; }, [person.id, range]);
   useEffect(() => { dialog.current?.focus(); }, []);
   // Follow a running analysis. This reads server state only; it never starts or repeats a model call.
   useEffect(() => {
@@ -110,6 +112,15 @@ export default function ActivityAnalysis({ person, evidence, onClose, onReport }
         <ErrorNote error={error} />
         <p>{t("aaIntro")}</p>
         <p className="notice">{mode === "mock" ? t("aaModeMock") : mode === "live" ? t("aaModeLive") : t("aaModeOff")}</p>
+        {!run && coverage && <section aria-label={t("cjCoverage")} className="d-card">
+          <h2>{t("cjCoverage")}</h2><p>{t("cjCoverageNote")}</p>
+          <p><bdi>{coverage.period.from} – {coverage.period.to}</bdi> · {t("wsSession")}: {t.num(coverage.sessions)}</p>
+          <p>{coverage.versions.join(" · ")}</p>
+          <ul>{Object.entries(coverage.quality).map(([k, v]) => <li key={k}>{t.code(k)}: {t.num(v)}</li>)}</ul>
+          {coverage.comparisons.map((c, i) => <p key={i}>{t.code(c.measure)} · {c.protocol_version} · {t.code(c.status)} ({t.num(c.eligible_n)})</p>)}
+        </section>}
+        {run?.source_status === "changed" && <p className="notice warn" role="alert">{t("cjChanged")}</p>}
+        {run?.source_status === "unverified_legacy" && <p className="notice" role="status">{t("cjLegacy")}</p>}
 
         {!run && (
           <>

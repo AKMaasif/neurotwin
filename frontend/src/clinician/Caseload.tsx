@@ -9,10 +9,11 @@ import Concerns from "./Concerns";
 const SESSION_LEVEL = new Set(["interrupted_session", "abandoned_session", "missing_required", "unknown_protocol"]);
 const initials = (name: string) => name.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 
-export default function Caseload({ people, person, onPerson, data, sel, onSelect, tab, setTab, onChanged }: {
+export default function Caseload({ people, person, onPerson, data, sel, onSelect, tab, setTab, onChanged, onJourney }: {
   user: User; people: ClinicianParticipant[] | null; person: ClinicianParticipant | null; onPerson: (id: string) => void;
   data: Data | null; sel: Sel; onSelect: (s: Sel) => void; tab: "people" | "check" | "concerns"; setTab: (t: "people" | "check" | "concerns") => void;
   onChanged: () => void;
+  onJourney?: (id: number) => void;
 }) {
   const { t } = useT();
   const [waiting, setWaiting] = useState(0);
@@ -34,7 +35,7 @@ export default function Caseload({ people, person, onPerson, data, sel, onSelect
           {t("cnInbox")} {waiting > 0 && <span className="badge warn">{t.num(waiting)}</span>}
         </button>
       </div>
-      {tab === "concerns" ? <div style={{ padding: "0 12px 12px", display: "grid", gap: 8 }}><Concerns onCount={setWaiting} /></div> : tab === "people"
+      {tab === "concerns" ? <div style={{ padding: "0 12px 12px", display: "grid", gap: 8 }}><Concerns onCount={setWaiting} onJourney={onJourney} /></div> : tab === "people"
         ? <People people={people} person={person} onPerson={onPerson} goCheck={(id) => { onPerson(id); setTab("check"); }} />
         : <Queue person={person} items={open} data={data} sel={sel} onSelect={onSelect} onChanged={onChanged} />}
     </>

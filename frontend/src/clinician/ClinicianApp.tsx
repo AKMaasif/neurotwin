@@ -11,6 +11,7 @@ import Detail from "./Detail";
 import Dock from "./Dock";
 import ReportView from "./Report";
 import ActivityAnalysis from "./ActivityAnalysis";
+import CareJourney from "./CareJourney";
 import { useLayer } from "../useLayer";
 const BrainAnalytics = lazy(() => import("../imaging/BrainAnalytics"));
 
@@ -34,6 +35,8 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
   const [pane, setPane] = useState<Pane>("left");
   const [report, setReport] = useState(false);
   const [analysis, setAnalysis] = useState(false);
+  const [journeyConcern, setJourneyConcern] = useState<number | null>(null);
+  const [openPlanKey, setOpenPlanKey] = useState(0);
   const [withDoubtful, setWithDoubtful] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [imaging, setImaging] = useState(false);
@@ -108,6 +111,7 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
   useLayer(gate || imaging, () => { setGate(false); setImaging(false); });
   useLayer(report, () => setReport(false));
   useLayer(analysis, () => setAnalysis(false));
+  useLayer(journeyConcern !== null, () => setJourneyConcern(null));
 
   if (gate && !imaging) {
     return (
@@ -134,6 +138,7 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
         <Caseload
           user={user} people={people} person={person} onPerson={(id) => { setPid(id); setPane("stage"); }}
           data={data} sel={sel} onSelect={select} tab={leftTab} setTab={setLeftTab} onChanged={refresh}
+          onJourney={setJourneyConcern}
         />
       </aside>
       <section className="ws-stage" aria-label={t("wsTimeline")}>
@@ -145,7 +150,7 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
         />
       </section>
       <aside className="ws-right" aria-label={t("wsInspector")}>
-        <Detail person={person} data={data} sel={sel} onSelect={select} onChanged={refresh} />
+        <Detail person={person} data={data} sel={sel} onSelect={select} onChanged={refresh} openPlanKey={openPlanKey} />
       </aside>
       <section className="ws-dock" aria-label={t("wsActivity")}>
         <Dock data={data} sel={sel} open={dockOpen || pane === "dock"} setOpen={setDockOpen} people={people} user={user} />
@@ -157,6 +162,9 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
         ))}
       </nav>
       {analysis && person && <ActivityAnalysis person={person} evidence={data?.evidence ?? []} onClose={() => setAnalysis(false)} onReport={() => { setAnalysis(false); setReport(true); }} />}
+      {journeyConcern !== null && <CareJourney concernId={journeyConcern} onClose={() => setJourneyConcern(null)}
+        onAnalyze={id => { setJourneyConcern(null); if (id !== pid) setData(null); setPid(id); setAnalysis(true); }}
+        onPlan={id => { setJourneyConcern(null); if (id !== pid) setData(null); setPid(id); setSel(null); setOpenPlanKey(k => k + 1); setPane("right"); }} />}
       {report && person && <ReportView personId={person.id} onClose={() => setReport(false)} />}
       {!people && error ? <div style={{ position: "fixed", bottom: 16, insetInlineStart: 16 }}><ErrorNote error={error} onRetry={refresh} /></div> : null}
     </div>)}

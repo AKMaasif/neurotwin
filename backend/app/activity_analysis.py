@@ -21,6 +21,7 @@ Rules this module keeps (each is tested):
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import re
 import secrets
@@ -198,6 +199,40 @@ def quality_profile(c: dict) -> dict:
     return {"by_protocol": by_code, "quality": q, "gap": gap, "skipped": skipped, "days_with_records": len(days)}
 
 
+def fingerprint(c: dict) -> str:
+    """Content/version fingerprint, not a diagnostic score. Includes corrections and task replies."""
+    fields = {
+        "sessions": ("id", "protocol_code", "protocol_version", "language", "device", "status", "assisted", "interruptions", "unwell_today", "started_at", "ended_at"),
+        "evidence": ("id", "session_id", "measure", "kind", "value_num", "value_text", "unit", "missing_reason", "quality", "quality_reasons", "status", "superseded_by_id", "protocol_code", "protocol_version", "recorded_at"),
+        "replies": ("id", "item_id", "day", "reply", "reason", "until", "at"),
+    }
+    data = {kind: [{k: getattr(row, k) for k in keys} for row in sorted(c[kind], key=lambda r: r.id)] for kind, keys in fields.items()}
+    data.update(start=c["start"], end=c["end"])
+    return hashlib.sha256(json.dumps(data, sort_keys=True, default=str, ensure_ascii=False).encode()).hexdigest()
+
+
+def source_status(db: Session, run: dict) -> str:
+    if not run.get("source_fingerprint"):
+        return "unverified_legacy"
+    return "current" if fingerprint(collect(db, run["participant_id"], run["range_days"])) == run["source_fingerprint"] else "changed"
+
+
+def review_digest(run: dict) -> str:
+    body = {k: run.get(k) for k in ("source_fingerprint", "ledger", "summary", "challenge", "charts", "gate", "review")}
+    return hashlib.sha256(json.dumps(body, sort_keys=True, default=str, ensure_ascii=False).encode()).hexdigest()
+
+
+def coverage(db: Session, pid: str, range_days: int) -> dict:
+    c = collect(db, pid, range_days)
+    p = quality_profile(c)
+    estimates = [r.as_dict() for r in C.compare_all(c["evidence"])]
+    return {"period": {"from": str(c["start"]), "to": str(c["end"])}, "sessions": len(c["sessions"]),
+            "days_with_records": p["days_with_records"], "quality": p["quality"],
+            "versions": sorted({f"{s.protocol_code}/{s.protocol_version}" for s in c["sessions"]}),
+            "comparisons": [{"measure": r["measure"], "protocol_code": r["protocol_code"], "protocol_version": r["protocol_version"], "status": r["status"], "eligible_n": r["eligible_n"]} for r in estimates],
+            "source_fingerprint": fingerprint(c), "clinical_validation": "not_established"}
+
+
 def build_ledger(person: User, c: dict, prof: dict) -> dict:
     """Numbered facts, rules only. Each is text a model may cite. No name, no free text from the person."""
     facts: list[tuple[str, str, str]] = []
@@ -221,8 +256,8 @@ def build_ledger(person: User, c: dict, prof: dict) -> dict:
         facts.append((f"F-skip-{m}", "measured", f"The answer for {m.replace('_', ' ')} was skipped {k} times."))
     # per-measure description from current, usable records
     ev = [e for e in c["evidence"] if e.status == "current" and e.quality == "usable" and e.value_num is not None]
-    for m, (code, _) in CHART_MEASURES.items():
-        rows = sorted((e for e in ev if e.measure == m), key=lambda e: e.recorded_at)
+    for m, (code, version) in CHART_MEASURES.items():
+        rows = sorted((e for e in ev if e.measure == m and e.protocol_code == code and e.protocol_version == version), key=lambda e: e.recorded_at)
         if not rows:
             continue
         vals = [e.value_num for e in rows]
@@ -233,17 +268,21 @@ def build_ledger(person: User, c: dict, prof: dict) -> dict:
                       f"latest {_n(vals[-1])}{sfx} on {rows[-1].recorded_at.date().isoformat()}; middle value {_n(statistics.median(vals))}{sfx}; "
                       f"lowest {_n(min(vals))}{sfx}, highest {_n(max(vals))}{sfx}."))
     # within-person change estimates, from the existing change engine (never WHO-5), over the included records
-    for res in C.compare_all([e for e in c["evidence"]]):
+    comparisons = C.compare_all([e for e in c["evidence"]])
+    for res in comparisons:
         d = res.as_dict()
+        fact_id = f"F-c-{d['measure']}"
+        if sum(r.measure == res.measure for r in comparisons) > 1:
+            fact_id += f"-{d['protocol_code']}-{d['protocol_version']}"
         if d["status"] in ("insufficient", "no_variation") or d["difference"] is None or not d["interval"]:
-            facts.append((f"F-c-{d['measure']}", "derived", f"{LABELS.get(d['measure'], (d['measure'].replace('_', ' '), ''))[0]}: too few usable records to compare the person's earlier and later values."))
+            facts.append((fact_id, "derived", f"{LABELS.get(d['measure'], (d['measure'].replace('_', ' '), ''))[0]}: too few usable records to compare the person's earlier and later values."))
             continue
         lo, hi = d["interval"]
         where = ("within this person's usual variation" if d["status"] == "within"
                  else f"outside this person's usual variation ({d['direction']} than their earlier values)")
         lab, unit = LABELS.get(d["measure"], (d["measure"].replace("_", " "), d["unit"] or ""))
         sfx = f" {unit}" if unit else ""
-        facts.append((f"F-c-{d['measure']}", "derived",
+        facts.append((fact_id, "derived",
                       f"{lab}: later records compared with the person's own earlier records: difference {d['difference']:+.3g}{sfx}, "
                       f"95% interval {lo:+.3g} to {hi:+.3g}{sfx}; {where}. This is a research estimate, not a finding."))
     if c["replies"]:
@@ -495,6 +534,8 @@ def execute(run_id: str, db: Session, env=None, clients=None) -> dict:
     try:
         _stage(run, "collect", "running")
         c = collect(db, person.id, run["range_days"])
+        run["source_fingerprint"] = fingerprint(c)
+        run["source_ids"] = {k: [r.id for r in c[k]] for k in ("sessions", "evidence", "replies")}
         _stage(run, "collect", "completed", f"{len(c['sessions'])} sessions and {len(c['evidence'])} records from {c['start'].isoformat()} to {c['end'].isoformat()}; {len(c['replies'])} routine replies.")
         if not c["sessions"]:
             for sid in ("quality", "describe", "ledger", "summarise", "challenge", "check", "validate", "charts"):
@@ -573,10 +614,14 @@ def review(run_id: str, clinician: User, decisions: list[dict], note: str) -> di
     limits = {"statement": len((run.get("summary") or {}).get("statements", [])), "doubt": len((run.get("challenge") or {}).get("doubts", [])),
               "question": len((run.get("challenge") or {}).get("questions", [])), "chart": len((run.get("charts") or {}).get("charts", []))}
     clean = []
+    seen = set()
     for d in decisions:
         kind, idx, dec = d.get("kind"), d.get("index"), d.get("decision")
         if kind not in limits or not isinstance(idx, int) or not 0 <= idx < limits[kind] or dec not in ("keep", "discard", "edit"):
             raise ValueError("A decision does not match anything in the draft.")
+        if (kind, idx) in seen:
+            raise ValueError("Decide each item only once.")
+        seen.add((kind, idx))
         row = {"kind": kind, "index": idx, "decision": dec, "note": str(d.get("note") or "")[:300]}
         if dec == "edit":
             text = str(d.get("text") or "").strip()
@@ -584,6 +629,8 @@ def review(run_id: str, clinician: User, decisions: list[dict], note: str) -> di
                 raise ValueError("Only a statement, doubt or question can be edited, and the new text cannot be empty.")
             row["text"] = text[:600]    # clinician-written; it is recorded as theirs and is not model output
         clean.append(row)
+    if not clean:
+        raise ValueError("Record at least one explicit decision.")
     run["review"] = {"by": clinician.id, "at": _now(), "decisions": clean, "note": note.strip()[:500]}
     run["review_state"] = "reviewed_by_clinician"
     run["state"] = "reviewed"

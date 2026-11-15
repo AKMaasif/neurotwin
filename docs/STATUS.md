@@ -1,5 +1,26 @@
 # Status — version 0.2 (updated 11 Nov 2026)
 
+## Readiness update — 15 November 2026
+
+Latest dedicated QA run: **598 passed, 13 skipped, no failures**. Readiness scenarios passed 102/102;
+agent contracts passed 71/71 marked scenarios. Browser checks also verified English/Arabic typed report
+commands. Dependency audit found Vite (high) and esbuild (moderate) findings that remain unresolved.
+See the [full QA and benchmark report](QA_BENCHMARK_REPORT_2026-11-15.md) for evidence, timings and gaps.
+
+The [readiness checklist](READINESS_CHECKLIST.md) now tracks the complete concern-to-follow-up loop,
+source freshness, report navigation and evaluation requirements. The full backend run passed 597 tests
+with 13 skipped. After adding the migration round-trip case and extending the linked journey exercise,
+the affected care-journey/migration tests passed (19 tests). The frontend production build passed with
+the existing imaging bundle-size warning. Chromium verified journey saving, narrow-screen layout,
+Escape after saving, and shared follow-up appearing in the Arabic patient report without runtime errors.
+The final fixed readiness report records 102 passed, no failures and no skips; this is software evaluation
+with synthetic cases and mock providers, not an independent clinical benchmark.
+
+Eleven imaging cases require unavailable `ants`; the research forecast and OASIS spreadsheet modules
+require unavailable `sklearn` and `openpyxl`, respectively. These skips do not establish that processing
+works in this environment. Live speech, live model quality and clinical/pilot validation remain pending.
+Historical verification below is retained for context.
+
 Four lists, kept separate on purpose. Software tests passing is not evidence of clinical accuracy, and nothing
 here has been tried with real older adults, families or clinicians yet.
 

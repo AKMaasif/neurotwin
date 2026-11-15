@@ -64,8 +64,8 @@ export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut
     body = <ConsentScreen consent={consent} onChanged={home} onClose={home} />;
   else if (screen === "checkin") body = <Checkin onDone={home} />;
   else if (screen === "reaction") body = <Reaction onDone={home} />;
-  else if (screen === "report") body = <Report onBack={home} />;
-  else if (screen === "prep") body = <Report prep onBack={home} />;
+  else if (screen === "report") body = <Report userId={user.id} onBack={home} />;
+  else if (screen === "prep") body = <Report userId={user.id} prep onBack={home} />;
   else if (screen === "display") body = <DisplaySettings value={display} onChange={setDisplay} onBack={home} />;
   else if (screen === "memory") body = <Memory onDone={home} />;
   else if (screen === "wellbeing") body = <Who5 onDone={home} />;
