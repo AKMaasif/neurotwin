@@ -12,6 +12,18 @@ USERNAMES = {"demo-fatima": "fatima", "demo-yousef": "yousef", "demo-mariam": "m
 
 
 @pytest.fixture(autouse=True)
+def _isolate_provider_state(monkeypatch):
+    """Tests must not inherit real keys or another test's quota/health state."""
+    from app import agent_runtime, voice
+    for key in ("GEMINI_API_KEY", "META_API_KEY", "GEMINI_MODEL", "META_MODEL",
+                "NEUROTWIN_AGENTS_DAILY_CALLS", "NEUROTWIN_VOICE_DAILY_CALLS"):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setattr(agent_runtime, "_cap", {"day": None, "n": 0})
+    monkeypatch.setattr(agent_runtime, "_checks", {})
+    monkeypatch.setattr(voice, "_calls", {"day": None, "n": 0})
+
+
+@pytest.fixture(autouse=True)
 def _fresh_rate_limits():
     from app import auth
     auth.login_attempts._seen.clear()

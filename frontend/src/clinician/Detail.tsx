@@ -12,8 +12,9 @@ import { valueText } from "./EvidenceTable";
 
 const SESSION_LEVEL = new Set(["interrupted_session", "abandoned_session", "missing_required", "unknown_protocol"]);
 
-export default function Detail({ person, data, sel, onSelect, onChanged }: {
+export default function Detail({ person, data, sel, onSelect, onChanged, openPlanKey = 0 }: {
   person: ClinicianParticipant | null; data: Data | null; sel: Sel; onSelect: (s: Sel) => void; onChanged: () => void;
+  openPlanKey?: number;
 }) {
   const { t } = useT();
   const record = sel?.kind === "record" ? data?.evidence.find((e) => e.id === sel.id) : undefined;
@@ -21,6 +22,7 @@ export default function Detail({ person, data, sel, onSelect, onChanged }: {
     : record?.session_id ? data?.sessions.find((s) => s.id === record.session_id) : undefined;
   const [extra, setExtra] = useState<"summary" | "plan" | null>(null);
   useEffect(() => { if (sel) setExtra(null); }, [sel]);       // picking a record or session leaves the summary
+  useEffect(() => { if (openPlanKey) setExtra("plan"); }, [openPlanKey]);
   const tab = extra ?? (sel?.kind === "session" ? "session" : "record");
 
   return (

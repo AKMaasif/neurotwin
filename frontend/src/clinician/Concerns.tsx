@@ -5,7 +5,7 @@ import { ErrorNote, Status } from "../ui";
 
 /** Reports the person chose to send this clinician. Plain list, newest first: no urgency label, no ranking, no interpretation.
  *  Acknowledge, review and close are each the clinician's own action and are what the person is told. */
-export default function Concerns({ onCount }: { onCount?: (n: number) => void }) {
+export default function Concerns({ onCount, onJourney }: { onCount?: (n: number) => void; onJourney?: (id: number) => void }) {
   const { t } = useT();
   const [rows, setRows] = useState<Concern[] | null>(null);
   const [error, setError] = useState<unknown>(null);
@@ -18,12 +18,12 @@ export default function Concerns({ onCount }: { onCount?: (n: number) => void })
       <div className="d-title"><h2>{t("cnInbox")}</h2><div className="meta">{t("cnInboxLede")}</div></div>
       <ErrorNote error={error} onRetry={load} />
       {rows?.length === 0 && <p className="hint">{t("cnInboxNone")}</p>}
-      {rows?.map((c) => <Row key={c.id} c={c} onChanged={load} />)}
+      {rows?.map((c) => <Row key={c.id} c={c} onChanged={load} onJourney={onJourney} />)}
     </>
   );
 }
 
-function Row({ c, onChanged }: { c: Concern; onChanged: () => void }) {
+function Row({ c, onChanged, onJourney }: { c: Concern; onChanged: () => void; onJourney?: (id: number) => void }) {
   const { t } = useT();
   const [note, setNote] = useState("");
   const [error, setError] = useState<unknown>(null);
@@ -43,6 +43,7 @@ function Row({ c, onChanged }: { c: Concern; onChanged: () => void }) {
       </ol>
       <ErrorNote error={error} />
       {c.status === "withdrawn" && <p className="hint">{t("cnWithdrawnBy")}</p>}
+      {c.status !== "withdrawn" && onJourney && <button className="btn" onClick={() => onJourney(c.id)}>{t("cjOpen")}</button>}
       {c.status === "delivered" && <button className="btn primary" style={{ justifySelf: "start" }} onClick={() => act(() => api.acknowledgeConcern(c.id))}>{t("cnAck")}</button>}
       {open && (
         <>

@@ -49,7 +49,7 @@ class Database:
             versioned = "alembic_version" in tables and c.execute(text("SELECT COUNT(*) FROM alembic_version")).scalar() > 0
         # An alembic_version table with no row is what a failed first upgrade leaves behind: the database is still the old, unversioned one.
         legacy = not versioned and bool(tables - {"alembic_version"})
-        newer = {"care_plans", "plan_responses", "patient_preferences", "notifications", "assistant_actions", "assistant_messages", "concern_reports", "concern_events"}   # add each later migration's new tables here
+        newer = {"care_plans", "plan_responses", "patient_preferences", "notifications", "assistant_actions", "assistant_messages", "concern_reports", "concern_events", "care_journeys", "care_journey_events"}   # add each later migration's new tables here
         if legacy:
             self._clear_failed_upgrade(tables, newer)
             # Tables an old start-up never made are made now, except the ones the first migration after the baseline owns.

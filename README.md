@@ -31,6 +31,8 @@ without FreeSurfer execution; the supplied derivative viewer remains a labelled 
   sharing, audit trail, logs that never contain health values.
 
 What is verified, experimental, planned and awaiting approval is listed in [docs/STATUS.md](docs/STATUS.md).
+The [readiness checklist](docs/READINESS_CHECKLIST.md) records the linked care journey, current safeguards,
+verification approach and remaining clinical, speech and pilot work.
 Changes by version: [CHANGELOG.md](CHANGELOG.md).
 How it fits together: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
