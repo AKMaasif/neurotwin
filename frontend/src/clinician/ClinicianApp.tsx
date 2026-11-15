@@ -11,6 +11,7 @@ import Detail from "./Detail";
 import Dock from "./Dock";
 import ReportView from "./Report";
 import ActivityAnalysis from "./ActivityAnalysis";
+import { useLayer } from "../useLayer";
 const BrainAnalytics = lazy(() => import("../imaging/BrainAnalytics"));
 
 export type Sel = { kind: "record"; id: number } | { kind: "session"; id: number } | null;
@@ -100,6 +101,13 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
     if (ready && !everReady.current) { everReady.current = true; setWelcome(true); const id = window.setTimeout(() => setWelcome(false), 3500); return () => window.clearTimeout(id); }
   }, [ready]);
   const stage: 1 | 2 | 3 | 4 = !people ? 1 : (pid && !data) ? 2 : !viewsReady ? 3 : 4;
+
+  // Browser Back / in-app Back stay in step: each of these has its own history entry while it is open.
+  const narrowNow = isNarrow();
+  useLayer(narrowNow && pane !== "left", () => setPane("left"));
+  useLayer(gate || imaging, () => { setGate(false); setImaging(false); });
+  useLayer(report, () => setReport(false));
+  useLayer(analysis, () => setAnalysis(false));
 
   if (gate && !imaging) {
     return (
