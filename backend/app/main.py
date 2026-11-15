@@ -397,7 +397,7 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
     def voice_speak(body: SpeakIn, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
         if not COMP.enabled():
             raise HTTPException(404, "Not found.")
-        audio = COMP.speak(db, user, body.text, body.language, request.app.state.get_tts(), os.environ.get("GEMINI_TTS_VOICE") or None)
+        audio = COMP.speak(db, user, body.text, body.language, request.app.state.get_tts(), os.environ.get("GEMINI_TTS_VOICE") or llm.DEFAULT_TTS_VOICE)
         return Response(content=audio, media_type="audio/wav", headers={"Cache-Control": "no-store"})
 
     @app.get("/api/protocols")
