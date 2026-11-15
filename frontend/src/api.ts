@@ -23,18 +23,18 @@ export type RoutineReplies = { label: string; since: string; note: string;
   weeks: { week_start: string; done: number; not_today: number; difficulty: number; snooze: number }[];
   rows: { id: number; item_id: number; day: string; reply: string; reason: string | null }[] };
 export type AaStage = { id: string; kind: "software" | "ai" | "human"; name: string; status: string; summary: string | null; started_at: string | null; ended_at: string | null; note: string;
-  provider?: string | null; model?: string | null; prompt_version?: string | null; scripted?: boolean | null };
+  provider?: string | null; model?: string | null; prompt_version?: string | null; scripted?: boolean | null; deps?: string[] };
 export type AaStmt = { text: string; cites: string[] };
 export type AaRun = {
   run_id: string; participant_id: string; created_at: string; range_days: number; mode: string; state: string; demo_data: boolean; review_state: string; note: string;
-  stages: AaStage[]; events: { at: string; stage: string | null; status: string; summary: string | null }[];
+  retry_of?: string; stages: AaStage[]; events: { at: string; stage: string | null; status: string; summary: string | null }[];
   ledger?: { facts: { id: string; kind: string; text: string }[] };
   summary?: { status: string; reason?: string; statements: AaStmt[]; validator?: { ok: boolean; problems: { index: number; code: string; detail: string }[] }; provider?: string; model?: string; scripted?: boolean };
   challenge?: { status: string; doubts: AaStmt[]; questions: AaStmt[] };
   cross_check?: { status: string; reason?: string; items: { index: number; supported: boolean; reason: string }[] };
   gate?: { passed: boolean; checks: { name: string; ok: boolean; required: boolean; warning?: boolean; detail: string }[] };
   charts?: { status: string; charts: { measure: string; range: string; why: string; cites: string[] }[]; dropped: { measure: string; reason: string }[] };
-  review?: { by: string; at: string; decisions: { kind: string; index: number; decision: string; note: string }[]; note: string };
+  review?: { by: string; at: string; decisions: { kind: string; index: number; decision: string; note: string; text?: string }[]; note: string };
 };
 export type AaRoster = { mode: string; sends: string; providers: Record<string, { role: string; configured: boolean; provider: string | null; model: string | null; scripted: boolean; verified: boolean; last_check: string | null }>;
   stages: { id: string; kind: "software" | "ai" | "human"; name: string; provider_slot?: string; prompt_version?: string; verified?: boolean; scripted?: boolean }[] };
@@ -314,7 +314,9 @@ export const api = {
   aaRuns: (pid: string) => get<{ run_id: string; created_at: string; state: string; range_days: number; mode: string; reviewed: boolean }[]>(`/api/activity-analysis/participants/${encodeURIComponent(pid)}/runs`),
   aaStart: (pid: string, range_days: number) => post<AaRun>(`/api/activity-analysis/participants/${encodeURIComponent(pid)}/runs`, { range_days }),
   aaRun: (id: string) => get<AaRun>(`/api/activity-analysis/runs/${encodeURIComponent(id)}`),
-  aaReview: (id: string, decisions: { kind: string; index: number; decision: string; note?: string }[], note: string) => post<AaRun>(`/api/activity-analysis/runs/${encodeURIComponent(id)}/review`, { decisions, note }),
+  aaCancel: (id: string) => post<AaRun>(`/api/activity-analysis/runs/${encodeURIComponent(id)}/cancel`, {}),
+  aaRetry: (id: string) => post<AaRun>(`/api/activity-analysis/runs/${encodeURIComponent(id)}/retry`, {}),
+  aaReview: (id: string, decisions: { kind: string; index: number; decision: string; note?: string; text?: string }[], note: string) => post<AaRun>(`/api/activity-analysis/runs/${encodeURIComponent(id)}/review`, { decisions, note }),
   change: (pid: string, includeDoubtful = false) =>
     get<ChangeResult[]>(`/api/participants/${encodeURIComponent(pid)}/change${includeDoubtful ? "?include_doubtful=true" : ""}`),
   aiStatus: () => get<AiStatus>("/api/ai/status"),

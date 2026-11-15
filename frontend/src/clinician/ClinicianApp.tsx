@@ -148,7 +148,7 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
           <button key={k} aria-current={pane === k} onClick={() => setPane(k)}><Icon size={20} aria-hidden="true" />{label}</button>
         ))}
       </nav>
-      {analysis && person && <ActivityAnalysis person={person} evidence={data?.evidence ?? []} onClose={() => setAnalysis(false)} />}
+      {analysis && person && <ActivityAnalysis person={person} evidence={data?.evidence ?? []} onClose={() => setAnalysis(false)} onReport={() => { setAnalysis(false); setReport(true); }} />}
       {report && person && <ReportView personId={person.id} onClose={() => setReport(false)} />}
       {!people && error ? <div style={{ position: "fixed", bottom: 16, insetInlineStart: 16 }}><ErrorNote error={error} onRetry={refresh} /></div> : null}
     </div>)}

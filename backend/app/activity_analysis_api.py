@@ -21,7 +21,7 @@ def _clinician(user: User) -> User:
 
 def _run_for(run_id: str, db: Session, user: User) -> dict:
     _clinician(user)
-    run = AA.load(run_id)
+    run = AA.view(run_id)
     if run is None:
         raise HTTPException(404, NOT_FOUND)
     require_evidence_access(db, user, run["participant_id"])
@@ -37,6 +37,7 @@ class DecisionIn(BaseModel):
     index: int
     decision: str
     note: str | None = Field(default=None, max_length=300)
+    text: str | None = Field(default=None, max_length=600)
 
 
 class ReviewIn(BaseModel):
@@ -64,6 +65,9 @@ def start(pid: str, body: StartIn, background: BackgroundTasks, request: Request
     if body.range_days not in AA.RANGES:
         raise HTTPException(422, "Choose 6 weeks, 3 months or 6 months.")
     person = db.get(User, pid)
+    for old in AA.list_runs(pid, 20):    # a double click or a second tab must not start a second analysis
+        if old["state"] in ("queued", "running"):
+            return AA.view(old["run_id"])
     run = AA.create_run(person, user, body.range_days)
     services.audit(db, user.id, "activity_analysis.start", pid, run["run_id"])
     db.commit()
@@ -80,6 +84,36 @@ def start(pid: str, body: StartIn, background: BackgroundTasks, request: Request
 @router.get("/runs/{run_id}")
 def get_run(run_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
     return _run_for(run_id, db, user)
+
+
+@router.post("/runs/{run_id}/cancel")
+def cancel(run_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    run = _run_for(run_id, db, user)
+    if not AA.request_cancel(run_id):
+        raise HTTPException(409, "This analysis is not running.")
+    services.audit(db, user.id, "activity_analysis.cancel", run["participant_id"], run_id)
+    db.commit()
+    return AA.view(run_id)
+
+
+@router.post("/runs/{run_id}/retry")
+def retry(run_id: str, background: BackgroundTasks, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    old = _run_for(run_id, db, user)
+    person = db.get(User, old["participant_id"])
+    try:
+        run = AA.retry(run_id, user, person)
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+    services.audit(db, user.id, "activity_analysis.retry", old["participant_id"], run["run_id"])
+    db.commit()
+    factory = request.app.state.db.SessionLocal
+
+    def work():
+        with factory() as s:
+            AA.execute(run["run_id"], s)
+
+    background.add_task(work)
+    return run
 
 
 @router.post("/runs/{run_id}/review")
