@@ -79,9 +79,9 @@ export default function Stage({ user, person, data, sel, onSelect, onReport, err
             )}
         </div>
         <div className="stage-actions">
-          <button className="btn" onClick={onImaging}><Brain size={16} aria-hidden="true" />{t.lang === "ar" ? "تحليل صور الدماغ" : "Brain Analytics"}</button>
-          <button className="btn" disabled={!person} onClick={onAnalyze}><Sparkles size={16} aria-hidden="true" />{t("aaOpen")}</button>
-          <button className="btn primary" disabled={!person} onClick={onReport}><FileText size={16} aria-hidden="true" />{t("wsReport")}</button>
+          <button className="btn" onClick={onImaging} title={t.lang === "ar" ? "تحليل صور الدماغ" : "Brain Analytics"} aria-label={t.lang === "ar" ? "تحليل صور الدماغ" : "Brain Analytics"}><Brain size={16} aria-hidden="true" /><span className="lbl">{t.lang === "ar" ? "تحليل صور الدماغ" : "Brain Analytics"}</span></button>
+          <button className="btn" disabled={!person} onClick={onAnalyze} title={t("aaOpen")} aria-label={t("aaOpen")}><Sparkles size={16} aria-hidden="true" /><span className="lbl">{t("aaOpen")}</span></button>
+          <button className="btn primary" disabled={!person} onClick={onReport} title={t("wsReport")} aria-label={t("wsReport")}><FileText size={16} aria-hidden="true" /><span className="lbl">{t("wsReport")}</span></button>
           <div style={{ position: "relative" }} ref={menuRef}>
             <button className="btn" aria-label={t("wsMenu")} aria-expanded={menu} onClick={() => setMenu((v) => !v)}><Menu size={18} /></button>
             {menu && (
