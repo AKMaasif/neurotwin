@@ -115,3 +115,29 @@ Checked in the browser (English and Arabic, desktop and 390 px): hover details, 
 - Statements show citation chips that reveal the fact text, the independent-check result, and validator problems. Doubts, questions and proposed charts (with a values table and dropped suggestions) can each be marked Keep or Discard; a note and "Save my decisions" record only the clinician's own decisions.
 - English and Arabic (RTL); step names and notes are localised, model text stays English and is labelled as such.
 - Verified: TypeScript build, production build, browser check at desktop (EN) and phone width (AR). Not verified: real devices, screen readers, native Arabic review.
+
+## Stage 8 follow-up — run control, interruption and clinician wording
+
+- `POST /api/activity-analysis/runs/{id}/cancel` (cooperative: checked before each stage; a model call already in flight may still finish at the provider) and `/retry` (a *new* run id with `retry_of`).
+- A run recorded as queued/running but not executing in this process is reported as **interrupted** (server restart or crash); it is never shown as done.
+- A second start for a person with an active run returns that run (no duplicate billable runs from a double click or second tab).
+- Review decisions now include **edit**: the clinician's own wording is stored as theirs (not model output).
+- Stages carry `deps`; the expanded panel lays out the workflow by dependency level, lists "After: …", shows the event timeline, and links to the proposed charts and the report.
+- Tests: 6 new in `tests/test_activity_analysis.py` (interrupted, cancel, duplicate start, internal failure + retry, edit, dependencies).
+- Still not covered: a real server kill mid-run (simulated here by an unclaimed "running" file), live provider failure/quota behaviour, keyboard-only and large-text audit.
+
+## Chart export and Brain Analytics preparation steps
+
+- Proposed charts can be downloaded as SVG or CSV. Each export carries the measure, protocol version, range, the ids of the plotted records, the run id and fact ids, a "drawn by software; suggested by a model" statement and the synthetic-data label where it applies. Verified by downloading both files from the running app.
+- Brain Analytics loading now shows four real steps (case, MRI volume and labels, left surfaces, right surfaces) in English or Arabic, driven by the actual artifact loads; no step is shown before it starts.
+
+## Browser history and session routing
+
+The app draws screens from state, not URLs, so Back used to leave the page. `frontend/src/nav.ts` + `useLayer.ts` now manage history:
+
+- Signed in: the stack is always `[ … , guard, view(0), view(n) … ]`. Back can reach `guard` but never what lies below it, and reaching it puts the person straight back on their dashboard. Back therefore never goes to sign-in or the landing page, however many times it is pressed. Refreshing keeps this.
+- A screen or dialog above the dashboard (Brain Analytics and its notice, report, activity analysis, mobile panes, patient sub-pages, family Write/Account) is a *layer* with one history entry. Browser Back closes it; closing it with the app's own Back/Close removes that entry, so there are no dead entries. Transitions (analysis → report) are serialized so entries cannot get out of step.
+- Only an explicit Sign out, or an ended session, leaves the dashboard. On either, history is cleared of dashboard state; Back/Forward then show only sign-in/landing. The API and app shell are served `Cache-Control: no-store`, and a page restored from the back/forward cache re-checks the session before showing anything.
+- Sign-in is unchanged: the same one-click portal buttons and demo accounts.
+- Verified with a scripted browser (`nav.js`: 30 checks) for clinician, patient and family, including reload, expired session, Sign out, Back and Forward; plus a backend test for the headers. Not verified: real Safari/Firefox/mobile browsers, and the real browser back/forward cache (headless Chromium does not reproduce it).
+- Not in history: tabs inside Brain Analytics and in-page chip filters, which are controls within one screen.

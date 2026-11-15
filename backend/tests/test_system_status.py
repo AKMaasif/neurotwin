@@ -69,3 +69,10 @@ def test_invoke_records_outcome(tmp_path, monkeypatch):
     assert R.recent_checks()["gemini"]["ok"] is True
     R.invoke(tmp_path, "a", "gemini", "s", "u", [], client=Bad())
     assert R.recent_checks()["gemini"]["ok"] is False
+
+
+def test_api_answers_and_the_app_shell_are_never_cacheable(client):
+    r = client.get("/api/health")
+    assert r.headers["cache-control"] == "no-store"
+    me = client.get("/api/auth/session")
+    assert me.status_code in (200, 401) and me.headers["cache-control"] == "no-store"

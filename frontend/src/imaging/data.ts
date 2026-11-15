@@ -24,17 +24,17 @@ export async function getResearch(path: string, signal?: AbortSignal): Promise<R
   return response;
 }
 
-export async function loadBrain(signal: AbortSignal, progress: (message: string) => void): Promise<BrainData> {
-  progress("Reading the research case…");
+export async function loadBrain(signal: AbortSignal, progress: (step: string) => void): Promise<BrainData> {
+  progress("case");
   const manifest: Manifest = await (await getResearch("case", signal)).json();
   const bin = async (name: string) => (await getResearch(`artifacts/${name}`, signal)).arrayBuffer();
-  progress("Loading MRI volume and anatomical labels…");
+  progress("volume");
   const [v, l] = await Promise.all([bin("volume.bin"), bin("labels.bin")]);
   const count = manifest.shape.reduce((a, b) => a * b, 1);
   if (v.byteLength !== count || l.byteLength !== count * 2) throw new Error("Volume size does not match its geometry.");
   const hemispheres: Record<string, Hemisphere> = {};
   for (const hemi of ["lh", "rh"]) {
-    progress(`Loading ${hemi === "lh" ? "left" : "right"} cortical surfaces…`);
+    progress(hemi);
     const [regions, annotation, thickness] = await Promise.all([
       getResearch(`artifacts/${hemi}.regions.json`, signal).then(r => r.json()), bin(`${hemi}.annotation.bin`), bin(`${hemi}.thickness.bin`),
     ]);

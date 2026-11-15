@@ -166,3 +166,5 @@
 
 .brain-en-only{margin:12px 24px 0;padding:10px 14px;border:1px solid #d9c98f;background:#fff9e6;color:#6b5314;border-radius:6px;font-size:13px}
 [dir=rtl] .brain-header .brain-back svg{transform:scaleX(-1)}
+.brain-steps { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 4px; text-align: start; font-size: 14px; }
+.brain-steps .done { color: #2f7f55; } .brain-steps .now { font-weight: 600; } .brain-steps .next { color: #6b7f8e; }

@@ -417,3 +417,16 @@ textarea.note { width: 100%; min-height: 64px; border: 1px solid var(--line); bo
 .aa-check { margin-inline-start: 8px; font-size: 12px; }
 .aa-review { display: grid; gap: 8px; }
 @media (max-width: 640px) { .report.aa { padding: 18px 14px; } .aa-decide { margin-inline-start: 0; } }
+
+.aa-chain.open { grid-auto-flow: row dense; align-items: start; }
+.aa-now { font-size: 13px; color: var(--navy); font-weight: 600; }
+.aa-links { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 14px; }
+.aa-events { margin: 6px 0 0; padding-inline-start: 18px; display: grid; gap: 4px; font-size: 13px; }
+.aa-edit { display: grid; gap: 4px; flex-basis: 100%; margin-top: 6px; }
+.aa-edited { display: block; margin-top: 6px; font-size: 13px; background: #f4f7f9; border-radius: 6px; padding: 6px 8px; }
+@media (max-width: 640px) { .aa-chain.open { grid-template-columns: 1fr !important; } .aa-chain.open .aa-stage { grid-column: auto !important; } }
+@media (prefers-reduced-motion: reduce) { .aa * { animation: none !important; transition: none !important; } }
+.aa-panel { overflow-x: auto; }
+.aa-chain.open { min-width: max-content; }
+.aa-chain.open .aa-stage { min-width: 160px; }
+.aa-export { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
