@@ -115,3 +115,13 @@ Checked in the browser (English and Arabic, desktop and 390 px): hover details, 
 - Statements show citation chips that reveal the fact text, the independent-check result, and validator problems. Doubts, questions and proposed charts (with a values table and dropped suggestions) can each be marked Keep or Discard; a note and "Save my decisions" record only the clinician's own decisions.
 - English and Arabic (RTL); step names and notes are localised, model text stays English and is labelled as such.
 - Verified: TypeScript build, production build, browser check at desktop (EN) and phone width (AR). Not verified: real devices, screen readers, native Arabic review.
+
+## Stage 8 follow-up — run control, interruption and clinician wording
+
+- `POST /api/activity-analysis/runs/{id}/cancel` (cooperative: checked before each stage; a model call already in flight may still finish at the provider) and `/retry` (a *new* run id with `retry_of`).
+- A run recorded as queued/running but not executing in this process is reported as **interrupted** (server restart or crash); it is never shown as done.
+- A second start for a person with an active run returns that run (no duplicate billable runs from a double click or second tab).
+- Review decisions now include **edit**: the clinician's own wording is stored as theirs (not model output).
+- Stages carry `deps`; the expanded panel lays out the workflow by dependency level, lists "After: …", shows the event timeline, and links to the proposed charts and the report.
+- Tests: 6 new in `tests/test_activity_analysis.py` (interrupted, cancel, duplicate start, internal failure + retry, edit, dependencies).
+- Still not covered: a real server kill mid-run (simulated here by an unclaimed "running" file), live provider failure/quota behaviour, keyboard-only and large-text audit.
