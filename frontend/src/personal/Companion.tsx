@@ -186,6 +186,7 @@ export default function Companion({ user, tabbed, go }: { user: User; tabbed: bo
             <button className="cmp-ico" onClick={() => setExpanded((x) => !x)} aria-label={expanded ? t("cmpMinimize") : t("cmpExpand")}>{expanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />}</button>
             <button className="cmp-ico" onClick={minimise} aria-label={t("cmpClose")}><ChevronDown size={18} /></button>
           </header>
+          <p className="hint" style={{ margin: 0 }}>{t(`cmpVoice_${source}` as "cmpVoice_none")}</p>
           {live && <div className="cmp-meter" aria-hidden="true"><i style={{ width: `${Math.round(level * 100)}%` }} /></div>}
           {note && <p className="cmp-note" role="status">{note}</p>}
           {phase === "denied" && <p className="cmp-note" role="alert">{t("cmpDenied")}</p>}
@@ -196,6 +197,13 @@ export default function Companion({ user, tabbed, go }: { user: User; tabbed: bo
             <div className="cmp-card">
               <b>{t("cmpConsentTitle")}</b><p>{t("cmpConsentBody")}</p>
               <div className="cmp-row"><button className="btn primary" onClick={() => grant("voice_recording", true)}>{t("cmpConsentAllow")}</button><button className="btn" onClick={minimise}>{t("cmpConsentLater")}</button></div>
+            </div>
+          )}
+
+          {cfg.stt.available && consented && cfg.tts.server && !cfg.model.consented && (
+            <div className="cmp-card">
+              <p>{t("cmpModelConsent")}</p>
+              <div className="cmp-row"><button className="btn primary" onClick={() => grant("assistant_model", true)}>{t("cmpModelAllow")}</button></div>
             </div>
           )}
 

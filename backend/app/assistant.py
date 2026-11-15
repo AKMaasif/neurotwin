@@ -48,7 +48,7 @@ _EMERGENCY = re.compile(r"\b(emergency|urgent|ambulance|help me|i need help|i am
 _NOT_TODAY = re.compile(r"\b(not today|skip|won't do|will not do|can't do (?:it|the \w+|my \w+)? ?today)\b|ليس اليوم|مو اليوم|تخطي|تخطى|لن أفعل", re.I)
 _DONE = re.compile(r"\b(i did|i have done|i've done|i finished|i have finished|i completed|i (?:just )?(?:drank|ate|took|walked)|done with|finished|completed|done)\b|\bتم\b|أنهيت|انتهيت|خلصت|أكملت|اكملت|فعلت|قمت ب", re.I)
 _SNOOZE = re.compile(r"\b(snooze|remind me|later)\b|ذكرني|ذكّرني|لاحقا|لاحقًا", re.I)
-_TODAY = re.compile(r"\b(what.*(today|to do)|my (tasks|routines|reminders)|today'?s (tasks|plan))\b|ماذا علي|مهامي|روتيني|تذكيراتي|ماذا أفعل اليوم", re.I)
+_TODAY = re.compile(r"\b(what.*(today|to do|activities|routines?|tasks|schedule|plan)|how('s| is) my (day|schedule)|what('s| is| are) (on|next)\b|what am i (doing|supposed to do)|my (day|tasks|routines|reminders|activities)|today'?s (tasks|plan))\b|ماذا علي|مهامي|روتيني|تذكيراتي|ماذا أفعل اليوم", re.I)
 _EXPLAIN = re.compile(r"\b(explain|what does .* mean|what is .* for|tell me about|why)\b|اشرح|ماذا يعني|ما معنى", re.I)
 _OPEN = [(re.compile(r"\b(appointment|visit|questions? (for|to ask) (my|the) (doctor|clinician|clinic)|prepare for my)\b|موعد|موعدي|أسئلة للطبيب|اسئلة للطبيب|تحضير", re.I), "prep"),
          (re.compile(r"\b(follow-?up|shared (note|summary)|my (doctor|clinician)'?s? (note|message|summary))\b|المتابعة|ملخص الطبيب|رسالة الطبيب", re.I), "messages"),
@@ -157,6 +157,10 @@ def parse(text: str, rows: list[tuple[CarePlanItem, dict]], ctx: dict | None = N
     t = (text or "").strip()
     if not t:
         return {"tool": None, "reason": "empty"}
+    # a greeting or filler in front of a real request ("Hello, how is my day today?", "So, what ...") is not the request
+    lead = re.match(r"^\s*(?:(?:hi|hello|hey|so|ok|okay|well|please|um|good (?:morning|afternoon|evening)|salam|مرحبا|أهلا|اهلا)\b[\s,.!؟]*)+(?P<rest>.+)$", t, re.I | re.S)
+    if lead and len(lead.group("rest").split()) >= 2 and not _EMERGENCY.search(t[: len(t) - len(lead.group("rest"))]):
+        t = lead.group("rest").strip()
     if _EMERGENCY.search(t):
         return {"tool": "emergency", "arguments": {}}
     if _YES.match(t) or _NO.match(t):

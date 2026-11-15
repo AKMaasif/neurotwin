@@ -139,3 +139,15 @@ def test_appointment_and_follow_up_open_the_right_screen_without_changes(client,
     r = say(client, h, text)
     assert r["understood"] is True and r["navigate"] == screen and r["needs_confirmation"] is False
     assert client.get("/api/care-plan/history").json()["days"] == []     # opening a screen changes nothing
+
+
+@pytest.mark.parametrize("text", ["Hello, how is my day today?", "So, what are the activities I'm having right now?", "what's next", "how is my schedule"])
+def test_natural_ways_to_ask_for_todays_list_read_it_out(client, text):
+    h = two_tasks(client)
+    r = say(client, h, text)
+    assert r["tool"] == "read_today" and len(r["items"]) == 2 and r["navigate"] is None
+
+
+def test_a_greeting_in_front_of_a_help_word_still_goes_to_the_urgent_screen(client):
+    h = two_tasks(client)
+    assert say(client, h, "hello I need help")["tool"] == "emergency"
