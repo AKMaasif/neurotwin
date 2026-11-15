@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Activity, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { ClinicianParticipant, User } from "../api";
 import { useT } from "../i18n";
 import type { Data, Sel } from "./ClinicianApp";
@@ -19,7 +19,6 @@ export default function Dock({ data, sel, open, setOpen }: {
   return (
     <>
       <div className="dock-head">
-        <span className="pane-title"><Activity size={16} aria-hidden="true" />{t("wsActivity")}</span>
         <div className="seg" style={{ width: 240 }} role="group">
           <button aria-pressed={view === "workings"} onClick={() => { setView("workings"); setOpen(true); }}>{t("wsWorkings")}</button>
           <button aria-pressed={view === "steps"} onClick={() => { setView("steps"); setOpen(true); }}>{t("wsSteps")}</button>
