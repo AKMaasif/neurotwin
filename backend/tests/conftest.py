@@ -97,3 +97,10 @@ def run_reaction(client, headers, *, status="completed", rt=500, valid=5, early=
            {"measure": "anticipations", "kind": "observed", "value_num": early, "unit": "count"}]
     return client.post(f"/api/sessions/{s.json()['id']}/complete",
                        json={"status": status, "interruptions": interruptions, "observations": obs}, headers=headers)
+
+
+@pytest.fixture(autouse=True)
+def _fresh_provider_checks(monkeypatch):
+    """The footer's 'recent successful call' record is process memory; no test may inherit another test's calls."""
+    from app import agent_runtime
+    monkeypatch.setattr(agent_runtime, "_checks", {})

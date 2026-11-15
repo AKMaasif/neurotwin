@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Circle, FileUp, Lock, RefreshCw } from "lucide-react";
 import { imagingPost } from "../api";
 import { getResearch } from "./data";
+import { useT } from "../i18n";
 
 type Stage = { id: string; name: string; status: string; detail: string };
 type Result = { shape: number[]; source_shape: number[]; source_spacing_mm: number[]; display_spacing_mm: number[];
@@ -14,6 +15,7 @@ type Run = { id: string; scan_id: string; subject: string; status: string; stage
 const statusText = (s: string) => s.replace(/_/g, " ");
 
 function NativeSlices({ run }: { run: Run }) {
+  const { t } = useT();
   const result = run.result!;
   const [volume, setVolume] = useState<Uint8Array | null>(null), [error, setError] = useState("");
   const [cursor, setCursor] = useState(result.shape.map(n => Math.floor(n / 2)));
@@ -45,23 +47,24 @@ function NativeSlices({ run }: { run: Run }) {
     });
   }, [volume, cursor, result]);
   if (error) return <p role="alert">{error}</p>;
-  return <div className="native-preview"><div className="native-preview-head"><strong>Original MRI · Native display</strong><span>No imported segmentation or surfaces</span></div>
-    {!volume && <p role="status">Loading prepared volume…</p>}
+  return <div className="native-preview"><div className="native-preview-head"><strong>{t("nvHead")}</strong><span>{t("nvNoSeg")}</span></div>
+    {!volume && <p role="status">{t("nvLoadVol")}</p>}
     <div className="native-slices">{[0, 1, 2].map(axis => {
       const axes = axis === 0 ? [1, 2] : axis === 1 ? [0, 2] : [0, 1];
       const ratio = result.shape[axes[0]] * result.display_spacing_mm[axes[0]] / (result.shape[axes[1]] * result.display_spacing_mm[axes[1]]);
-      return <section key={axis}><header><strong>{result.axis_codes?.join("") === "RAS" ? ["Sagittal", "Coronal", "Axial"][axis] : `Voxel axis ${axis + 1}`}</strong>
+      return <section key={axis}><header><strong>{result.axis_codes?.join("") === "RAS" ? [t("nvSag"), t("nvCor"), t("nvAx")][axis] : t("nvVoxAxis", { n: axis + 1 })}</strong>
         <span>{cursor[axis] + 1}/{result.shape[axis]}</span></header>
-        <div><canvas ref={el => { refs.current[axis] = el; }} style={{ aspectRatio: `${ratio}`, width: "100%", height: "auto" }} aria-label={`Native MRI axis ${axis + 1}`} /></div>
-        <input aria-label={`Native slice axis ${axis + 1}`} type="range" min={0} max={result.shape[axis] - 1} value={cursor[axis]}
+        <div><canvas ref={el => { refs.current[axis] = el; }} style={{ aspectRatio: `${ratio}`, width: "100%", height: "auto" }} aria-label={t("nvCanvas", { n: axis + 1 })} /></div>
+        <input aria-label={t("nvSliceAria", { n: axis + 1 })} type="range" min={0} max={result.shape[axis] - 1} value={cursor[axis]}
           onChange={e => setCursor(c => c.map((v, i) => i === axis ? +e.target.value : v))} />
       </section>;
     })}</div>
-    <p>{result.spatial_frame_explicit ? "Display reoriented using the file's spatial transform. Anatomical quality review is still pending." : "Orientation unverified: voxel axes only. Do not infer anatomical directions from this preview."}</p>
+    <p>{result.spatial_frame_explicit ? t("nvOriented") : t("nvUnverified")}</p>
   </div>;
 }
 
 export default function NativeWorkflow() {
+  const { t } = useT();
   const [runs, setRuns] = useState<Run[]>([]), [selectedId, setSelectedId] = useState<string | null>(null);
   const [available, setAvailable] = useState(true), [error, setError] = useState("");
   const [busy, setBusy] = useState(false), [files, setFiles] = useState<File[]>([]), [confirmed, setConfirmed] = useState(false);
@@ -89,43 +92,43 @@ export default function NativeWorkflow() {
     finally { if (mounted.current) setBusy(false); }
   };
   const importFiles = () => {
-    if (files.reduce((n, f) => n + f.size, 0) > 80 * 1024 * 1024) { setError("Source files exceed the 80 MiB import limit."); return; }
+    if (files.reduce((n, f) => n + f.size, 0) > 80 * 1024 * 1024) { setError(t("nvTooBig")); return; }
     const body = new FormData(); body.append("confirmed", "true"); files.forEach(f => body.append("files", f)); act("import", body);
   };
   return <section className="native-workflow">
-    <div className="native-title"><div><p className="brain-eyebrow">NEUROTWIN NATIVE / 0.1</p><h1>Import & processing</h1>
-      <p>Your original MRI, preserved and prepared without FreeSurfer.</p></div><button onClick={() => setRefresh(n => n + 1)}><RefreshCw size={15} /> Refresh</button></div>
-    <div className="native-boundary"><strong>One research participant: OAS1_0001_MR1</strong><span>Technical preparation is available. Anatomy segmentation, AI agents and forecasts are not yet connected.</span></div>
+    <div className="native-title"><div><p className="brain-eyebrow">NEUROTWIN NATIVE / 0.1</p><h1>{t("nvTitle")}</h1>
+      <p>{t("nvSub")}</p></div><button onClick={() => setRefresh(n => n + 1)}><RefreshCw size={15} /> {t("nvRefresh")}</button></div>
+    <div className="native-boundary"><strong>{t("nvBoundaryH")}</strong><span>{t("nvBoundary")}</span></div>
     {error && <div className="native-error" role="alert">{error}</div>}
-    {!available && <div className="native-error">Native imaging support needs to be installed on this server.</div>}
-    <div className="native-import-grid"><section className="native-card"><h2><FileUp size={17} /> Import an original MRI</h2>
-      <p>Select one <b>.nii / .nii.gz</b> volume, or both files of a matching <b>.hdr + .img</b> pair. T1 structural MRI only in this increment.</p>
-      <input aria-label="Original MRI files" type="file" multiple accept=".nii,.gz,.hdr,.img" onChange={e => setFiles(Array.from(e.target.files || []))} />
-      <label className="brain-check"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} /> I confirm these scans belong to this research participant and are intended T1 structural MRI.</label>
-      <button className="native-primary" disabled={busy || !available || !confirmed || !files.length} onClick={importFiles}>{busy ? "Submitting…" : "Import & prepare"}</button>
-      <small>80 MiB source limit. Originals remain unchanged. Files stay on this server.</small></section>
-      <section className="native-card"><h2>Use your existing OASIS original</h2><p>Import the first raw acquisition for this same participant from your already-downloaded archive.</p>
-        <p>This reads the original header/image pair. It does not reuse the supplied FreeSurfer masks, surfaces or measurements.</p>
-        <button disabled={busy || !available} onClick={() => act("sample")}>{busy ? "Submitting…" : "Prepare existing original scan"}</button>
-        <small>The older Analyze format may require independent orientation review.</small></section></div>
-    <div className="native-run-heading"><h2>Processing history</h2>{runs.length > 0 && <select aria-label="Native processing attempt" value={selectedId || ""} onChange={e => setSelectedId(e.target.value)}>
+    {!available && <div className="native-error">{t("nvNotInstalled")}</div>}
+    <div className="native-import-grid"><section className="native-card"><h2><FileUp size={17} /> {t("nvImportH")}</h2>
+      <p>{t("nvImportP")}</p>
+      <input aria-label={t("nvFilesAria")} type="file" multiple accept=".nii,.gz,.hdr,.img" onChange={e => setFiles(Array.from(e.target.files || []))} />
+      <label className="brain-check"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} /> {t("nvConfirm")}</label>
+      <button className="native-primary" disabled={busy || !available || !confirmed || !files.length} onClick={importFiles}>{busy ? t("nvSubmitting") : t("nvImportBtn")}</button>
+      <small>{t("nvLimit")}</small></section>
+      <section className="native-card"><h2>{t("nvExistH")}</h2><p>{t("nvExistP1")}</p>
+        <p>{t("nvExistP2")}</p>
+        <button disabled={busy || !available} onClick={() => act("sample")}>{busy ? t("nvSubmitting") : t("nvExistBtn")}</button>
+        <small>{t("nvExistNote")}</small></section></div>
+    <div className="native-run-heading"><h2>{t("nvHistory")}</h2>{runs.length > 0 && <select aria-label={t("nvAttemptAria")} value={selectedId || ""} onChange={e => setSelectedId(e.target.value)}>
       {runs.map(r => <option key={r.id} value={r.id}>{new Date(r.created_at).toLocaleString()} · {statusText(r.status)} · {r.id.slice(0, 8)}</option>)}</select>}</div>
-    {!loaded ? <p role="status">Loading processing history…</p> : !selected ? <div className="native-empty">No native processing attempts yet. Import a scan or prepare the existing original above.</div> : <>
-      <div className="native-run-summary"><div><strong>Attempt {selected.id.slice(0, 8)}</strong><small>{selected.producer_version} · {selected.files.map(f => f.original_name).join(" + ")}</small></div>
+    {!loaded ? <p role="status">{t("nvLoadHist")}</p> : !selected ? <div className="native-empty">{t("nvNoRuns")}</div> : <>
+      <div className="native-run-summary"><div><strong>{t("nvAttempt", { id: selected.id.slice(0, 8) })}</strong><small>{selected.producer_version} · {selected.files.map(f => f.original_name).join(" + ")}</small></div>
         <span className={`native-status ${selected.status}`}>{statusText(selected.status)}</span>
-        {["queued", "running"].includes(selected.status) && <button disabled={busy} onClick={() => act(`runs/${selected.id}/cancel`)}>Cancel attempt</button>}
-        {(selected.retryable || selected.status === "cancelled") && <button disabled={busy} onClick={() => act(`runs/${selected.id}/retry`)}>Retry as new attempt</button>}</div>
+        {["queued", "running"].includes(selected.status) && <button disabled={busy} onClick={() => act(`runs/${selected.id}/cancel`)}>{t("nvCancel")}</button>}
+        {(selected.retryable || selected.status === "cancelled") && <button disabled={busy} onClick={() => act(`runs/${selected.id}/retry`)}>{t("nvRetry")}</button>}</div>
       {selected.error && <div className="native-error" role="alert">{selected.error}</div>}
       <ol className="native-stages">{selected.stages.map((stage, i) => <li key={stage.id} className={`native-stage ${stage.status}`}>
         <span className="native-step-icon">{stage.status === "succeeded" ? <CheckCircle2 size={20} /> : stage.status === "blocked" ? <Lock size={18} /> : <Circle size={19} />}</span>
         <div><strong>{i + 1}. {stage.name}</strong><p>{stage.detail}</p></div><span className="native-stage-status">{statusText(stage.status)}</span></li>)}</ol>
-      {selected.findings.length > 0 && <section className="native-card native-findings"><h2>Required review</h2><ul>{selected.findings.map(f => <li key={f.code}>{f.message}</li>)}</ul></section>}
+      {selected.findings.length > 0 && <section className="native-card native-findings"><h2>{t("nvReview")}</h2><ul>{selected.findings.map(f => <li key={f.code}>{f.message}</li>)}</ul></section>}
       {selected.result && selected.status === "awaiting_review" && <NativeSlices key={selected.id} run={selected} />}
-      {selected.result && <section className="native-card"><h2>Source geometry & provenance</h2><dl className="native-facts"><dt>Original dimensions</dt><dd>{selected.result.source_shape.join(" × ")}</dd>
-        <dt>Voxel spacing</dt><dd>{selected.result.source_spacing_mm.map(v => v.toFixed(3)).join(" × ")} mm</dd><dt>Display dimensions</dt><dd>{selected.result.shape.join(" × ")}</dd>
-        <dt>Spatial transform</dt><dd>{selected.result.spatial_frame_explicit ? "Explicit source transform; review pending" : "Unverified anatomical orientation"}</dd>
-        <dt>Display scaling</dt><dd>1st–99.5th percentile intensity window; original preserved</dd></dl>
-        <details><summary>Source checksums</summary>{selected.files.map(f => <p key={f.stored_name} className="brain-checksums"><strong>{f.original_name}</strong><code>{f.sha256}</code></p>)}</details></section>}
+      {selected.result && <section className="native-card"><h2>{t("nvGeomH")}</h2><dl className="native-facts"><dt>{t("nvDimOrig")}</dt><dd>{selected.result.source_shape.join(" × ")}</dd>
+        <dt>{t("nvSpacing")}</dt><dd>{selected.result.source_spacing_mm.map(v => v.toFixed(3)).join(" × ")} mm</dd><dt>{t("nvDimDisp")}</dt><dd>{selected.result.shape.join(" × ")}</dd>
+        <dt>{t("nvTransform")}</dt><dd>{selected.result.spatial_frame_explicit ? t("nvExplicit") : t("nvUnverifiedO")}</dd>
+        <dt>{t("nvScaling")}</dt><dd>{t("nvScalingV")}</dd></dl>
+        <details><summary>{t("nvChecksums")}</summary>{selected.files.map(f => <p key={f.stored_name} className="brain-checksums"><strong>{f.original_name}</strong><code>{f.sha256}</code></p>)}</details></section>}
     </>}
   </section>;
 }

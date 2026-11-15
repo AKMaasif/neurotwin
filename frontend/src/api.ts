@@ -19,6 +19,25 @@ export type Evidence = {
   status: "current" | "amended" | "withdrawn"; supersedes_id: number | null; superseded_by_id: number | null;
   change_reason: string | null; recorded_at: string;
 };
+export type RoutineReplies = { label: string; since: string; note: string;
+  weeks: { week_start: string; done: number; not_today: number; difficulty: number; snooze: number }[];
+  rows: { id: number; item_id: number; day: string; reply: string; reason: string | null }[] };
+export type AaStage = { id: string; kind: "software" | "ai" | "human"; name: string; status: string; summary: string | null; started_at: string | null; ended_at: string | null; note: string;
+  provider?: string | null; model?: string | null; prompt_version?: string | null; scripted?: boolean | null };
+export type AaStmt = { text: string; cites: string[] };
+export type AaRun = {
+  run_id: string; participant_id: string; created_at: string; range_days: number; mode: string; state: string; demo_data: boolean; review_state: string; note: string;
+  stages: AaStage[]; events: { at: string; stage: string | null; status: string; summary: string | null }[];
+  ledger?: { facts: { id: string; kind: string; text: string }[] };
+  summary?: { status: string; reason?: string; statements: AaStmt[]; validator?: { ok: boolean; problems: { index: number; code: string; detail: string }[] }; provider?: string; model?: string; scripted?: boolean };
+  challenge?: { status: string; doubts: AaStmt[]; questions: AaStmt[] };
+  cross_check?: { status: string; reason?: string; items: { index: number; supported: boolean; reason: string }[] };
+  gate?: { passed: boolean; checks: { name: string; ok: boolean; required: boolean; warning?: boolean; detail: string }[] };
+  charts?: { status: string; charts: { measure: string; range: string; why: string; cites: string[] }[]; dropped: { measure: string; reason: string }[] };
+  review?: { by: string; at: string; decisions: { kind: string; index: number; decision: string; note: string }[]; note: string };
+};
+export type AaRoster = { mode: string; sends: string; providers: Record<string, { role: string; configured: boolean; provider: string | null; model: string | null; scripted: boolean; verified: boolean; last_check: string | null }>;
+  stages: { id: string; kind: "software" | "ai" | "human"; name: string; provider_slot?: string; prompt_version?: string; verified?: boolean; scripted?: boolean }[] };
 export type ReviewItem = {
   id: number; participant_id: string; evidence_id: number | null; session_id: number | null; reason: string;
   raised_by: string; status: string; decision: "keep" | "exclude" | null; resolved_by: string | null; resolution_note: string | null; created_at: string;
@@ -79,7 +98,8 @@ export type Observation = {
   measure: string; kind: "observed" | "self_reported"; value_num?: number | null; value_text?: string | null;
   unit?: string | null; missing_reason?: string | null;
 };
-export type ClinicianParticipant = User & { shared_since: string; open_items: number; last_activity: string | null };
+export type ClinicianParticipant = User & { shared_since: string; open_items: number; last_activity: string | null;
+  dataset: { id: string; label: string; note: string; sessions: number; from: string; to: string } | null };
 export type FamilyEntry = {
   participant_id: string; display_name: string; active: boolean; since: string; ended_at: string | null;
   recent: { protocol_code: string; status: string; at: string }[];
@@ -220,7 +240,10 @@ export type PatientReport = {
   concerns_sent: { id: number; topic: string; status: string; sent_on: string }[];
 };
 
+export type SystemStatus = { mode: "live" | "mock" | "off"; providers: Record<string, { state: "configured" | "not_configured" | "checked_ok" | "check_failed"; role: string }>; checked: Record<string, { ok: boolean; at: string }> | null; analysis: { state: "idle" | "running"; running: number } };
+
 export const api = {
+  systemStatus: () => get<SystemStatus>("/api/system/status"),
   myReport: (days = 11) => get<PatientReport>(`/api/me/report?days=${days}`),
   agentTools: () => get<{ alignment: { available: boolean; needs: string | null } }>("/api/imaging/agent/tools"),
   agentWorkflow: () => get<Activity>("/api/imaging/agent/workflow"),
@@ -286,6 +309,12 @@ export const api = {
   resolve: (id: number, note: string, decision: Decision) => post<ReviewItem>(`/api/review-items/${id}/resolve`, { note, decision }),
   resolveBatch: (ids: number[], note: string, decision: Decision) => post<ReviewItem[]>("/api/review-items/resolve-batch", { ids, note, decision }),
   report: (pid: string) => get<Report>(`/api/participants/${encodeURIComponent(pid)}/report`),
+  routineReplies: (pid: string) => get<RoutineReplies>(`/api/participants/${encodeURIComponent(pid)}/routine-replies`),
+  aaRoster: () => get<AaRoster>("/api/activity-analysis/roster"),
+  aaRuns: (pid: string) => get<{ run_id: string; created_at: string; state: string; range_days: number; mode: string; reviewed: boolean }[]>(`/api/activity-analysis/participants/${encodeURIComponent(pid)}/runs`),
+  aaStart: (pid: string, range_days: number) => post<AaRun>(`/api/activity-analysis/participants/${encodeURIComponent(pid)}/runs`, { range_days }),
+  aaRun: (id: string) => get<AaRun>(`/api/activity-analysis/runs/${encodeURIComponent(id)}`),
+  aaReview: (id: string, decisions: { kind: string; index: number; decision: string; note?: string }[], note: string) => post<AaRun>(`/api/activity-analysis/runs/${encodeURIComponent(id)}/review`, { decisions, note }),
   change: (pid: string, includeDoubtful = false) =>
     get<ChangeResult[]>(`/api/participants/${encodeURIComponent(pid)}/change${includeDoubtful ? "?include_doubtful=true" : ""}`),
   aiStatus: () => get<AiStatus>("/api/ai/status"),

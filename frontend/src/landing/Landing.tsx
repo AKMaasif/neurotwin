@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useRef, useState } from "react";
 import { ArrowRight, Heart, HeartHandshake, Pause, Play, ScanSearch, ShieldCheck, Stethoscope, UserRound, Waypoints, ClipboardList } from "lucide-react";
 import { DemoAccount, User } from "../api";
 import { Key, useT } from "../i18n";
+import { Brand } from "../ui";
 import "./landing.css";
 
 type Role = User["role"];
@@ -122,8 +123,7 @@ export default function Landing({ demo, busy, error, onEnter, fallback }: Landin
           <nav className="lp-nav" aria-label={t("lpMain")}>
             <div className="lp-nav-start">
               <a className="lp-logo" href="#top">
-                <svg width="30" height="30" viewBox="0 0 34 34" fill="none" aria-hidden="true"><circle cx="17" cy="17" r="15" stroke="#fff" strokeWidth="2" /><path d="M8 20c3-8 6-8 9-2s6 4 9-4" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" /></svg>
-                {t("appName")}
+                <Brand tone="light" />
               </a>
               <div className="lp-links">
                 <a href="#lp-how">{t("lpNavHow")}</a>
@@ -144,6 +144,17 @@ export default function Landing({ demo, busy, error, onEnter, fallback }: Landin
               <span className="lp-badge"><i aria-hidden="true" />{t("lpBadge")}</span>
               <h1><span>{t("lpH1a")}</span> <span>{t("lpH1b")}</span> <span>{t("lpH1c")}</span></h1>
               <p>{t("lpSub")}</p>
+              <div className="lp-portals" role="group" aria-label={t("lpPortalsLabel")}>
+                {([["clinician", "lpPortalClin", Stethoscope, true], ["participant", "lpPortalPat", UserRound, false], ["family", "lpPortalFam", HeartHandshake, false]] as const).map(([role, label, Icon, main]) => {
+                  const account = demo?.find((a) => a.role === role);
+                  const common = { className: `lp-portal${main ? " main" : ""}` };
+                  const body = <><Icon size={20} aria-hidden="true" /><span>{t(label)}</span></>;
+                  // With a demo account the button signs in at once (same one-click entry as the cards). Without one, it goes to the sign-in form.
+                  return account
+                    ? <button key={role} type="button" {...common} disabled={busy !== null} onClick={() => onEnter(account)}>{body}</button>
+                    : <a key={role} href="#lp-access" {...common}>{body}</a>;
+                })}
+              </div>
               <div className="lp-cta">
                 <a className="lp-btn navy" href="#lp-access">{t("lpCtaPrimary")}<ArrowRight size={18} aria-hidden="true" className="flip" /></a>
                 <a className="lp-btn ghost" href="#lp-how">{t("lpCtaSecondary")}</a>

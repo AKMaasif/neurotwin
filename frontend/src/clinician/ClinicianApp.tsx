@@ -1,13 +1,16 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, LineChart, PanelRight, Users } from "lucide-react";
 import { api, AuditRow, ChangeResult, ClinicianParticipant, Evidence, ReviewItem, Session, User } from "../api";
 import { useT } from "../i18n";
 import { ErrorNote } from "../ui";
 import Caseload from "./Caseload";
+import Shell from "./Shell";
+import { BrainGate, WorkspaceLoader } from "./Entry";
 import Stage from "./Stage";
 import Detail from "./Detail";
 import Dock from "./Dock";
 import ReportView from "./Report";
+import ActivityAnalysis from "./ActivityAnalysis";
 const BrainAnalytics = lazy(() => import("../imaging/BrainAnalytics"));
 
 export type Sel = { kind: "record"; id: number } | { kind: "session"; id: number } | null;
@@ -29,9 +32,14 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
   const [dockOpen, setDockOpen] = useState(true);
   const [pane, setPane] = useState<Pane>("left");
   const [report, setReport] = useState(false);
+  const [analysis, setAnalysis] = useState(false);
   const [withDoubtful, setWithDoubtful] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [imaging, setImaging] = useState(false);
+  const [gate, setGate] = useState(false);               // the Brain Analytics access notice
+  const [viewsReady, setViewsReady] = useState(false);   // set after the loaded records have actually been rendered once
+  const [welcome, setWelcome] = useState(false);
+  const everReady = useRef(false);
 
   const loadPeople = useCallback(async () => {
     try {
@@ -84,9 +92,35 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
 
   const person = people?.find((p) => p.id === pid) ?? null;
 
-  if (imaging) return <Suspense fallback={<p role="status">Opening Brain Analytics…</p>}><BrainAnalytics onClose={() => { setPane("stage"); setImaging(false); }} /></Suspense>;
+  // The first load is shown as real stages. After it has completed once, switching people never brings the loader back.
+  const loaded = !!people && (!pid || !!data);
+  useEffect(() => { if (loaded) setViewsReady(true); }, [loaded]);
+  const ready = everReady.current || (loaded && viewsReady);
+  useEffect(() => {
+    if (ready && !everReady.current) { everReady.current = true; setWelcome(true); const id = window.setTimeout(() => setWelcome(false), 3500); return () => window.clearTimeout(id); }
+  }, [ready]);
+  const stage: 1 | 2 | 3 | 4 = !people ? 1 : (pid && !data) ? 2 : !viewsReady ? 3 : 4;
+
+  if (gate && !imaging) {
+    return (
+      <Shell user={user} page="brain" onBack={() => setGate(false)} onDetails={() => setGate(true)} onSignOut={onSignOut}>
+        <BrainGate onEnter={() => { setGate(false); setImaging(true); }} onBack={() => setGate(false)} />
+      </Shell>
+    );
+  }
+
+  if (imaging) {
+    const back = () => { setPane("stage"); setImaging(false); };
+    return (
+      <Shell user={user} page="brain" onBack={back} onDetails={() => setImaging(true)} onSignOut={onSignOut}>
+        <Suspense fallback={<p role="status">Opening Brain Analytics…</p>}><BrainAnalytics onClose={back} /></Suspense>
+      </Shell>
+    );
+  }
 
   return (
+    <Shell user={user} page="workspace" onDetails={() => setGate(true)} onSignOut={onSignOut}>
+    {!ready ? <WorkspaceLoader stage={stage} failed={!!error} onRetry={refresh} onSignOut={onSignOut} /> : (
     <div className="ws" data-pane={pane}>
       <aside className="ws-left" aria-label={t("wsCaseload")}>
         <Caseload
@@ -96,10 +130,10 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
       </aside>
       <section className="ws-stage" aria-label={t("wsTimeline")}>
         <Stage
-          user={user} person={person} data={data} sel={sel} onSelect={select} onSignOut={onSignOut}
+          user={user} person={person} data={data} sel={sel} onSelect={select}
           onReport={() => setReport(true)} error={error} onRetry={refresh}
           withDoubtful={withDoubtful} setWithDoubtful={setWithDoubtful}
-          onImaging={() => setImaging(true)}
+          onImaging={() => setGate(true)} onAnalyze={() => setAnalysis(true)}
         />
       </section>
       <aside className="ws-right" aria-label={t("wsInspector")}>
@@ -114,8 +148,11 @@ export default function ClinicianApp({ user, onSignOut }: { user: User; onSignOu
           <button key={k} aria-current={pane === k} onClick={() => setPane(k)}><Icon size={20} aria-hidden="true" />{label}</button>
         ))}
       </nav>
+      {analysis && person && <ActivityAnalysis person={person} evidence={data?.evidence ?? []} onClose={() => setAnalysis(false)} />}
       {report && person && <ReportView personId={person.id} onClose={() => setReport(false)} />}
       {!people && error ? <div style={{ position: "fixed", bottom: 16, insetInlineStart: 16 }}><ErrorNote error={error} onRetry={refresh} /></div> : null}
-    </div>
+    </div>)}
+    {welcome && <p className="welcome-toast" role="status">{t("ldWelcome", { name: user.display_name })}</p>}
+    </Shell>
   );
 }

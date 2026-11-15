@@ -27,6 +27,23 @@ VERSION = "agent-runtime/0.1"
 EGRESS, TRACE = "egress.jsonl", "agents.jsonl"
 ROLES = {"gemini": "drafts and explains", "meta": "checks independently"}
 _cap = {"day": None, "n": 0}
+# The outcome of the most recent real (non-scripted) call per provider, kept in memory only: it is how the footer can say a
+# provider answered recently. Nothing here ever calls a provider; it only records calls a clinician's work already made.
+_checks: dict[str, dict] = {}
+CHECK_FRESH_SECONDS = 3600
+
+
+def record_check(provider: str, ok: bool) -> None:
+    if provider.startswith("mock"):
+        return
+    _checks[provider] = {"ok": ok, "at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "ts": time.time()}
+
+
+def recent_checks(now: float | None = None) -> dict | None:
+    """{provider: {"ok", "at"}} for checks still fresh, or None when there are none. A failure is shown until a later success."""
+    now = time.time() if now is None else now
+    out = {k: {"ok": v["ok"], "at": v["at"]} for k, v in _checks.items() if not v["ok"] or now - v["ts"] <= CHECK_FRESH_SECONDS}
+    return out or None
 
 
 def mode(env: dict | None = None) -> str:
@@ -59,6 +76,23 @@ class MockClient:
 
     def complete(self, system: str, user: str, json_mode: bool = False, images: list[bytes] | None = None) -> llm.Reply:
         ids = [ln.split(":")[0] for ln in user.splitlines() if ln.startswith("F-")]
+        if "ACTIVITY_SUMMARISER" in system:   # scripted: restates facts it was given, nothing more
+            rows = [ln.split(": ", 1) for ln in user.splitlines() if ln.startswith("F-") and ": " in ln]
+            order = ("F-range", "F-quality", "F-gap", "F-sessions", "F-m-", "F-c-", "F-routine")
+            picks = [r for key in order for r in rows if r[0].startswith(key)][:6] + [r for r in rows if r[0] == "F-uncertainty"]
+            return llm.Reply(json.dumps({"statements": [{"text": "Scripted demo: " + t[:360], "cites": [i]} for i, t in picks]}), self.provider, self.model)
+        if "ACTIVITY_CHALLENGER" in system:
+            have = set(ids)
+            gap = "F-gap" if "F-gap" in have else ("F-quality" if "F-quality" in have else (ids[0] if ids else "F-uncertainty"))
+            return llm.Reply(json.dumps({"doubts": [{"text": f"Scripted demo doubt: see fact {gap}.", "cites": [gap]},
+                                                    {"text": "Scripted demo doubt: see fact F-uncertainty.", "cites": ["F-uncertainty"]}],
+                                         "questions": [{"text": f"Scripted demo question: what does fact {gap} leave open?", "cites": [gap]}]}), self.provider, self.model)
+        if "ACTIVITY_CHECKER" in system:
+            n = user.count("Statement ")
+            return llm.Reply(json.dumps({"checks": [{"index": i, "supported": True, "reason": "Scripted demo: no check was made."} for i in range(n)]}), self.provider, self.model)
+        if "ACTIVITY_CHARTS" in system:
+            ms = [i for i in ids if i.startswith("F-m-")][:2]
+            return llm.Reply(json.dumps({"charts": [{"measure": i[4:], "range": "all", "why": f"Scripted demo: see fact {i}.", "cites": [i]} for i in ms]}), self.provider, self.model)
         if "QUALITY_REVIEWER" in system:
             c = [i for i in ("F-interval", "F-uncertainty", "F-align") if i in ids] or ids[:1]
             return llm.Reply(json.dumps({"verdict": "proceed", "statements": [{"text": f"Scripted demo statement {chr(97 + k)}: see fact {i}.", "cites": [i]} for k, i in enumerate((c * 3)[:3])]}), self.provider, self.model)
@@ -208,8 +242,10 @@ def invoke(run_dir: Path, agent: str, provider: str, system: str, user: str, fac
     try:
         reply = c.complete(system, user, json_mode=json_mode, **({"images": [b for _, b in images]} if images else {}))
     except llm.ModelError as e:
+        record_check(c.provider, False)
         _append(run_dir, TRACE, {**base, "provider": c.provider, "model": c.model, "status": "failed", "reason": str(e), "prompt_sha256": sha, "ms": round(1000 * (time.monotonic() - t0))})
         return {"status": "failed", "text": None, "provider": c.provider, "model": c.model, "reason": str(e)}
+    record_check(c.provider, True)
     _append(run_dir, TRACE, {**base, "provider": c.provider, "model": c.model, "status": "completed", "prompt_sha256": sha, "chars_out": len(reply.text),
                              "ms": round(1000 * (time.monotonic() - t0)), "output": reply.text, "scripted": mock})
     return {"status": "completed", "text": reply.text, "provider": c.provider, "model": c.model, "reason": None}
