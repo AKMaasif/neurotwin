@@ -91,3 +91,10 @@ def speak(db: Session, user: User, text: str, language: str, client, voice: str 
     audit(db, user.id, "companion.spoken", user.id, client.provider)
     db.commit()
     return audio
+
+
+def nlu_client(db: Session, user: User, client):
+    """The model client for understanding, or None. Needs the flag, a demonstration account (synthetic data) and the person's model consent."""
+    if client is None or not enabled() or user.role != "participant" or not user.is_demo:
+        return None
+    return client if consent_state(db, user.id).get("assistant_model", {}).get("granted") else None

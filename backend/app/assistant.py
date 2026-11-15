@@ -37,7 +37,7 @@ CONTEXT_MINUTES = 30      # how long a topic stays "the thing we were talking ab
 KEEP_DAYS = 30
 KEEP_MESSAGES = 200
 SCREENS = {"report": "report", "concern": "concern", "today": "reminders", "reminders": "reminders", "messages": "messages", "record": "records", "records": "records",
-           "home": "home", "urgent": "urgent", "checkin": "checkin", "reaction": "reaction", "memory": "memory", "wellbeing": "wellbeing"}
+           "home": "home", "prep": "prep", "urgent": "urgent", "checkin": "checkin", "reaction": "reaction", "memory": "memory", "wellbeing": "wellbeing"}
 TOOLS = {  # name: (kind, needs confirmation)
     "open_screen": ("navigation", False), "read_today": ("read", False), "explain_instruction": ("read", False),
     "mark_done": ("change", True), "mark_not_today": ("change", True), "snooze": ("change", True),
@@ -45,12 +45,14 @@ TOOLS = {  # name: (kind, needs confirmation)
 }
 
 _EMERGENCY = re.compile(r"\b(emergency|urgent|ambulance|help me|i need help|i am hurt|i fell|can't breathe|cannot breathe|chest pain)\b|طوارئ|إسعاف|اسعاف|ساعدوني|ساعدني|أحتاج مساعدة|احتاج مساعدة|وقعت|ألم في الصدر", re.I)
-_NOT_TODAY = re.compile(r"\b(not today|skip|won't do|will not do|can't do (it )?today)\b|ليس اليوم|مو اليوم|تخطي|تخطى|لن أفعل", re.I)
-_DONE = re.compile(r"\b(i did|i have done|i've done|i finished|i have finished|i completed|done with|finished|completed|done)\b|\bتم\b|أنهيت|انتهيت|خلصت|أكملت|اكملت|فعلت|قمت ب", re.I)
+_NOT_TODAY = re.compile(r"\b(not today|skip|won't do|will not do|can't do (?:it|the \w+|my \w+)? ?today)\b|ليس اليوم|مو اليوم|تخطي|تخطى|لن أفعل", re.I)
+_DONE = re.compile(r"\b(i did|i have done|i've done|i finished|i have finished|i completed|i (?:just )?(?:drank|ate|took|walked)|done with|finished|completed|done)\b|\bتم\b|أنهيت|انتهيت|خلصت|أكملت|اكملت|فعلت|قمت ب", re.I)
 _SNOOZE = re.compile(r"\b(snooze|remind me|later)\b|ذكرني|ذكّرني|لاحقا|لاحقًا", re.I)
 _TODAY = re.compile(r"\b(what.*(today|to do)|my (tasks|routines|reminders)|today'?s (tasks|plan))\b|ماذا علي|مهامي|روتيني|تذكيراتي|ماذا أفعل اليوم", re.I)
 _EXPLAIN = re.compile(r"\b(explain|what does .* mean|what is .* for|tell me about|why)\b|اشرح|ماذا يعني|ما معنى", re.I)
-_OPEN = [(re.compile(r"\b(messages?|inbox)\b|رسائل|الرسائل", re.I), "messages"), (re.compile(r"\b(my record|records?|history)\b|سجلي|سجلّي|سجل", re.I), "records"),
+_OPEN = [(re.compile(r"\b(appointment|visit|questions? (for|to ask) (my|the) (doctor|clinician|clinic)|prepare for my)\b|موعد|موعدي|أسئلة للطبيب|اسئلة للطبيب|تحضير", re.I), "prep"),
+         (re.compile(r"\b(follow-?up|shared (note|summary)|my (doctor|clinician)'?s? (note|message|summary))\b|المتابعة|ملخص الطبيب|رسالة الطبيب", re.I), "messages"),
+         (re.compile(r"\b(messages?|inbox)\b|رسائل|الرسائل", re.I), "messages"), (re.compile(r"\b(my record|records?|history)\b|سجلي|سجلّي|سجل", re.I), "records"),
          (re.compile(r"\b(reminders?|today)\b|التذكيرات|اليوم", re.I), "today"), (re.compile(r"\b(home|start)\b|الرئيسية", re.I), "home")]
 _ACTIVITY = [(re.compile(r"\b(pictures?|memory game|sequence)\b|الصور|لعبة الذاكرة", re.I), "memory"), (re.compile(r"\b(well-?being|how i have been feeling|who-?5)\b|الرفاه|العافية", re.I), "wellbeing"), (re.compile(r"\b(check-?in|questions|daily check)\b|الأسئلة|الاستبيان", re.I), "checkin"), (re.compile(r"\b(reaction|game|tap)\b|اللعبة|سرعة الاستجابة|التفاعل", re.I), "reaction")]
 _MIN = re.compile(r"(\d{1,3})\s*(?:min|minutes?|دقيقة|دقائق)", re.I)
@@ -97,7 +99,7 @@ def _skeleton(word: str) -> str | None:
 
 def _match_items(text: str, rows: list[tuple[CarePlanItem, dict]]) -> list[CarePlanItem]:
     """The routine(s) the words point at: those sharing the most words with what the person said. Several tied matches are all returned."""
-    said = _words(text)
+    said = _words(_MIN.sub(" ", _HOUR.sub(" ", text)))     # "30 minutes" is a length of time, not a word that points at a task
     scored = []
     for item, _ in rows:
         mine = _words(" ".join(filter(None, [item.title, item.text_en, item.text_ar])))
@@ -176,6 +178,8 @@ def parse(text: str, rows: list[tuple[CarePlanItem, dict]], ctx: dict | None = N
     last_tool = ctx.get("last_tool")
     if not change and last_tool in CHANGES and re.search(r"\b(again|same|the same)\b|نفس|مرة أخرى", t, re.I):
         change = last_tool                                    # "do the same again"
+    if not change and last_tool in CHANGES and _OTHER.search(t) and len(t.split()) <= 4:
+        change = last_tool                                    # "the other one" right after a change: the same change for the other task, still proposed for a Yes
     if not change and last_tool in CHANGES + ("explain_instruction",) and _ELLIPSIS.match(t) and _match_items(t, rows):
         change = last_tool if last_tool in CHANGES else None   # "and the water?"
         if change is None:
@@ -227,6 +231,9 @@ def parse(text: str, rows: list[tuple[CarePlanItem, dict]], ctx: dict | None = N
         return {"tool": None, "reason": "which", "choices": tied or [r[0].id for r in rows], "pending": {"kind": "which", "tool": "explain_instruction", "args": {}}}
     if len(t.split()) > 6:       # a long, mixed sentence is not a plain request to open something; ask again rather than act
         return {"tool": None, "reason": "not_understood"}
+    for rx, name in _OPEN[:2]:       # appointment and follow-up words are checked before the activity words ("questions" is in both)
+        if rx.search(t):
+            return {"tool": "open_screen", "arguments": {"screen": name}}
     for rx, name in _ACTIVITY:
         if rx.search(t):
             return {"tool": "start_activity", "arguments": {"activity": name}}
@@ -322,7 +329,7 @@ def _cancel_waiting(db: Session, user: User, except_id: str | None = None) -> No
             a.used_at, a.outcome = now(), "cancelled"
 
 
-def message(db: Session, user: User, text: str) -> dict:
+def message(db: Session, user: User, text: str, nlu_client=None) -> dict:
     """Understand one message, using the last few minutes of conversation. Reads and navigation are answered now; a change is returned as a
     proposal with a confirmation id (a typed or spoken "yes" confirms only that one proposal)."""
     if user.role != "participant":
@@ -337,6 +344,9 @@ def message(db: Session, user: User, text: str) -> dict:
                 prev_said = said
                 break
     p = parse(text, rows, ctx)
+    if nlu_client is not None and p.get("tool") is None and p.get("reason") == "not_understood":
+        from . import companion_nlu as NLU      # only reached with the flag, a demonstration account and the person's model consent
+        p = NLU.propose(db, user, text, rows, nlu_client) or p
     new = {"last_item": ctx.get("last_item"), "last_tool": ctx.get("last_tool"), "last_args": ctx.get("last_args"), "pending": None}
 
     def finish(out: dict, **upd) -> dict:

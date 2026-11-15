@@ -717,7 +717,7 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
 
     @app.post("/api/assistant/message")
     def assistant_message(body: AssistantIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
-        return AS.message(db, user, body.text)
+        return AS.message(db, user, body.text, COMP.nlu_client(db, user, llm.get_client()))
 
     @app.post("/api/assistant/confirm")
     def assistant_confirm(body: AssistantConfirmIn, user: User = Depends(current_user), db: Session = Depends(get_db)):

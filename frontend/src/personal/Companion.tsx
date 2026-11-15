@@ -9,7 +9,7 @@ import { defaultVad, isEcho } from "../companion/vad";
 import { replySentences } from "./replyText";
 import type { Screen } from "./PersonalApp";
 
-const NAV: Record<string, Screen> = { report: "report", concern: "concern", reminders: "reminders", messages: "messages", records: "records", home: "home", urgent: "urgent", checkin: "checkin", reaction: "reaction", memory: "memory", wellbeing: "wellbeing" };
+const NAV: Record<string, Screen> = { prep: "prep", report: "report", concern: "concern", reminders: "reminders", messages: "messages", records: "records", home: "home", urgent: "urgent", checkin: "checkin", reaction: "reaction", memory: "memory", wellbeing: "wellbeing" };
 type Line = { who: "you" | "bot"; text: string };
 type Prefs = { speed: number; volume: number; silence: number; keepBg: boolean; captions: boolean; review: boolean };
 const PREFS_KEY = "nt.companion.prefs";
@@ -262,7 +262,7 @@ export default function Companion({ user, tabbed, go }: { user: User; tabbed: bo
               {cfg.model.available && (cfg.model.consented
                 ? <div className="cmp-row"><span className="hint">{t("cmpModelOn")}</span><button className="link" onClick={() => grant("assistant_model", false)}>{t("cmpModelRevoke")}</button></div>
                 : <div><p className="hint">{t("cmpModelConsent")}</p><button className="btn" onClick={() => grant("assistant_model", true)}>{t("cmpModelAllow")}</button></div>)}
-              {consented && <button className="link" onClick={() => grant("voice_recording", false)}>{t("cmpModelRevoke")} — {t("cmpConsentAllow")}</button>}
+              {consented && <button className="link" onClick={() => grant("voice_recording", false)}>{t("cmpVoiceRevoke")}</button>}
               <p className="hint">{t("cmpMicHint")}</p>
             </div>
           )}
