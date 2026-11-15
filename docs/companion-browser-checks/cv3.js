@@ -1,0 +1,13 @@
+const { chromium } = require('playwright');
+(async()=>{const b=await chromium.launch({args:['--use-fake-ui-for-media-stream','--use-fake-device-for-media-stream']});
+const c=await b.newContext({viewport:{width:430,height:900},permissions:['microphone']});const p=await c.newPage();
+await p.goto('http://localhost:8000/');await p.waitForSelector('.lp-portal');await p.locator('.lp-portal').nth(1).click();await p.waitForSelector('.cmp-launch');
+await p.click('.cmp-launch');const a=p.locator('.cmp-card button.primary').first();if(await a.count())await a.click();
+await p.waitForSelector('.cmp-panel > button.primary, .cmp-card');
+console.log('model-consent card visible:', /synthetic voice/i.test(await p.textContent('.cmp-panel')));
+await p.locator('.cmp-card button:has-text("Allow")').first().click();await p.waitForTimeout(800);
+console.log('voice line after allow:', await p.textContent('.cmp-panel .hint'));
+await p.click('.cmp-panel > button.primary');await p.waitForTimeout(3500);
+console.log('note:', await p.locator('.cmp-note').allTextContents());
+console.log('voice line now:', await p.locator('.cmp-panel .hint').first().textContent());
+await b.close();})();
