@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useLayer } from "../useLayer";
 import { BellRing, ChartNoAxesColumn, ChevronRight, Info as InfoIcon, MessageCircle, MessageCircleHeart, Phone, ShieldCheck, Users, UserRound, Zap, House, Images, HeartPulse, CalendarCheck } from "lucide-react";
 import { api, Consent, Session, User } from "../api";
 import { useT } from "../i18n";
@@ -50,6 +51,7 @@ export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut
   }, [user.id]);
   useEffect(() => { refresh(); }, [refresh]);
 
+  useLayer(screen !== "home", () => setScreen("home"));
   const go = (s: Screen) => { setScreen(s); window.scrollTo(0, 0); };
   const home = () => { go("home"); refresh(); };
   const tab = (s: Screen) => { go(s); refresh(); };

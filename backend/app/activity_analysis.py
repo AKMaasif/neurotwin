@@ -60,6 +60,9 @@ STAGES = [  # id, kind, name
     ("charts", "ai", "Propose charts (drawn by software)"),
     ("review", "human", "Clinician decision"),
 ]
+DEPS = {"collect": [], "quality": ["collect"], "describe": ["collect"], "ledger": ["quality", "describe"], "summarise": ["ledger"],
+        "challenge": ["summarise"], "check": ["summarise"], "validate": ["summarise", "check"], "charts": ["ledger"], "review": ["validate", "challenge", "charts"]}
+_ACTIVE: set[str] = set()   # runs executing in THIS process; after a restart the set is empty, which is how an interrupted run is recognised
 KIND_NOTE = {"software": "Ordinary code. Same input, same output.", "ai": "A language model given only the numbered facts. Its text is a draft.",
              "human": "A clinician decides. Nothing is final before this."}
 
@@ -142,7 +145,7 @@ def list_runs(participant_id: str, limit: int = 10) -> list[dict]:
     out = []
     if root.exists():
         for p in root.iterdir():
-            r = load(p.name) if RUN_ID.match(p.name) else None
+            r = view(p.name) if RUN_ID.match(p.name) else None
             if r and r.get("participant_id") == participant_id:
                 out.append({"run_id": r["run_id"], "created_at": r["created_at"], "state": r["state"], "range_days": r["range_days"],
                             "mode": r.get("mode"), "reviewed": bool(r.get("review"))})
@@ -419,10 +422,54 @@ def create_run(person: User, clinician: User, range_days: int, env=None) -> dict
     run = {"run_id": "ah-" + secrets.token_hex(6), "version": VERSION, "participant_id": person.id, "created_by": clinician.id, "created_at": _now(),
            "range_days": range_days, "mode": R.mode(env), "state": "queued", "demo_data": bool(person.is_demo),
            "review_state": "ai_draft_not_reviewed", "note": "AI draft where marked. Not reviewed by a clinician. Not a diagnosis or a prediction.",
-           "stages": [{"id": i, "kind": k, "name": n, "status": "waiting", "summary": None, "started_at": None, "ended_at": None, "note": KIND_NOTE[k]} for i, k, n in STAGES],
+           "stages": [{"id": i, "kind": k, "name": n, "status": "waiting", "summary": None, "started_at": None, "ended_at": None, "note": KIND_NOTE[k], "deps": DEPS[i]} for i, k, n in STAGES],
            "events": []}
     save(run)
     return run
+
+
+class Cancelled(Exception):
+    pass
+
+
+def request_cancel(run_id: str) -> bool:
+    run = load(run_id)
+    if run is None or run["state"] not in ("queued", "running"):
+        return False
+    (run_dir(run_id) / "cancel.flag").write_text(_now())
+    return True
+
+
+def _check_cancel(run_id: str) -> None:
+    if (run_dir(run_id) / "cancel.flag").exists():
+        raise Cancelled()
+
+
+def view(run_id: str) -> dict | None:
+    """The run as the API shows it. A run that says queued/running but is not executing in this process was interrupted (restart, crash)."""
+    run = load(run_id)
+    if run is None:
+        return None
+    if run["state"] in ("queued", "running") and run_id not in _ACTIVE:
+        run["state"] = "interrupted"
+        run["events"].append({"at": _now(), "stage": None, "status": "interrupted", "summary": "The server stopped or restarted while this analysis was running. Nothing was kept as done after that point. You can start a new run."})
+        for s in run["stages"]:
+            if s["status"] == "running":
+                s["status"] = "interrupted"
+        save(run)
+    return run
+
+
+def retry(run_id: str, clinician: User, person: User) -> dict:
+    old = load(run_id)
+    if old is None or old["participant_id"] != person.id:
+        raise ValueError("No such run.")
+    if view(run_id)["state"] not in ("failed", "interrupted", "cancelled"):
+        raise ValueError("Only a failed, interrupted or cancelled run can be retried.")
+    new = create_run(person, clinician, old["range_days"])
+    new["retry_of"] = run_id
+    save(new)
+    return new
 
 
 def _stage(run: dict, sid: str, status: str, summary: str | None = None, **extra) -> None:
@@ -444,6 +491,7 @@ def execute(run_id: str, db: Session, env=None, clients=None) -> dict:
     person = db.get(User, run["participant_id"])
     rdir = run_dir(run_id)
     run["state"] = "running"
+    _ACTIVE.add(run_id)
     try:
         _stage(run, "collect", "running")
         c = collect(db, person.id, run["range_days"])
@@ -454,6 +502,7 @@ def execute(run_id: str, db: Session, env=None, clients=None) -> dict:
             run["state"] = "completed"
             _stage(run, "review", "waiting", "Nothing to review.")
             return run
+        _check_cancel(run_id)
         _stage(run, "quality", "running")
         prof = quality_profile(c)
         _stage(run, "quality", "completed", f"{prof['days_with_records']} days with records; longest gap {prof['gap'][0]} days; {sum(prof['skipped'].values())} skipped answers.")
@@ -464,28 +513,33 @@ def execute(run_id: str, db: Session, env=None, clients=None) -> dict:
         run["ledger"] = ledger
         _stage(run, "ledger", "completed", f"{len(ledger['facts'])} numbered facts. Only these are ever shown to a model.", ledger_version=ledger["version"])
         # AI stages
+        _check_cancel(run_id)
         _stage(run, "summarise", "running")
         sm = summarise(rdir, ledger, person, env, clients)
         run["summary"] = sm
         _stage(run, "summarise", sm["status"] if sm["status"] != "refused" else "blocked",
                (f"{len(sm['statements'])} statements" + (" (scripted demo text, no model)" if sm.get("scripted") else f" by {sm.get('model')}")) if sm["statements"] else sm.get("reason"),
                provider=sm.get("provider"), model=sm.get("model"), prompt_version=sm.get("prompt_version"), scripted=sm.get("scripted"))
+        _check_cancel(run_id)
         _stage(run, "challenge", "running")
         ch = challenge(rdir, ledger, person, env, clients)
         run["challenge"] = ch
         _stage(run, "challenge", ch["status"] if ch["status"] != "refused" else "blocked",
                f"{len(ch['doubts'])} doubts and {len(ch['questions'])} open questions" if ch["status"] in ("completed", "refused") else ch.get("reason"),
                provider=ch.get("provider"), model=ch.get("model"), prompt_version=ch.get("prompt_version"), scripted=ch.get("scripted"))
+        _check_cancel(run_id)
         _stage(run, "check", "running")
         cr = check(rdir, ledger, sm["statements"] if sm["status"] == "completed" else [], person, env, clients) if sm["status"] == "completed" else \
             {"status": "skipped", "reason": "There was no valid draft to check.", "items": []}
         run["cross_check"] = cr
         _stage(run, "check", cr["status"], (f"{sum(1 for i in cr['items'] if i['supported'])} of {len(cr['items'])} statements supported" if cr["status"] == "completed" else cr.get("reason")),
                provider=cr.get("provider"), model=cr.get("model"), prompt_version=cr.get("prompt_version"), scripted=cr.get("scripted"))
+        _check_cancel(run_id)
         _stage(run, "validate", "running")
         g = gate(sm["statements"], sm.get("validator"), cr) if sm["statements"] else {"passed": False, "checks": [{"name": "Draft", "ok": False, "required": True, "detail": sm.get("reason") or "No draft was produced."}]}
         run["gate"] = g
         _stage(run, "validate", "completed" if g["passed"] else "blocked", "Passed." if g["passed"] else "Blocked: " + "; ".join(x["detail"] for x in g["checks"] if x["required"] and not x["ok"]))
+        _check_cancel(run_id)
         _stage(run, "charts", "running")
         chs = propose_charts(rdir, ledger, person, env, clients)
         run["charts"] = chs
@@ -493,10 +547,18 @@ def execute(run_id: str, db: Session, env=None, clients=None) -> dict:
                provider=chs.get("provider"), model=chs.get("model"), prompt_version=chs.get("prompt_version"), scripted=chs.get("scripted"))
         _stage(run, "review", "waiting", "Waiting for a clinician to decide what to keep.")
         run["state"] = "awaiting_review"
+    except Cancelled:
+        run["state"] = "cancelled"
+        for s in run["stages"]:
+            if s["status"] in ("running", "waiting"):
+                s["status"] = "cancelled" if s["status"] == "running" else "skipped"
+        run["events"].append({"at": _now(), "stage": None, "status": "cancelled", "summary": "Cancelled by the clinician. A model call already in progress may still finish at the provider."})
     except Exception as e:  # a failure is shown as a failure; nothing is half-reported as done
         run["state"] = "failed"
         run["error"] = f"{type(e).__name__}"
         run["events"].append({"at": _now(), "stage": None, "status": "failed", "summary": "The analysis stopped because of an internal error."})
+    finally:
+        _ACTIVE.discard(run_id)
     save(run)
     return run
 
@@ -513,13 +575,19 @@ def review(run_id: str, clinician: User, decisions: list[dict], note: str) -> di
     clean = []
     for d in decisions:
         kind, idx, dec = d.get("kind"), d.get("index"), d.get("decision")
-        if kind not in limits or not isinstance(idx, int) or not 0 <= idx < limits[kind] or dec not in ("keep", "discard"):
+        if kind not in limits or not isinstance(idx, int) or not 0 <= idx < limits[kind] or dec not in ("keep", "discard", "edit"):
             raise ValueError("A decision does not match anything in the draft.")
-        clean.append({"kind": kind, "index": idx, "decision": dec, "note": str(d.get("note") or "")[:300]})
+        row = {"kind": kind, "index": idx, "decision": dec, "note": str(d.get("note") or "")[:300]}
+        if dec == "edit":
+            text = str(d.get("text") or "").strip()
+            if kind == "chart" or not text:
+                raise ValueError("Only a statement, doubt or question can be edited, and the new text cannot be empty.")
+            row["text"] = text[:600]    # clinician-written; it is recorded as theirs and is not model output
+        clean.append(row)
     run["review"] = {"by": clinician.id, "at": _now(), "decisions": clean, "note": note.strip()[:500]}
     run["review_state"] = "reviewed_by_clinician"
     run["state"] = "reviewed"
-    _stage(run, "review", "completed", f"{sum(1 for d in clean if d['decision'] == 'keep')} kept, {sum(1 for d in clean if d['decision'] == 'discard')} discarded by {clinician.display_name}.")
+    _stage(run, "review", "completed", f"{sum(1 for d in clean if d['decision'] == 'keep')} kept, {sum(1 for d in clean if d['decision'] == 'discard')} discarded, {sum(1 for d in clean if d['decision'] == 'edit')} rewritten by {clinician.display_name}.")
     return run
 
 

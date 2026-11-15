@@ -258,3 +258,81 @@ def test_range_must_be_one_of_the_offered_ones(seeded, client):
 def test_run_ids_are_their_own_kind_and_unguessable_shape(seeded, client):
     ids = {start(client, clin(client))["run_id"] for _ in range(3)}
     assert len(ids) == 3 and all(AA.RUN_ID.match(i) for i in ids)
+
+
+def _make(seeded, state="queued", days=183):
+    with seeded.state.db.SessionLocal() as db:
+        person = db.get(User, PID)
+        clinician = db.scalar(select(User).where(User.username == "dr.layla"))
+        run = AA.create_run(person, clinician, days)
+    run["state"] = state
+    AA.save(run)
+    return run["run_id"]
+
+
+def test_a_run_left_running_by_a_restart_is_shown_as_interrupted_and_can_be_retried(seeded, client):
+    h = clin(client)
+    rid = _make(seeded, "running")            # nothing is executing it in this process, as after a restart
+    got = client.get(f"/api/activity-analysis/runs/{rid}").json()
+    assert got["state"] == "interrupted" and any(e["status"] == "interrupted" for e in got["events"])
+    listed = client.get(f"/api/activity-analysis/participants/{PID}/runs").json()
+    assert next(r for r in listed if r["run_id"] == rid)["state"] == "interrupted"
+    r = client.post(f"/api/activity-analysis/runs/{rid}/retry", headers=h)
+    assert r.status_code == 200 and r.json()["retry_of"] == rid and r.json()["run_id"] != rid
+    assert client.get(f"/api/activity-analysis/runs/{r.json()['run_id']}").json()["state"] == "awaiting_review"
+    assert client.post(f"/api/activity-analysis/runs/{r.json()['run_id']}/retry", headers=h).status_code == 409   # only failed/interrupted/cancelled
+
+
+def test_cancel_stops_before_the_next_stage_and_is_audited(seeded, client):
+    h = clin(client)
+    rid = _make(seeded, "queued")
+    assert AA.request_cancel(rid)
+    with seeded.state.db.SessionLocal() as db:
+        AA.execute(rid, db)
+    run = client.get(f"/api/activity-analysis/runs/{rid}").json()
+    assert run["state"] == "cancelled" and stage(run, "summarise")["status"] == "skipped"
+    assert client.post(f"/api/activity-analysis/runs/{rid}/cancel", headers=h).status_code == 409   # nothing left to cancel
+    done = start(client, h)
+    assert client.post(f"/api/activity-analysis/runs/{done['run_id']}/cancel", headers=h).status_code == 409
+    again = client.post(f"/api/activity-analysis/runs/{rid}/retry", headers=h)
+    assert again.status_code == 200
+
+
+def test_a_second_start_while_one_is_active_returns_the_same_run(seeded, client):
+    h = clin(client)
+    rid = _make(seeded, "queued")
+    AA._ACTIVE.add(rid)
+    try:
+        r = client.post(f"/api/activity-analysis/participants/{PID}/runs", json={"range_days": 183}, headers=h)
+        assert r.status_code == 200 and r.json()["run_id"] == rid
+    finally:
+        AA._ACTIVE.discard(rid)
+
+
+def test_an_internal_failure_is_a_failed_run_with_no_half_results_and_can_be_retried(seeded, client, monkeypatch):
+    h = clin(client)
+    real = AA.summarise
+    monkeypatch.setattr(AA, "summarise", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("provider exploded")))
+    run = start(client, h)
+    assert run["state"] == "failed" and "summary" not in run and "provider exploded" not in json.dumps(run)
+    monkeypatch.setattr(AA, "summarise", real)
+    r = client.post(f"/api/activity-analysis/runs/{run['run_id']}/retry", headers=h)
+    assert r.status_code == 200
+    assert client.get(f"/api/activity-analysis/runs/{r.json()['run_id']}").json()["state"] == "awaiting_review"
+
+
+def test_a_clinician_can_rewrite_a_statement_and_it_is_recorded_as_theirs(seeded, client):
+    h = clin(client)
+    rid = start(client, h)["run_id"]
+    ok = client.post(f"/api/activity-analysis/runs/{rid}/review", headers=h, json={"note": "", "decisions": [
+        {"kind": "statement", "index": 0, "decision": "edit", "text": "Reworded by the clinician."}]})
+    assert ok.status_code == 200 and ok.json()["review"]["decisions"][0]["text"] == "Reworded by the clinician."
+    rid2 = start(client, h)["run_id"]
+    for bad in ({"kind": "chart", "index": 0, "decision": "edit", "text": "x"}, {"kind": "statement", "index": 0, "decision": "edit", "text": "  "}):
+        assert client.post(f"/api/activity-analysis/runs/{rid2}/review", headers=h, json={"decisions": [bad], "note": ""}).status_code == 422
+
+
+def test_every_stage_names_the_stages_it_depends_on(seeded, client):
+    run = start(client, clin(client))
+    ids = {s["id"] for s in run["stages"]}
+    assert all(set(s["deps"]) <= ids for s in run["stages"]) and stage(run, "check")["deps"] == ["summarise"]

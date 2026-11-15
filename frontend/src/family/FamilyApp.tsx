@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useLayer } from "../useLayer";
 import { LogOut, PenLine, UserRound, Users } from "lucide-react";
 import { api, FamilyEntry, FamilyImaging, User } from "../api";
 import { useT } from "../i18n";
@@ -16,6 +17,7 @@ export default function FamilyApp({ user, onSignOut }: { user: User; onSignOut: 
   const [error, setError] = useState<unknown>(null);
   const [view, setView] = useState<View>("people");
   const [who, setWho] = useState<string | null>(null);
+  useLayer(view !== "people" || who !== null, () => { setView("people"); setWho(null); });
   const [sums, setSums] = useState<FamilyImaging[]>([]);
 
   const load = useCallback(() => { setError(null); api.familyShared().then(setEntries).catch(setError); }, []);
