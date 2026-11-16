@@ -6,9 +6,9 @@ already produced.
 
 Rules:
 - Off unless NEUROTWIN_COMPANION=1. Off means the existing assistant screen is all there is.
-- Real participants' words and tasks are never sent to an external provider. Server speech and the language model are available
-  to demo (synthetic) accounts only, and only after the person's own `assistant_model` consent. Everyone else gets the browser's
-  voice and the fixed-pattern assistant.
+- Real participants' voices, words and tasks are never sent to an external provider. Speech-to-text (voice.py) is for demo
+  (synthetic) accounts only; server speech and the language model also need the person's own `assistant_model` consent.
+  Everyone else types, and gets the browser's voice and the fixed-pattern assistant.
 - No audio is stored. The audit log records that speech was produced or a model was asked, never the words.
 """
 from __future__ import annotations
@@ -56,7 +56,7 @@ def config(db: Session, user: User, stt, tts, model_ok: bool) -> dict:
     model_consent = bool(cs["assistant_model"]["granted"])
     return {
         "enabled": enabled(),
-        "stt": {"available": stt is not None, "consented": bool(cs["voice_recording"]["granted"])},
+        "stt": {"available": stt is not None and bool(user.is_demo), "consented": bool(cs["voice_recording"]["granted"])},
         "tts": {"server": tts is not None and bool(user.is_demo) and model_consent,
                 "why_not": None if tts is not None and user.is_demo and model_consent else
                            "not_configured" if tts is None else "needs_consent" if user.is_demo else "real_data_stays_here"},

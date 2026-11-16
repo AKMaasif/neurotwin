@@ -44,11 +44,28 @@ TOOLS = {  # name: (kind, needs confirmation)
     "start_activity": ("navigation", False), "emergency": ("navigation", False), "start_concern": ("navigation", False),
 }
 
-_EMERGENCY = re.compile(r"\b(emergency|urgent|ambulance|help me|i need help|i am hurt|i fell|can't breathe|cannot breathe|chest pain)\b|طوارئ|إسعاف|اسعاف|ساعدوني|ساعدني|أحتاج مساعدة|احتاج مساعدة|وقعت|ألم في الصدر", re.I)
+# Errs on the side of opening the help screen: a false alarm costs one tap back, a miss could cost much more (docs/EMERGENCY_BENCHMARK.md).
+_EMERGENCY = re.compile(
+    r"\b(emergency|urgent|ambulance|help me|i need help|please help|someone help|i am hurt|i['’]?m hurt|i fell(?! asleep| behind| in love| for)|i['’]?ve fallen"
+    r"|i have fallen|fallen down|has fallen|(?:has|have|just) collapsed|collapsed on|can['’]?t get up|cannot get up|unable to get up"
+    r"|can['’]?t breathe|cannot breathe|(?:struggling|trouble|difficulty|hard) (?:to )?breath(?:e|ing)|short(?:ness)? of breath|gasping"
+    r"|chest pain|pain in my chest|chest (?:hurts|is hurting|feels tight)|heart attack|stroke(?! of)|seizure|having a fit|chest (?:is )?tight"
+    r"|sos|call (?:999|998|997|911|112)|need (?:a doctor|an ambulance) (?:right )?now|(?:not|isn['’]?t) moving|(?:isn['’]?t|not) responding"
+    r"|can['’]?t (?:move|feel) my|can['’]?t stand|cannot stand|blacked out|cut myself|words (?:are )?(?:coming out|come out) wrong"
+    r"|end my life|kill myself|want to die|suicid\w*|hurt myself"
+    r"|face (?:is )?drooping|slurred speech|(?:arm|leg|side) (?:feels |is |has gone |went )?(?:weak|numb)|can['’]?t (?:speak|talk) properly"
+    r"|bleeding|hit my head|unconscious|not breathing|won['’]?t wake up|overdose|too many (?:of my )?(?:pills|tablets|medicines?)"
+    r"|i feel faint|(?:going|about) to (?:faint|pass out)|might (?:faint|pass out)|passing out|passed out)\b"
+    r"|^\W*(?:help\W*)+$"
+    r"|طوارئ|إسعاف|اسعاف|ساعدوني|ساعدني|النجدة|نجدة|النجده|نجده|999|998|997|ما (?:ترد|يرد|تتحرك|يتحرك)|لا (?:ترد|يرد|تتحرك|يتحرك)|(?:أحتاج|احتاج|أبغى|ابغى|ابي) (?:طبيب|دكتور) (?:الآن|الان|الحين)"
+    r"|صدري ضايق|دايخ|دايخة|ما أقدر أوقف|ما اقدر اوقف|أموت|اموت|انتحار|أنتحر|انتحر|أقتل نفسي|اقتل نفسي|تشنج|نوبة صرع|أحتاج مساعدة|احتاج مساعدة|وقعت|سقطت|سقط|طاح|طاحت|ألم(?: \S+)? في (?:الصدر|صدري)|صدري (?:يؤلمني|يوجعني)"
+    r"|نوبة قلبية|جلطة|يغمى|إغماء|اغماء|أغمي|اغمي|نزيف|ينزف|فاقد الوعي|ضيق (?:في )?(?:ال)?تنفس|ما يتنفس|لا يتنفس"
+    r"|لا أستطيع التنفس|لا استطيع التنفس|ما أقدر أتنفس|ما اقدر اتنفس|ما أقدر أقوم|ما اقدر اقوم",
+    re.I)
 _NOT_TODAY = re.compile(r"\b(not today|skip|won't do|will not do|can't do (?:it|the \w+|my \w+)? ?today)\b|ليس اليوم|مو اليوم|تخطي|تخطى|لن أفعل", re.I)
 _DONE = re.compile(r"\b(i did|i have done|i've done|i finished|i have finished|i completed|i (?:just )?(?:drank|ate|took|walked)|done with|finished|completed|done)\b|\bتم\b|أنهيت|انتهيت|خلصت|أكملت|اكملت|فعلت|قمت ب", re.I)
 _SNOOZE = re.compile(r"\b(snooze|remind me|later)\b|ذكرني|ذكّرني|لاحقا|لاحقًا", re.I)
-_TODAY = re.compile(r"\b(what.*(today|to do)|my (tasks|routines|reminders)|today'?s (tasks|plan))\b|ماذا علي|مهامي|روتيني|تذكيراتي|ماذا أفعل اليوم", re.I)
+_TODAY = re.compile(r"\b(what.*(today|to do|activities|routines?|tasks|schedule|plan)|how('s| is) my (day|schedule)|what('s| is| are) (on|next)\b|what am i (doing|supposed to do)|my (day|tasks|routines|reminders|activities)|today'?s (tasks|plan))\b|ماذا علي|مهامي|روتيني|تذكيراتي|ماذا أفعل اليوم", re.I)
 _EXPLAIN = re.compile(r"\b(explain|what does .* mean|what is .* for|tell me about|why)\b|اشرح|ماذا يعني|ما معنى", re.I)
 _OPEN = [(re.compile(r"\b(appointment|visit|questions? (for|to ask) (my|the) (doctor|clinician|clinic)|prepare for my)\b|موعد|موعدي|أسئلة للطبيب|اسئلة للطبيب|تحضير", re.I), "prep"),
          (re.compile(r"\b(follow-?up|shared (note|summary)|my (doctor|clinician)'?s? (note|message|summary))\b|المتابعة|ملخص الطبيب|رسالة الطبيب", re.I), "messages"),
@@ -157,6 +174,10 @@ def parse(text: str, rows: list[tuple[CarePlanItem, dict]], ctx: dict | None = N
     t = (text or "").strip()
     if not t:
         return {"tool": None, "reason": "empty"}
+    # a greeting or filler in front of a real request ("Hello, how is my day today?", "So, what ...") is not the request
+    lead = re.match(r"^\s*(?:(?:hi|hello|hey|so|ok|okay|well|please|um|good (?:morning|afternoon|evening)|salam|مرحبا|أهلا|اهلا)(?=[\s,.!؟])[\s,.!؟]*)+(?P<rest>.+)$", t, re.I | re.S)
+    if lead and len(lead.group("rest").split()) >= 2 and not _EMERGENCY.search(t[: len(t) - len(lead.group("rest"))]):
+        t = lead.group("rest").strip()
     if _EMERGENCY.search(t):
         return {"tool": "emergency", "arguments": {}}
     if _YES.match(t) or _NO.match(t):

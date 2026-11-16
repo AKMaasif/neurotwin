@@ -99,21 +99,29 @@ class GeminiClient:
             _raise("Gemini", e)
 
     def speak(self, text: str, voice: str | None, language: str) -> bytes:
-        """Text to speech through a Gemini speech model; returns a mono 24 kHz 16-bit WAV. The request and response shape follow Google's
-        documented audio-output interface but have NOT been checked against a live call from this project: `GEMINI_TTS_MODEL` must name a
-        model that supports audio output, and a failure here makes the app fall back to the browser's own voice, disclosed to the person."""
-        style = "Say this in clear, warm, calm Arabic" if language == "ar" else "Say this in a clear, warm, calm, friendly and moderately energetic way"
+        """Text to speech through a Gemini TTS model (e.g. gemini-3.8-flash-tts); returns a mono 24 kHz 16-bit WAV. The request follows Google's
+        documented speech-generation interface (generationConfig.responseModalities AUDIO, speechConfig voice, speech_metadata.style). It has
+        NOT yet been checked against a live call from this project. If the model rejects the style field, the same words are retried with the
+        style written into the text; any failure makes the app fall back to the browser's own voice, which the panel tells the person."""
+        style = ("very friendly, cheerful and energetic, in clear Arabic" if language == "ar" else "very friendly, cheerful and energetic, like a kind helper who is glad to see them, but never rushed")
         speech = {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice}}} if voice else {}
-        body = {"contents": [{"parts": [{"text": f"{style}: {text}"}]}],
-                "generationConfig": {"responseModalities": ["AUDIO"], **({"speechConfig": speech} if speech else {})}}
-        try:
-            r = self._http.post(f"/models/{self.model}:generateContent", json=body)
-            r.raise_for_status()
-            part = r.json()["candidates"][0]["content"]["parts"][0]
-            pcm = base64.b64decode((part.get("inlineData") or part["inline_data"])["data"])
-        except (httpx.HTTPError, KeyError, IndexError, ValueError, TypeError) as e:
-            _raise("Gemini", e)
-        return _wav(pcm, 24000)
+        gen = {"responseModalities": ["AUDIO"], **({"speechConfig": speech} if speech else {})}
+        bodies = [{"contents": [{"role": "user", "parts": [{"text": text, "speech_metadata": {"style": style}}]}], "generationConfig": gen},
+                  {"contents": [{"role": "user", "parts": [{"text": f"Say this in a {style} way: {text}"}]}], "generationConfig": gen}]
+        last: Exception | None = None
+        for body in bodies:
+            try:
+                r = self._http.post(f"/models/{self.model}:generateContent", json=body)
+                if r.status_code == 400 and body is bodies[0]:
+                    last = httpx.HTTPStatusError("bad request", request=r.request, response=r)
+                    continue                                      # this model may not accept speech_metadata: try the plain form once
+                r.raise_for_status()
+                part = r.json()["candidates"][0]["content"]["parts"][0]
+                raw = base64.b64decode((part.get("inlineData") or part["inline_data"])["data"])
+                return raw if raw[:4] == b"RIFF" else _wav(raw, 24000)    # unary replies are already WAV; raw PCM is wrapped
+            except (httpx.HTTPError, KeyError, IndexError, ValueError, TypeError) as e:
+                last = e
+        _raise("Gemini", last or ValueError("no audio"))
 
 
 class MetaClient:
@@ -174,12 +182,16 @@ def _wav(pcm: bytes, rate: int) -> bytes:
             + b"data" + struct.pack("<I", len(pcm)) + pcm)
 
 
+DEFAULT_TTS_MODEL = "gemini-3.8-flash-tts"      # suggested value for GEMINI_TTS_MODEL (from Google's speech-generation page); never used unless set
+DEFAULT_TTS_VOICE = "Puck"                      # described as "Upbeat"; the page does not label gender, so audition voices and set GEMINI_TTS_VOICE
+
+
 def get_tts_client(env: dict | None = None):
     """Text to speech through Gemini, only when GEMINI_TTS_MODEL names a model. None otherwise (the browser's voice is used instead)."""
     env = os.environ if env is None else env
-    if not env.get("GEMINI_API_KEY") or not env.get("GEMINI_TTS_MODEL"):
+    if not env.get("GEMINI_API_KEY") or not (env.get("GEMINI_TTS_MODEL") or "").strip():
         return None
-    return GeminiClient(env["GEMINI_API_KEY"], env["GEMINI_TTS_MODEL"])
+    return GeminiClient(env["GEMINI_API_KEY"], env["GEMINI_TTS_MODEL"].strip())
 
 
 def get_stt_client(env: dict | None = None):

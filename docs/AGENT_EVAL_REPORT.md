@@ -1,6 +1,6 @@
 # Agent scenario evaluation
 
-Run on 2026-11-15 by `backend/scripts/run_agent_eval.py` (scenarios: `backend/tests/test_agent_eval.py`).
+Run on 2026-11-16 by `backend/scripts/run_agent_eval.py` (scenarios: `backend/tests/test_agent_eval.py`).
 
 ## What this measures, and what it does not
 

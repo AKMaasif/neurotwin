@@ -4,8 +4,8 @@
 | Variable | Meaning |
 |---|---|
 | `NEUROTWIN_COMPANION=1` | Turns the companion on. Off by default. Off means the old Ask screen and typed assistant only; nothing else changes (rollback = unset it). |
-| `GEMINI_API_KEY`, `GEMINI_MODEL` | Speech-to-text (existing). Without them there is no voice input and the panel says so. |
-| `GEMINI_TTS_MODEL`, `GEMINI_TTS_VOICE` | Server voice (optional, unverified until a live check). Without them the browser's own voice is used. |
+| `GEMINI_API_KEY`, `GEMINI_MODEL` | Speech-to-text (existing), **demonstration accounts only**. Without them, or for a real account, there is no voice input and the panel says so; the person types. |
+| `GEMINI_TTS_MODEL`, `GEMINI_TTS_VOICE` | Server voice (optional, unverified until a live check). Off unless `GEMINI_TTS_MODEL` is set; a Gemini key alone does not turn it on. Without it the browser's own voice is used. |
 | `NEUROTWIN_TTS_DAILY_CALLS` (200), `NEUROTWIN_NLU_DAILY_CALLS` (100), `NEUROTWIN_STT_DAILY_CALLS` (100) | Daily provider-call caps. |
 Keys stay on the server and are never sent to the browser or written to logs.
 
@@ -15,7 +15,7 @@ Keys stay on the server and are never sent to the browser or written to logs.
 
 ## Data flow
 1. The microphone opens only after: the person opens the panel, presses Start talking, voice consent is on, and the browser allows it. It never opens by itself.
-2. Audio is cut into one turn at a time in the browser (WAV, 16 kHz) and sent to `/api/voice/transcribe`. The server does not store audio.
+2. Audio is cut into one turn at a time in the browser (WAV, 16 kHz) and sent to `/api/voice/transcribe`, which passes it once to Gemini for demonstration accounts only (a real account is refused before any provider call). The server does not store audio.
 3. The text goes to `/api/assistant/message`: fixed rules first. Only if they fail, only for a consenting demo account, a model may choose **one item from a fixed menu**; the server validates it. Changes are always shown with Yes/No and recorded only after Yes.
 4. Spoken replies are the same sentences shown on screen. With the server voice, the reply text (never audio of the person) is sent to the speech provider; otherwise the device voice speaks it locally.
 

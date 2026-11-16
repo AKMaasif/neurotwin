@@ -80,7 +80,7 @@ def test_server_speech_needs_flag_provider_demo_account_and_consent(client, app,
     consent(client, h, "assistant_model")
     r = client.post("/api/voice/speak", json=body, headers=h)
     assert r.status_code == 200 and r.headers["content-type"] == "audio/wav" and r.headers["cache-control"] == "no-store"
-    assert tts.calls == [("Hello", None, "en")]
+    assert tts.calls == [("Hello", "Puck", "en")]
     consent(client, h, "assistant_model", False)
     assert client.post("/api/voice/speak", json=body, headers=h).status_code == 403          # revoked: stops at once
 
@@ -150,7 +150,25 @@ def test_gemini_speech_request_and_response_shape_with_a_mocked_transport():
         bad.speak("x", None, "en")
 
 
-def test_tts_client_exists_only_when_a_speech_model_is_named():
-    assert llm.get_tts_client({"GEMINI_API_KEY": "k"}) is None
+def test_tts_client_is_opt_in_needing_both_a_key_and_a_speech_model():
+    assert llm.get_tts_client({}) is None
     assert llm.get_tts_client({"GEMINI_TTS_MODEL": "m"}) is None
+    assert llm.get_tts_client({"GEMINI_API_KEY": "k"}) is None                        # a key alone never turns the server voice on
+    assert llm.get_tts_client({"GEMINI_API_KEY": "k", "GEMINI_TTS_MODEL": " "}) is None
     assert llm.get_tts_client({"GEMINI_API_KEY": "k", "GEMINI_TTS_MODEL": "m"}).model == "m"
+
+
+def test_a_ready_made_wav_is_passed_through_and_a_rejected_style_is_retried_in_plain_form():
+    wav = llm._wav(b"\x01\x00" * 24, 24000)
+    calls = []
+
+    def handler(req: httpx.Request):
+        body = json.loads(req.content)
+        calls.append(body)
+        if "speech_metadata" in body["contents"][0]["parts"][0]:
+            return httpx.Response(400, json={"error": "unknown field"})
+        return httpx.Response(200, json={"candidates": [{"content": {"parts": [{"inlineData": {"data": base64.b64encode(wav).decode()}}]}}]})
+
+    out = llm.GeminiClient("k", "m", transport=httpx.MockTransport(handler)).speak("Hello", "Puck", "en")
+    assert out == wav and len(calls) == 2 and "speech_metadata" not in calls[1]["contents"][0]["parts"][0]
+    assert calls[1]["contents"][0]["parts"][0]["text"].endswith("Hello")

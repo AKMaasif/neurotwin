@@ -47,3 +47,5 @@
 {"text": "and the water?", "lang": "en", "expect": {"tool": "mark_done", "item": 2, "screen": null, "minutes": null}, "ctx": {"last_tool": "mark_done", "last_item": "walk"}, "note": "follow-up after marking the walk done"}
 {"text": "the other one", "lang": "en", "expect": {"tool": "mark_done", "item": 2, "screen": null, "minutes": null}, "ctx": {"last_tool": "mark_done", "last_item": "walk"}, "note": ""}
 {"text": "what time is it", "lang": "en", "expect": {"tool": "explain_instruction", "item": 1, "screen": null, "minutes": null}, "ctx": {"last_tool": "explain_instruction", "last_item": "walk"}, "note": "refers to last item"}
+{"text": "Hello, how is my day today?", "lang": "en", "expect": {"tool": "read_today", "item": null, "screen": null, "minutes": null}, "ctx": null, "note": "reported by the first real tester: opened a screen instead of reading the list"}
+{"text": "So, what are the activities I'm having right now?", "lang": "en", "expect": {"tool": "read_today", "item": null, "screen": null, "minutes": null}, "ctx": null, "note": "reported by the first real tester: not understood"}

@@ -376,8 +376,8 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
                 "checked": checks, "analysis": {"state": "running" if running else "idle", "running": running}}
 
     @app.get("/api/voice/status")
-    def voice_status(request: Request, _: User = Depends(current_user)):
-        c = request.app.state.get_stt()
+    def voice_status(request: Request, user: User = Depends(current_user)):
+        c = request.app.state.get_stt() if user.is_demo else None      # real accounts' voices stay here (voice.py)
         return {"available": c is not None, "provider": c.provider if c else None}
 
     @app.post("/api/voice/transcribe")
@@ -397,7 +397,7 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
     def voice_speak(body: SpeakIn, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
         if not COMP.enabled():
             raise HTTPException(404, "Not found.")
-        audio = COMP.speak(db, user, body.text, body.language, request.app.state.get_tts(), os.environ.get("GEMINI_TTS_VOICE") or None)
+        audio = COMP.speak(db, user, body.text, body.language, request.app.state.get_tts(), os.environ.get("GEMINI_TTS_VOICE") or llm.DEFAULT_TTS_VOICE)
         return Response(content=audio, media_type="audio/wav", headers={"Cache-Control": "no-store"})
 
     @app.get("/api/protocols")

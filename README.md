@@ -7,6 +7,10 @@ provenance and quality.
 **Independent research prototype. Not a medical device. It does not diagnose, score or predict, and it is not
 approved for clinical use. Clinical demo records are synthetic; do not enter real health information.**
 
+**Judges and reviewers: start with [SUBMISSION.md](SUBMISSION.md)** — the problem, a 5-minute walkthrough, test and
+benchmark results, assumptions and limitations. Licence: [MIT](LICENSE) for NeuroTwin's code; data, media, fonts and
+packages keep their own terms ([THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
+
 An optional, separate **Brain Analytics** research preview can display one locally prepared OASIS-1 case, with
 interactive MRI slices, actual 3D cortical surfaces, layers, internal exploration and imported measurements.
 See [the preview guide](docs/IMAGING_PREVIEW.md) for setup, access restrictions and current limitations.
@@ -15,7 +19,12 @@ Start with the [project goal, completed work and remaining roadmap](docs/PROJECT
 development picture. New MRI processing follows the [NeuroTwin-owned architecture](docs/NATIVE_IMAGING_AND_AI_PLAN.md)
 without FreeSurfer execution; the supplied derivative viewer remains a labelled reference.
 
-## What is in this version (0.2)
+## What is in this version (0.3)
+
+The core, as first released in 0.2. Later additions (care plans and reminders, family messages, the text assistant,
+concern reports, Brain Analytics, agent analysis, care journeys and the optional voice companion) are listed in
+[CHANGELOG.md](CHANGELOG.md) and [docs/STATUS.md](docs/STATUS.md).
+
 
 - **Personal app** for older adults: consent, a daily check-in, a reaction activity, sharing controls, own records
   with corrections. Large type, one task per screen, English and Arabic (right-to-left).
@@ -106,6 +115,11 @@ Stop the server, delete `backend\neurotwin.db`, start it again.
 | `NEUROTWIN_DEMO_PASSWORD` | `neurotwin-demo-2026` | Password of the demo accounts (only needed if you sign in to them by password) |
 | `NEUROTWIN_SECURE_COOKIES` | `0` | Set to `1` when served over HTTPS (any deployment) |
 | `NEUROTWIN_SESSION_HOURS` | `8` | How long a sign-in lasts |
+| `NEUROTWIN_SEED_HISTORY` | `0` | `1` adds six months of synthetic history to the demo people |
+| `NEUROTWIN_COMPANION` | `0` | `1` turns on the voice companion in the personal app ([details](docs/COMPANION_PRIVACY_AND_PROVIDERS.md)) |
+| `GEMINI_TTS_MODEL`, `GEMINI_TTS_VOICE` | empty | Server voice for the companion. Off unless a model is set; otherwise the device's own voice is used |
+
+Model keys, daily call caps and the imaging settings are listed in `backend/.env.example` and the docs linked from it.
 
 ## Model providers (optional)
 
