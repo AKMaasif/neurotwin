@@ -83,10 +83,13 @@ def build_facts(db: Session, participant_id: str) -> list[V.Fact]:
                           .order_by(ActivitySession.started_at)).all()
     for s in sessions:
         unwell = "not asked" if s.unwell_today is None else ("yes" if s.unwell_today else "no")
+        hard = [w for k, w in (("see_clearly", "could not see the screen clearly"), ("hear_clearly", "could not hear clearly"),
+                               ("slept_well", "had not slept well"), ("quiet_place", "was not in a quiet place")) if getattr(s, k) is False]
         facts.append(V.Fact.of(f"S{s.id}", (
             f"Session S{s.id}: {LABELS.get(s.protocol_code, s.protocol_code)} (version {s.protocol_version}) on "
             f"{_day(s.started_at)}; status {s.status}; interruptions {s.interruptions}; "
-            f"helped by someone: {'yes' if s.assisted else 'no'}; felt unwell: {unwell}.")))
+            f"helped by someone: {'yes' if s.assisted else 'no'}; felt unwell: {unwell}"
+            + (f"; the person said they {', '.join(hard)}" if hard else "") + ".")))
 
     evidence = db.scalars(select(Evidence).where(Evidence.participant_id == participant_id,
                                                  Evidence.status != "amended")
@@ -119,6 +122,8 @@ def build_facts(db: Session, participant_id: str) -> list[V.Fact]:
                     f"{c.baseline.n}; difference {_num(round(c.difference, 1))}{unit}; 95% interval "
                     f"{_num(round(c.interval[0], 1))} to {_num(round(c.interval[1], 1))}; {where} this person's own "
                     f"usual variation.")
+        if c.practice_ids:
+            text = text[:-1] + f"; the first {len(c.practice_ids)} sessions were practice and were not compared."
         facts.append(V.Fact.of(f"C{i}", text))
 
     items = db.scalars(select(ReviewItem).where(ReviewItem.participant_id == participant_id,

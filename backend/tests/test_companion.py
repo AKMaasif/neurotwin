@@ -80,7 +80,7 @@ def test_server_speech_needs_flag_provider_demo_account_and_consent(client, app,
     consent(client, h, "assistant_model")
     r = client.post("/api/voice/speak", json=body, headers=h)
     assert r.status_code == 200 and r.headers["content-type"] == "audio/wav" and r.headers["cache-control"] == "no-store"
-    assert tts.calls == [("Hello", "Puck", "en")]
+    assert tts.calls == [("Hello", "Sulafat", "en")]
     consent(client, h, "assistant_model", False)
     assert client.post("/api/voice/speak", json=body, headers=h).status_code == 403          # revoked: stops at once
 

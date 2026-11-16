@@ -4,6 +4,7 @@ import { ClinicianParticipant, User } from "../api";
 import { useT } from "../i18n";
 import type { Data, Sel } from "./ClinicianApp";
 import { valueText } from "./EvidenceTable";
+import { conditionFlags } from "./Detail";
 
 type Step = { lane: 0 | 1 | 2 | 3; title: string; sub: string; tone?: "warn" | "fail" | "ok" | "navy"; at: string; order: number };
 
@@ -47,7 +48,8 @@ function Workings({ data, sel }: { data: Data; sel: Sel }) {
   const items = data.items.filter((i) => i.session_id === s.id);
   const steps: Step[] = [];
   let n = 0;
-  const flags = [s.assisted && t("wsMarkAssisted"), s.unwell_today && t("wsMarkUnwell"), s.interruptions && t("wsMarkInterrupted")].filter(Boolean).join(" · ");
+  const flags = [s.assisted && t("wsMarkAssisted"), s.unwell_today && t("wsMarkUnwell"), s.interruptions && t("wsMarkInterrupted"),
+    ...conditionFlags(s, t)].filter(Boolean).join(" · ");
   steps.push({ lane: 0, title: t("wsStepStarted"), sub: `${t.code(s.protocol_code)} ${s.protocol_version}${flags ? " · " + flags : ""}`, at: s.started_at, order: n++ });
   for (const e of records) {
     steps.push({ lane: e.producer_type === "person" ? 0 : 1, title: `${t("wsStepRecorded")}: ${t.code(e.measure)}`,

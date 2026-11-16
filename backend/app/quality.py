@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 
 from . import protocols as P
 
-RULES_VERSION = "quality-rules/0.1"
+RULES_VERSION = "quality-rules/0.2"  # 0.2: today's conditions (vision, hearing, sleep, quiet place)
 
 ORDER = {"usable": 0, "doubtful": 1, "unusable": 2}
 
@@ -41,6 +41,10 @@ class SessionContext:
     assisted: bool = False
     unwell_today: bool | None = None
     interruptions: int = 0
+    see_clearly: bool | None = None
+    hear_clearly: bool | None = None
+    slept_well: bool | None = None
+    quiet_place: bool | None = None
 
 
 @dataclass
@@ -108,6 +112,19 @@ def assess_session(protocol: P.Protocol | None, ctx: SessionContext,
             v.add("doubtful", "assisted_session")
         if ctx.unwell_today and m.kind == "observed":
             v.add("doubtful", "participant_unwell")
+        # Today's conditions (answered by the person; None = not asked or prefer not to say). Not seeing the screen or a
+        # noisy place directly affect an on-screen timed task, so those make the record doubtful. Poor sleep and hearing
+        # difficulty are recorded as notes the clinician sees, without lowering the level: the activities are visual and
+        # silent, and a night's sleep is too common to set aside every such session. Engineering defaults awaiting review.
+        if m.kind == "observed":
+            if ctx.see_clearly is False:
+                v.add("doubtful", "vision_difficulty")
+            if ctx.quiet_place is False:
+                v.add("doubtful", "noisy_place")
+            if ctx.slept_well is False:
+                v.add("usable", "poor_sleep")
+            if ctx.hear_clearly is False:
+                v.add("usable", "hearing_difficulty")
 
     if protocol is not None:
         # Required measures that were not submitted at all.

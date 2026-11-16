@@ -62,7 +62,8 @@ def build(db: Session, user: User, days: int = 11, end: str | None = None) -> di
                          "missing_reason": e.missing_reason, "quality": e.quality})
         by_day.setdefault(_local_date(s.started_at, tz), []).append({
             "id": s.id, "protocol_code": s.protocol_code, "status": s.status, "assisted": s.assisted, "interruptions": s.interruptions,
-            "unwell_today": s.unwell_today, "values": vals, "shows_values": s.protocol_code not in ("who5", "reaction_time", "picture_sequence")})
+            "unwell_today": s.unwell_today, "conditions": {k: getattr(s, k) for k in ("see_clearly", "hear_clearly", "slept_well", "quiet_place")},
+            "values": vals, "shows_values": s.protocol_code not in ("who5", "reaction_time", "picture_sequence")})
 
     replies = list(db.scalars(select(CarePlanReply).where(CarePlanReply.participant_id == user.id, CarePlanReply.day >= f, CarePlanReply.day <= l).order_by(CarePlanReply.id)))
     per_item: dict[int, dict] = {}

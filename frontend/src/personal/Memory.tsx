@@ -3,6 +3,7 @@ import { Cloud, Heart, Leaf, Moon, Star, Sun } from "lucide-react";
 import { api, Observation } from "../api";
 import { useT } from "../i18n";
 import { ErrorNote, Heading } from "../ui";
+import TodayConditions, { NO_ANSWERS, TodayAnswers } from "./TodayConditions";
 
 // Prototype picture-sequence memory activity, version 0.1. Engineering settings, not clinical ones. No timing is scored.
 const PICS = [["sun", Sun, "memSun"], ["moon", Moon, "memMoon"], ["star", Star, "memStar"], ["heart", Heart, "memHeart"], ["leaf", Leaf, "memLeaf"], ["cloud", Cloud, "memCloud"]] as const;
@@ -24,6 +25,7 @@ export default function Memory({ onDone }: { onDone: () => void }) {
   const { t } = useT();
   const [phase, setPhase] = useState<Phase>("intro");
   const [helper, setHelper] = useState<boolean | null>(null);
+  const [today, setToday] = useState<TodayAnswers>(NO_ANSWERS);
   const [round, setRound] = useState(-1);                       // -1 = practice, then 0..ROUNDS.length-1
   const [seq, setSeq] = useState<number[]>([]);
   const [shownIdx, setShownIdx] = useState(-1);
@@ -78,7 +80,7 @@ export default function Memory({ onDone }: { onDone: () => void }) {
   const begin = async () => {
     setError(null);
     try {
-      const s = await api.startSession({ protocol_code: "picture_sequence", protocol_version: "0.1", language: t.lang, device: "web", assisted: helper === true });
+      const s = await api.startSession({ protocol_code: "picture_sequence", protocol_version: "0.1", language: t.lang, device: "web", assisted: helper === true, ...today });
       sessionId.current = s.id;
       startRound(-1);
     } catch (e) { setError(e); }
@@ -115,6 +117,7 @@ export default function Memory({ onDone }: { onDone: () => void }) {
             ))}
           </div>
         </section>
+        <TodayConditions value={today} onChange={setToday} />
         <ErrorNote error={error} />
         <div className="p-actions">
           <button className="btn primary block" disabled={helper === null} onClick={begin}>{t("memBegin")}</button>

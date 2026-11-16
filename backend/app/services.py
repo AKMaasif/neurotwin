@@ -88,10 +88,14 @@ def revoke_grant(db: Session, owner: User, grant_id: int) -> AccessGrant:
     return grant
 
 
+CONDITIONS = ("see_clearly", "hear_clearly", "slept_well", "quiet_place")   # today's conditions; False = a difficulty
+
+
 # ---- Sessions and evidence -----------------------------------------------------------------------------------
 
 def start_session(db: Session, user: User, protocol_code: str, protocol_version: str, language: str,
-                  device: str, assisted: bool, assistance_note: str | None, unwell_today: bool | None) -> ActivitySession:
+                  device: str, assisted: bool, assistance_note: str | None, unwell_today: bool | None,
+                  conditions: dict | None = None) -> ActivitySession:
     if user.role != "participant":
         raise Refused(403, "Only participants take part in activities.")
     if not has_consent(db, user.id, "participation"):
@@ -100,7 +104,8 @@ def start_session(db: Session, user: User, protocol_code: str, protocol_version:
         raise Refused(422, f"Unknown activity {protocol_code} version {protocol_version}.")
     s = ActivitySession(participant_id=user.id, protocol_code=protocol_code, protocol_version=protocol_version,
                         language=language, device=device[:80], assisted=assisted,
-                        assistance_note=(assistance_note or None), unwell_today=unwell_today)
+                        assistance_note=(assistance_note or None), unwell_today=unwell_today,
+                        **{k: (conditions or {}).get(k) for k in CONDITIONS})
     db.add(s)
     db.flush()
     audit(db, user.id, "session.started", user.id, f"session:{s.id}")
@@ -124,7 +129,7 @@ def complete_session(db: Session, user: User, session_id: int, status: str, inte
 
     protocol = P.get(s.protocol_code, s.protocol_version)
     ctx = Q.SessionContext(status=status, assisted=s.assisted, unwell_today=s.unwell_today,
-                           interruptions=interruptions)
+                           interruptions=interruptions, **{k: getattr(s, k) for k in CONDITIONS})
     try:
         verdicts = Q.assess_session(protocol, ctx, observations)
     except Q.EvidenceRejected as e:
@@ -347,7 +352,8 @@ def build_report(db: Session, user: User, participant_id: str) -> dict:
                    "to": sessions[-1].started_at if sessions else None},
         "sessions": {"total": len(sessions), "by_status": status_counts,
                      "assisted": sum(1 for s in sessions if s.assisted),
-                     "unwell": sum(1 for s in sessions if s.unwell_today)},
+                     "unwell": sum(1 for s in sessions if s.unwell_today),
+                     **{k: sum(1 for s in sessions if getattr(s, k) is False) for k in CONDITIONS}},
         "measures": list(measures.values()),
         "review": {"open": [i for i in items if i.status == "open"],
                    "resolved": [i for i in items if i.status != "open"]},

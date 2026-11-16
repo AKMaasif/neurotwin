@@ -68,7 +68,16 @@ function conditions(s: Session, t: ReturnType<typeof useT>["t"]) {
   if (s.interruptions) parts.push(`${t("dInterruptions")} ${t.num(s.interruptions)}`);
   if (s.assisted) parts.push(t("wsMarkAssisted"));
   if (s.unwell_today) parts.push(t("wsMarkUnwell"));
+  parts.push(...conditionFlags(s, t));
   return parts.join(" · ");
+}
+
+/** Short labels for the difficulties the person reported before the session (false answers only). */
+export function conditionFlags(s: Session, t: ReturnType<typeof useT>["t"]): string[] {
+  const c = s.conditions;
+  if (!c) return [];
+  return ([["see_clearly", "wsMarkVision"], ["hear_clearly", "wsMarkHearing"], ["slept_well", "wsMarkSleep"], ["quiet_place", "wsMarkNoisy"]] as const)
+    .filter(([k]) => c[k] === false).map(([, label]) => t(label));
 }
 
 function RecordView({ r, session, data, onSelect, onChanged }: {
@@ -202,6 +211,12 @@ function SessionView({ s, data, onSelect, onChanged }: { s: Session; data: Data;
         <dt>{t("dAssisted")}</dt><dd>{yesNo(s.assisted)}</dd>
         {s.assistance_note && <><dt>{t("dAssistNote")}</dt><dd>{s.assistance_note}</dd></>}
         <dt>{t("dUnwell")}</dt><dd>{yesNo(s.unwell_today)}</dd>
+        {s.conditions && <>
+          <dt>{t("dCondSee")}</dt><dd>{yesNo(s.conditions.see_clearly)}</dd>
+          <dt>{t("dCondHear")}</dt><dd>{yesNo(s.conditions.hear_clearly)}</dd>
+          <dt>{t("dCondSleep")}</dt><dd>{yesNo(s.conditions.slept_well)}</dd>
+          <dt>{t("dCondQuiet")}</dt><dd>{yesNo(s.conditions.quiet_place)}</dd>
+        </>}
         <dt>{t("dDevice")}</dt><dd className="mono">{s.device}</dd>
         <dt>{t("language")}</dt><dd className="mono">{s.language}</dd>
       </dl>

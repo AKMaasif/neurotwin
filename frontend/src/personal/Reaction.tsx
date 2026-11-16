@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, Observation } from "../api";
 import { useT } from "../i18n";
 import { ErrorNote, Heading } from "../ui";
+import TodayConditions, { NO_ANSWERS, TodayAnswers } from "./TodayConditions";
 
 // Prototype simple reaction-time activity, version 0.1. Engineering settings, not clinical ones:
 const TRIALS = 5;            // timed taps after one practice
@@ -22,7 +23,7 @@ export default function Reaction({ onDone }: { onDone: () => void }) {
   const [phase, setPhase] = useState<Phase>("intro");
   const [pad, setPad] = useState<Pad>("wait");
   const [helper, setHelper] = useState<boolean | null>(null);
-  const [unwell, setUnwell] = useState<boolean | null | "skip">(null);
+  const [today, setToday] = useState<TodayAnswers>(NO_ANSWERS);
   const [stoppedEarly, setStoppedEarly] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [, force] = useState(0);
@@ -132,7 +133,7 @@ export default function Reaction({ onDone }: { onDone: () => void }) {
     try {
       const s = await api.startSession({
         protocol_code: "reaction_time", protocol_version: "0.1", language: t.lang, device: "web",
-        assisted: helper === true, unwell_today: unwell === "skip" ? null : unwell,
+        assisted: helper === true, ...today,
       });
       sessionId.current = s.id;
       setPhase("practice");
@@ -164,10 +165,7 @@ export default function Reaction({ onDone }: { onDone: () => void }) {
           <h2 style={{ fontSize: 20 }}>{t("rtHelper")}</h2>
           {yn(helper, (v) => setHelper(v === true), false)}
         </section>
-        <section className="p-card">
-          <h2 style={{ fontSize: 20 }}>{t("rtUnwell")}</h2>
-          {yn(unwell, (v) => setUnwell(v), true)}
-        </section>
+        <TodayConditions value={today} onChange={setToday} />
         <ErrorNote error={error} />
         <div className="p-actions">
           <button className="btn primary block" disabled={helper === null} onClick={begin}>{t("rtBegin")}</button>

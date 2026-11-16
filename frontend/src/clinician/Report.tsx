@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Printer, X } from "lucide-react";
+import { Download, Printer, X } from "lucide-react";
 import { api, Report } from "../api";
 import { useT } from "../i18n";
 import { Brand, ErrorNote } from "../ui";
@@ -25,6 +25,8 @@ export default function ReportView({ personId, onClose }: { personId: string; on
           <span />
           <div style={{ display: "flex", gap: 8 }}>
             <button className="btn primary" disabled={!r} onClick={() => window.print()}><Printer size={16} aria-hidden="true" />{t("repPrint")}</button>
+            <a className="btn" href={`/api/participants/${encodeURIComponent(personId)}/fhir`} download title={t("repFhirHint")}>
+              <Download size={16} aria-hidden="true" />{t("repFhir")}</a>
             <button className="btn" onClick={onClose}><X size={16} aria-hidden="true" />{t("repClose")}</button>
           </div>
         </div>
@@ -80,7 +82,7 @@ export default function ReportView({ personId, onClose }: { personId: string; on
             <h2>{t("chTitle")}</h2>
             <p className="muted" style={{ margin: 0, fontSize: 13 }}>{t("chLede")}</p>
             <table>
-              <thead><tr><th>{t("colMeasure")}</th><th>{t("colStatus")}</th><th>{t("colValue")}</th><th>n</th></tr></thead>
+              <thead><tr><th>{t("colMeasure")}</th><th>{t("colStatus")}</th><th>{t("colValue")}</th><th>z</th><th>RCI</th><th>n</th></tr></thead>
               <tbody>
                 {r.change.map((c) => (
                   <tr key={`${c.protocol_code}-${c.protocol_version}-${c.measure}`}>
@@ -88,12 +90,16 @@ export default function ReportView({ personId, onClose }: { personId: string; on
                     <td>{changeHeadline(c, t)}</td>
                     <td className="mono">{c.difference !== null && c.interval
                       ? `${t.num(c.difference, 1)} [${t.num(c.interval[0], 1)}, ${t.num(c.interval[1], 1)}]` : "–"}</td>
-                    <td className="mono">{c.baseline && c.recent ? `${t.num(c.baseline.n)} + ${t.num(c.recent.n)}` : t.num(c.eligible_n)}</td>
+                    <td className="mono">{c.z != null ? t.num(c.z, 2) : "–"}</td>
+                    <td className="mono">{c.rci ? `${t.num(c.rci.value, 2)}${c.rci.provisional ? "*" : ""}` : "–"}</td>
+                    <td className="mono">{c.baseline && c.recent ? `${t.num(c.baseline.n)} + ${t.num(c.recent.n)}` : t.num(c.eligible_n)}
+                      {c.excluded.practice ? ` (+${t.num(c.excluded.practice)} ${t("chPracticeShort")})` : ""}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <p className="muted" style={{ margin: 0, fontSize: 12 }}>{r.change[0] ? t("chMethod", { method: r.change[0].method }) : null}</p>
+            <p className="muted" style={{ margin: 0, fontSize: 12 }}>{r.change[0] ? t("chMethod", { method: r.change[0].method }) : null}
+              {r.change.some((c) => c.rci?.provisional) ? <> {t("chRciFootnote")}</> : null}</p>
 
             <h2>{t("repOpen")}</h2>
             {r.review.open.length === 0 ? <p className="muted">{t("repNoneOpen")}</p> : (

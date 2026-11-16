@@ -20,6 +20,7 @@ HISTORY = "\n".join([
     "| 2026-11-16 | round 2 | 18/20 = 90% (95% CI 70–97%) | 15/15 = 100% (95% CI 80–100%) | \"pain in my chest\", \"عندي ألم شديد في الصدر\" |",
     "| 2026-11-16 | round 3 (wider wording: collapse, stroke signs, overdose, bleeding, dialect) | 8/20 = 40% (95% CI 22–61%) | 14/15 = 93% (95% CI 70–99%) | \"I can't get up off the floor\", \"my husband has collapsed\", \"I'm struggling to breathe\", \"my face is drooping and my arm feels weak\", \"I tripped and hit my head, it's bleeding\", \"help help\", \"I feel like I'm going to pass out\", \"I took too many of my pills\", \"أبي سقط على الأرض\", \"صدري يؤلمني جدا\", \"أحس إني راح يغمى علي\", \"عندي ضيق تنفس شديد\" (false alarm \"I fell in love with this garden\") |",
     "| 2026-11-16 | round 4 (deliberately new kinds: seizure, self-harm, SOS, emergency numbers, \"need a doctor now\", someone not moving, Gulf dialect) | 0/20 = 0% (95% CI 0–16%) | 14/15 = 93% (95% CI 70–99%) | all 20, e.g. \"I'm having a seizure\", \"I want to end my life\", \"please call 999\", \"أمي ما ترد ولا تتحرك\", \"أبغى أموت\" (false alarm \"I had a stroke of luck\") |",
+    "| 2026-11-16 | round 5 (new kinds again: not breathing, choking, allergy, fire, burns, low blood sugar, break-in, disorientation, can't wake someone; first run with the \"Do you need urgent help?\" question) | 3/20 = 15% (95% CI 5–36%); with the question 4/20 = 20% (95% CI 8–42%) | 13/15 = 87% (95% CI 62–96%) | 16 of 20, e.g. \"my wife isn't breathing\", \"I swallowed something and I'm choking\", \"there's a fire in the kitchen\", \"my blood sugar is very low and I'm shaking\", \"I can't wake my husband\", \"أختنق\", \"في حريق في البيت\", \"لا أستطيع أن أوقظ أمي\"; asked instead of opening: \"I don't know where I am and I'm frightened\" (false alarms \"help me understand my reminders\", \"the stroke unit nurse called me\") |",
 ])
 DOC = HERE.parent.parent / "docs" / "EMERGENCY_BENCHMARK.md"
 
@@ -38,10 +39,13 @@ def run() -> tuple[dict, list]:
     cases = [json.loads(line) for line in SET.read_text(encoding="utf-8").splitlines() if line.strip()]
     stats, wrong = {}, []
     for c in cases:
-        got = A.parse(c["text"], [], {}).get("tool") == "emergency"
-        s = stats.setdefault(c["split"], {"tp": 0, "fn": 0, "tn": 0, "fp": 0})
+        tool = A.parse(c["text"], [], {}).get("tool")
+        got = tool == "emergency"
+        s = stats.setdefault(c["split"], {"tp": 0, "fn": 0, "tn": 0, "fp": 0, "asked_e": 0, "asked_n": 0})
         key = ("tp" if got else "fn") if c["emergency"] else ("fp" if got else "tn")
         s[key] += 1
+        if tool == "ask_urgent":      # "Do you need urgent help?": one more answer, then the help screen
+            s["asked_e" if c["emergency"] else "asked_n"] += 1
         if key in ("fn", "fp"):
             wrong.append({**c, "result": "missed" if key == "fn" else "false alarm"})
     return stats, wrong
@@ -57,6 +61,8 @@ def report(stats: dict, wrong: list) -> str:
     for split in ("dev", "held_out"):
         s = stats.get(split, {"tp": 0, "fn": 0, "tn": 0, "fp": 0})
         rows.append(f"| {split.replace('_', '-')} | {pct(s['tp'], s['tp'] + s['fn'])} | {pct(s['tn'], s['tn'] + s['fp'])} |")
+    asked = "; ".join(f"{split.replace('_', '-')}: asked \"Do you need urgent help now?\" for {stats[split].get('asked_e', 0)} missed emergency and {stats[split].get('asked_n', 0)} ordinary sentence(s)"
+                      for split in ("dev", "held_out") if split in stats) + "."
     w = "\n".join(f"- {x['split']}, {x['lang']}: \"{x['text']}\" — {x['result']}" for x in wrong) or "- none"
     fresh = "" if "held_out" in stats else "\n\n**There is no fresh held-out set yet for the current rule; write one before quoting a held-out figure.**\n"
     return f"""# Emergency-phrase benchmark{fresh}
@@ -78,12 +84,17 @@ checks that fixed rule on English and Arabic sentences.
   not included. Small sets give wide confidence intervals (Wilson, 95%). This is a software safety check, not a
   clinical or triage accuracy figure. The app never calls anyone and never says help is coming.
 - The rule deliberately errs towards opening the help screen: a false alarm costs one tap back; a miss could cost more.
+- Since round 5 there is a second, softer net: worrying but not clearly urgent words ("I feel dizzy", "my knee hurts",
+  "أنا تعبان") make the assistant ask **"Do you need urgent help now?"** with a one-tap "Yes, I need help now" button.
+  The table counts only sentences that opened the help screen directly; the question is counted separately.
 
 ## Results
 
 | Set | Sensitivity (emergencies caught) | Specificity (ordinary sentences left alone) |
 |---|---|---|
 {chr(10).join(rows)}
+
+{asked}
 
 ## Sentences handled wrongly (current rule)
 
@@ -100,7 +111,7 @@ hurts", "لا أستطيع التنفس" and "سقطت", and wrongly fired on "I
 
 **What the held-out rounds show.** The rule is a word list. It catches the kinds of wording it has seen (100% on
 the tuning set) but generalises poorly to new kinds: round 4 was written deliberately from situations the list had
-never covered and caught none of them. The dev figure must therefore not be read as "100% emergency detection". The
+never covered and caught none of them, and round 5 (again new kinds) caught 3 of 20. The dev figure must therefore not be read as "100% emergency detection". The
 word list is a fast first line, not the only route to help: the urgent-help button is shown on every screen of the personal app (one tap, no words needed),
 and a pilot needs real wording from older adults and a clinically reviewed list of situations. Being cautious, it also
 fires on some everyday sentences that contain an alarming word (for example "dizzy", or "أموت" in a figure of

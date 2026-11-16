@@ -62,7 +62,7 @@ def config(db: Session, user: User, stt, tts, model_ok: bool) -> dict:
                            "not_configured" if tts is None else "needs_consent" if user.is_demo else "real_data_stays_here"},
         "model": {"available": bool(model_ok and user.is_demo), "consented": model_consent},
         # Defaults the browser starts from; the person can change them. Silence is deliberately long: people pause to think.
-        "defaults": {"silence_ms": 1800, "min_speech_ms": 350, "max_turn_s": 45, "speed": 1.0, "volume": 1.0},
+        "defaults": {"silence_ms": 1800, "min_speech_ms": 350, "max_turn_s": 45, "speed": 0.9, "volume": 1.0},
         "limits": {"speak_chars": MAX_SPEAK_CHARS},
     }
 

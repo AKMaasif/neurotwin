@@ -9,8 +9,11 @@ export type Grant = { id: number; owner: User; grantee: User; purpose: string; c
 export type Session = {
   id: number; protocol_code: string; protocol_version: string; language: string; device: string; assisted: boolean;
   assistance_note: string | null; unwell_today: boolean | null; interruptions: number; status: string;
-  started_at: string; ended_at: string | null;
+  conditions?: Conditions; started_at: string; ended_at: string | null;
 };
+/** Today's conditions, answered before an activity. null = not asked or prefer not to say; false = a difficulty. */
+export type Conditions = { see_clearly: boolean | null; hear_clearly: boolean | null; slept_well: boolean | null; quiet_place: boolean | null };
+export type Background = { education: string | null; first_language: string | null; options?: { education: string[]; first_language: string[] } };
 export type Evidence = {
   id: number; participant_id: string; session_id: number | null; kind: "observed" | "self_reported" | "inferred";
   measure: string; value_num: number | null; value_text: string | null; unit: string | null; missing_reason: string | null;
@@ -84,9 +87,17 @@ export type AssistantItem = { id: number; title: string | null; text_en: string 
 export type AssistantReply = {
   understood: boolean; reason?: string; choices?: AssistantItem[]; tool?: string | null; needs_confirmation?: boolean; confirmation_id?: string;
   item?: AssistantItem | null; items?: (AssistantItem & { reply: string | null })[]; minutes?: number | null; navigate?: string | null; confirmed?: boolean;
-  cancelled?: boolean; kind?: "greeting" | "thanks" | "capabilities"; said?: string | null; entries?: { item: AssistantItem; reply: string | null }[];
+  cancelled?: boolean; kind?: "greeting" | "thanks" | "capabilities" | AnswerKind; said?: string | null; entries?: { item: AssistantItem; reply: string | null }[];
   via?: "context" | "answer" | "yes" | "words" | "order" | "other" | "only" | null; already?: "done" | "not_today" | null; pending?: boolean; expires_minutes?: number; ok?: boolean;
+  then?: boolean; urgent_declined?: boolean;
+  /** Model answers (assistant_ai.py), already checked by the server's fixed rules. `speech` is the plain version for reading aloud. */
+  text?: string; speech?: string; lang?: "en" | "ar"; plan?: RoutineItem[];
+  /** With "not understood": whether model answers are on, or why not. */
+  ai?: "on" | "off" | "needs_consent" | "real_data";
 };
+export type AnswerKind = "general_question" | "health_general" | "my_health" | "make_plan" | "make_image" | "chat" | "not_allowed" | "blocked";
+export type RoutineItem = { time: string; activity: string };
+export type OwnRoutine = { items: RoutineItem[]; saved_at: string | null };
 export type CompanionConfig = {
   enabled: boolean;
   stt: { available: boolean; consented: boolean };
@@ -121,7 +132,7 @@ export type Observation = {
   unit?: string | null; missing_reason?: string | null;
 };
 export type ClinicianParticipant = User & { shared_since: string; open_items: number; last_activity: string | null;
-  dataset: { id: string; label: string; note: string; sessions: number; from: string; to: string } | null };
+  dataset: { id: string; label: string; note: string; sessions: number; from: string; to: string } | null; background?: Background };
 export type FamilyEntry = {
   participant_id: string; display_name: string; active: boolean; since: string; ended_at: string | null;
   recent: { protocol_code: string; status: string; at: string }[];
@@ -143,9 +154,12 @@ export type ChangeWindow = { n: number; mean: number; ids: number[]; from: strin
 export type ChangeResult = {
   method: string; level: number; protocol_code: string; protocol_version: string; measure: string; kind: string;
   unit: string | null; status: "insufficient" | "no_variation" | "within" | "outside"; direction: "higher" | "lower" | null;
-  eligible_n: number; needed: { baseline: number; recent: number }; include_doubtful: boolean;
-  excluded: { doubtful: number; unusable: number; withdrawn: number; missing: number };
+  eligible_n: number; needed: { baseline: number; recent: number; practice?: number }; include_doubtful: boolean;
+  excluded: { practice?: number; doubtful: number; unusable: number; withdrawn: number; missing: number };
+  practice_ids?: number[];
   baseline: ChangeWindow | null; recent: ChangeWindow | null; difference: number | null; interval: [number, number] | null;
+  z?: number | null;
+  rci?: { value: number; critical: number; reliable: boolean; sem: number; s_diff: number; sd_ref: number; r: number; provisional: boolean; source: string } | null;
 };
 export type AiStatus = { provider: string | null; model: string | null; configured: boolean; keys_present: Record<string, boolean> };
 export type Draft = {
@@ -316,7 +330,7 @@ export const api = {
   revokeGrant: (id: number) => post<Grant>(`/api/grants/${id}/revoke`),
 
   startSession: (b: { protocol_code: string; protocol_version: string; language: string; device?: string;
-    assisted?: boolean; assistance_note?: string | null; unwell_today?: boolean | null }) => post<Session>("/api/sessions", b),
+    assisted?: boolean; assistance_note?: string | null; unwell_today?: boolean | null } & Partial<Conditions>) => post<Session>("/api/sessions", b),
   completeSession: (id: number, b: { status: string; interruptions: number; observations: Observation[]; client_version?: string }) =>
     post<{ session: Session; evidence: Evidence[] }>(`/api/sessions/${id}/complete`, b),
   sessions: (pid: string) => get<Session[]>(`/api/participants/${encodeURIComponent(pid)}/sessions`),
@@ -360,6 +374,11 @@ export const api = {
   assistantMemory: (enabled: boolean) => put<{ memory: boolean }>("/api/assistant/memory", { enabled }),
   assistantCancel: (confirmation_id: string) => post<{ ok: boolean }>("/api/assistant/cancel", { confirmation_id }),
   assistantConfirm: (confirmation_id: string) => post<{ ok: boolean; duplicate: boolean; tool: string }>("/api/assistant/confirm", { confirmation_id }),
+  background: () => get<Background>("/api/me/background"),
+  routine: () => get<OwnRoutine>("/api/me/routine"),
+  saveRoutine: (items: RoutineItem[]) => put<OwnRoutine>("/api/me/routine", { items }),
+  clearRoutine: () => del<OwnRoutine>("/api/me/routine"),
+  setBackground: (b: { education: string | null; first_language: string | null }) => put<Background>("/api/me/background", b),
   emergencyConfig: () => get<EmergencyConfig>("/api/emergency/config"),
   setTrusted: (name: string, phone: string) => put<{ name: string; phone: string }>("/api/emergency/trusted", { name, phone }),
   clearTrusted: () => del<{ ok: boolean }>("/api/emergency/trusted"),

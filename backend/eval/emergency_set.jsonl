@@ -190,3 +190,38 @@
 {"split": "dev", "text": "خلصت التمرين", "lang": "ar", "emergency": false}
 {"split": "dev", "text": "متى موعدي القادم", "lang": "ar", "emergency": false}
 {"split": "dev", "text": "شربت قهوة مع جارتي", "lang": "ar", "emergency": false}
+{"split": "dev", "text": "my wife isn't breathing", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I think I'm having an allergic reaction, my throat is closing", "lang": "en", "emergency": true}
+{"split": "dev", "text": "there's a fire in the kitchen", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I can't feel my left side", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I've burned my hand badly on the stove", "lang": "en", "emergency": true}
+{"split": "dev", "text": "my blood sugar is very low and I'm shaking", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I swallowed something and I'm choking", "lang": "en", "emergency": true}
+{"split": "dev", "text": "someone broke into my house", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I don't know where I am and I'm frightened", "lang": "en", "emergency": true}
+{"split": "dev", "text": "my speech is suddenly slurred", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I can't wake my husband", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I'm bleeding a lot from my leg", "lang": "en", "emergency": true}
+{"split": "dev", "text": "زوجي ما يتنفس", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "في حريق في البيت", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "انحرقت يدي بقوة", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "ما أقدر أحرك رجلي ولا يدي فجأة", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "أنا ضايع وما أعرف وين أنا", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "السكر نازل عندي وأرجف", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "أختنق", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "لا أستطيع أن أوقظ أمي", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "the fire alarm test is at noon today", "lang": "en", "emergency": false}
+{"split": "dev", "text": "I finished my breathing exercises", "lang": "en", "emergency": false}
+{"split": "dev", "text": "my husband is not answering his phone", "lang": "en", "emergency": false}
+{"split": "dev", "text": "I burned the toast this morning", "lang": "en", "emergency": false}
+{"split": "dev", "text": "help me understand my reminders", "lang": "en", "emergency": false}
+{"split": "dev", "text": "I can't sleep well lately", "lang": "en", "emergency": false}
+{"split": "dev", "text": "my sugar levels were fine today", "lang": "en", "emergency": false}
+{"split": "dev", "text": "I'm lost in this menu", "lang": "en", "emergency": false}
+{"split": "dev", "text": "the stroke unit nurse called me", "lang": "en", "emergency": false}
+{"split": "dev", "text": "where is the help page", "lang": "en", "emergency": false}
+{"split": "dev", "text": "انتهيت من تمارين التنفس", "lang": "ar", "emergency": false}
+{"split": "dev", "text": "حرقت الخبز اليوم", "lang": "ar", "emergency": false}
+{"split": "dev", "text": "ضعت في القائمة", "lang": "ar", "emergency": false}
+{"split": "dev", "text": "متى موعد الطبيب", "lang": "ar", "emergency": false}
+{"split": "dev", "text": "أمي بخير اليوم", "lang": "ar", "emergency": false}

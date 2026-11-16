@@ -70,7 +70,7 @@ def test_database_made_before_alembic_existed_with_data_upgrades_too(tmp_path):
     fresh.migrate()
     with fresh.engine.connect() as c:
         assert c.execute(text("SELECT COUNT(*) FROM care_plan_replies")).scalar() == 1
-        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0008"
+        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0010"
         assert c.execute(text("PRAGMA foreign_key_check")).all() == []
 
 
@@ -101,7 +101,7 @@ def test_database_left_half_upgraded_by_the_earlier_failure_recovers(tmp_path):
     fresh = Database(url)
     fresh.migrate()
     with fresh.engine.connect() as c:
-        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0008"
+        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0010"
         assert c.execute(text("SELECT COUNT(*) FROM care_plan_items")).scalar() == 1
         assert c.execute(text("SELECT COUNT(*) FROM care_plan_replies")).scalar() == 1
         assert c.execute(text("SELECT COUNT(*) FROM users")).scalar() == 2
@@ -136,6 +136,6 @@ def test_empty_leftover_tables_from_a_stopped_upgrade_are_cleared(tmp_path):
     fresh = Database(url)
     fresh.migrate()
     with fresh.engine.connect() as c:
-        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0008"
+        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0010"
         assert c.execute(text("SELECT COUNT(*) FROM care_plan_replies")).scalar() == 1
     assert not [n for n in inspect(fresh.engine).get_table_names() if n.startswith("_alembic_tmp_")]

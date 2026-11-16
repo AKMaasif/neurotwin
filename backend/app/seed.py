@@ -49,6 +49,9 @@ def seed(db: Session) -> None:
     ]
     db.add_all(users)
     db.flush()
+    from .models import PatientPreference   # synthetic background, shown to the clinician as context
+    db.add_all([PatientPreference(user_id="demo-fatima", education="secondary", first_language="arabic"),
+                PatientPreference(user_id="demo-yousef", education="university", first_language="english")])
 
     start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=42)  # fixed for the whole day
     db.add(ConsentEvent(participant_id="demo-fatima", scope="participation", decision="granted",
@@ -68,6 +71,7 @@ def seed(db: Session) -> None:
                             language="ar", device=DEVICE, assisted=assisted,
                             assistance_note="Daughter held the tablet" if assisted else None, unwell_today=False,
                             interruptions=1 if interrupted else 0, status="interrupted" if interrupted else "completed",
+                            see_clearly=True, hear_clearly=True, slept_well=week != 2, quiet_place=True,
                             started_at=at, ended_at=at + timedelta(minutes=4))
         db.add(s)
         db.flush()
@@ -103,7 +107,8 @@ def _store(db: Session, s: ActivitySession, obs: list[Q.ObservationIn], at: date
     from . import protocols as P
     verdicts = Q.assess_session(P.get(s.protocol_code, s.protocol_version),
                                 Q.SessionContext(status=s.status, assisted=s.assisted, unwell_today=s.unwell_today,
-                                                 interruptions=s.interruptions), obs)
+                                                 interruptions=s.interruptions, see_clearly=s.see_clearly, hear_clearly=s.hear_clearly,
+                                                 slept_well=s.slept_well, quiet_place=s.quiet_place), obs)
     from .services import raise_review_items
     pairs = []
     for o, v in zip(obs, verdicts):
