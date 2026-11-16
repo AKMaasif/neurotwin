@@ -1,0 +1,122 @@
+{"split": "dev", "text": "help me", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I need help", "lang": "en", "emergency": true}
+{"split": "dev", "text": "Help!", "lang": "en", "emergency": true}
+{"split": "dev", "text": "help", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I fell", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I fell down in the kitchen", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I've fallen", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I can't breathe", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I cannot breathe properly", "lang": "en", "emergency": true}
+{"split": "dev", "text": "chest pain", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I have chest pain", "lang": "en", "emergency": true}
+{"split": "dev", "text": "my chest hurts", "lang": "en", "emergency": true}
+{"split": "dev", "text": "call an ambulance", "lang": "en", "emergency": true}
+{"split": "dev", "text": "this is an emergency", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I am hurt", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I'm hurt", "lang": "en", "emergency": true}
+{"split": "dev", "text": "Hello, I need help", "lang": "en", "emergency": true}
+{"split": "dev", "text": "please help me", "lang": "en", "emergency": true}
+{"split": "dev", "text": "urgent", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I fell and can't get up", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I feel very dizzy and might faint", "lang": "en", "emergency": true}
+{"split": "dev", "text": "ساعدني", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "ساعدوني", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "طوارئ", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "اتصل بالإسعاف", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "وقعت", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "أحتاج مساعدة", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "احتاج مساعدة", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "ألم في الصدر", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "لا أستطيع التنفس", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "مرحبا، أحتاج مساعدة", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "سقطت", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "what is on today", "lang": "en", "emergency": false}
+{"split": "dev", "text": "show my activities", "lang": "en", "emergency": false}
+{"split": "dev", "text": "I took my tablet", "lang": "en", "emergency": false}
+{"split": "dev", "text": "how did I sleep", "lang": "en", "emergency": false}
+{"split": "dev", "text": "open the well-being questions", "lang": "en", "emergency": false}
+{"split": "dev", "text": "remind me to walk at 5", "lang": "en", "emergency": false}
+{"split": "dev", "text": "what is my next appointment", "lang": "en", "emergency": false}
+{"split": "dev", "text": "I helped my daughter today", "lang": "en", "emergency": false}
+{"split": "dev", "text": "Hello, how is my day today?", "lang": "en", "emergency": false}
+{"split": "dev", "text": "help me find my report", "lang": "en", "emergency": false}
+{"split": "dev", "text": "is it urgent to take my medicine", "lang": "en", "emergency": false}
+{"split": "dev", "text": "I fell asleep early", "lang": "en", "emergency": false}
+{"split": "dev", "text": "thank you", "lang": "en", "emergency": false}
+{"split": "dev", "text": "good morning", "lang": "en", "emergency": false}
+{"split": "dev", "text": "ما هو برنامجي اليوم", "lang": "ar", "emergency": false}
+{"split": "dev", "text": "افتح الأنشطة", "lang": "ar", "emergency": false}
+{"split": "dev", "text": "تناولت الدواء", "lang": "ar", "emergency": false}
+{"split": "dev", "text": "شكرا", "lang": "ar", "emergency": false}
+{"split": "dev", "text": "صباح الخير", "lang": "ar", "emergency": false}
+{"split": "dev", "text": "كيف كان نومي", "lang": "ar", "emergency": false}
+{"split": "dev", "text": "HELP", "lang": "en", "emergency": true}
+{"split": "dev", "text": "please help", "lang": "en", "emergency": true}
+{"split": "dev", "text": "someone help me", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I need an ambulance", "lang": "en", "emergency": true}
+{"split": "dev", "text": "get me an ambulance", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I think I'm having a heart attack", "lang": "en", "emergency": true}
+{"split": "dev", "text": "my chest is hurting", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I have fallen in the bathroom", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I can't breathe properly", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I'm about to faint", "lang": "en", "emergency": true}
+{"split": "dev", "text": "it's an emergency", "lang": "en", "emergency": true}
+{"split": "dev", "text": "emergency please", "lang": "en", "emergency": true}
+{"split": "dev", "text": "Good morning, I fell", "lang": "en", "emergency": true}
+{"split": "dev", "text": "أرجوك ساعدني", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "النجدة", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "أحتاج إسعاف", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "عندي ألم في الصدر", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "وقعت في الحمام", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "ما اقدر اتنفس", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "حالة طوارئ", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "what should I do this morning", "lang": "en", "emergency": false}
+{"split": "dev", "text": "I finished the walk", "lang": "en", "emergency": false}
+{"split": "dev", "text": "snooze the water for 10 minutes", "lang": "en", "emergency": false}
+{"split": "dev", "text": "open my report", "lang": "en", "emergency": false}
+{"split": "dev", "text": "how am I doing", "lang": "en", "emergency": false}
+{"split": "dev", "text": "can you help me understand my results", "lang": "en", "emergency": false}
+{"split": "dev", "text": "I fell behind on my tasks", "lang": "en", "emergency": false}
+{"split": "dev", "text": "tell me about my care plan", "lang": "en", "emergency": false}
+{"split": "dev", "text": "I feel fine today", "lang": "en", "emergency": false}
+{"split": "dev", "text": "show me the reaction game", "lang": "en", "emergency": false}
+{"split": "dev", "text": "ما هي مهامي", "lang": "ar", "emergency": false}
+{"split": "dev", "text": "أنهيت المشي", "lang": "ar", "emergency": false}
+{"split": "dev", "text": "افتح التقرير", "lang": "ar", "emergency": false}
+{"split": "dev", "text": "أشعر بخير اليوم", "lang": "ar", "emergency": false}
+{"split": "dev", "text": "شكرا جزيلا", "lang": "ar", "emergency": false}
+{"split": "dev", "text": "Help me please", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I need help now", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I fell off the chair", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I've fallen and I'm on the floor", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I can't breathe well", "lang": "en", "emergency": true}
+{"split": "dev", "text": "pain in my chest", "lang": "en", "emergency": true}
+{"split": "dev", "text": "my chest feels tight", "lang": "en", "emergency": true}
+{"split": "dev", "text": "call the ambulance", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I'm hurt badly", "lang": "en", "emergency": true}
+{"split": "dev", "text": "emergency!", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I think I'm having a stroke", "lang": "en", "emergency": true}
+{"split": "dev", "text": "I am going to faint", "lang": "en", "emergency": true}
+{"split": "dev", "text": "ساعدني بسرعة", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "أحتاج مساعدة الآن", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "وقعت على الأرض", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "عندي ألم شديد في الصدر", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "اتصلوا بالإسعاف", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "لا أستطيع التنفس جيدا", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "طوارئ طوارئ", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "جلطة", "lang": "ar", "emergency": true}
+{"split": "dev", "text": "what's next on my list", "lang": "en", "emergency": false}
+{"split": "dev", "text": "I walked for ten minutes", "lang": "en", "emergency": false}
+{"split": "dev", "text": "remind me later", "lang": "en", "emergency": false}
+{"split": "dev", "text": "open the check-in", "lang": "en", "emergency": false}
+{"split": "dev", "text": "show my results", "lang": "en", "emergency": false}
+{"split": "dev", "text": "how many activities did I do this week", "lang": "en", "emergency": false}
+{"split": "dev", "text": "I drank my water", "lang": "en", "emergency": false}
+{"split": "dev", "text": "read my care plan", "lang": "en", "emergency": false}
+{"split": "dev", "text": "is my daughter able to see my results", "lang": "en", "emergency": false}
+{"split": "dev", "text": "I want to change the language", "lang": "en", "emergency": false}
+{"split": "dev", "text": "ذكرني لاحقا", "lang": "ar", "emergency": false}
+{"split": "dev", "text": "شربت الماء", "lang": "ar", "emergency": false}
+{"split": "dev", "text": "ما هي نتائجي", "lang": "ar", "emergency": false}
+{"split": "dev", "text": "افتح الأسئلة", "lang": "ar", "emergency": false}
+{"split": "dev", "text": "غير اللغة", "lang": "ar", "emergency": false}

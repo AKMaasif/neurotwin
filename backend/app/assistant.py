@@ -44,7 +44,15 @@ TOOLS = {  # name: (kind, needs confirmation)
     "start_activity": ("navigation", False), "emergency": ("navigation", False), "start_concern": ("navigation", False),
 }
 
-_EMERGENCY = re.compile(r"\b(emergency|urgent|ambulance|help me|i need help|i am hurt|i fell|can't breathe|cannot breathe|chest pain)\b|طوارئ|إسعاف|اسعاف|ساعدوني|ساعدني|أحتاج مساعدة|احتاج مساعدة|وقعت|ألم في الصدر", re.I)
+# Errs on the side of opening the help screen: a false alarm costs one tap back, a miss could cost much more (docs/EMERGENCY_BENCHMARK.md).
+_EMERGENCY = re.compile(
+    r"\b(emergency|urgent|ambulance|help me|i need help|please help|someone help|i am hurt|i['’]?m hurt|i fell(?! asleep| behind)|i['’]?ve fallen"
+    r"|i have fallen|fallen down|can['’]?t breathe|cannot breathe|chest pain|pain in my chest|chest (?:hurts|is hurting|feels tight)|heart attack|stroke"
+    r"|i feel faint|(?:going|about) to faint|might faint|passing out)\b"
+    r"|^\W*help\W*$"
+    r"|طوارئ|إسعاف|اسعاف|ساعدوني|ساعدني|النجدة|نجدة|أحتاج مساعدة|احتاج مساعدة|وقعت|سقطت|ألم(?: \S+)? في (?:الصدر|صدري)|نوبة قلبية|جلطة"
+    r"|لا أستطيع التنفس|لا استطيع التنفس|ما أقدر أتنفس|ما اقدر اتنفس",
+    re.I)
 _NOT_TODAY = re.compile(r"\b(not today|skip|won't do|will not do|can't do (?:it|the \w+|my \w+)? ?today)\b|ليس اليوم|مو اليوم|تخطي|تخطى|لن أفعل", re.I)
 _DONE = re.compile(r"\b(i did|i have done|i've done|i finished|i have finished|i completed|i (?:just )?(?:drank|ate|took|walked)|done with|finished|completed|done)\b|\bتم\b|أنهيت|انتهيت|خلصت|أكملت|اكملت|فعلت|قمت ب", re.I)
 _SNOOZE = re.compile(r"\b(snooze|remind me|later)\b|ذكرني|ذكّرني|لاحقا|لاحقًا", re.I)

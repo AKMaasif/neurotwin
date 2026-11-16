@@ -7,6 +7,10 @@ provenance and quality.
 **Independent research prototype. Not a medical device. It does not diagnose, score or predict, and it is not
 approved for clinical use. Clinical demo records are synthetic; do not enter real health information.**
 
+**Judges and reviewers: start with [SUBMISSION.md](SUBMISSION.md)** — the problem, a 5-minute walkthrough, test and
+benchmark results, assumptions and limitations. Licence: [MIT](LICENSE) for NeuroTwin's code; data, media, fonts and
+packages keep their own terms ([THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
+
 An optional, separate **Brain Analytics** research preview can display one locally prepared OASIS-1 case, with
 interactive MRI slices, actual 3D cortical surfaces, layers, internal exploration and imported measurements.
 See [the preview guide](docs/IMAGING_PREVIEW.md) for setup, access restrictions and current limitations.
