@@ -9,6 +9,7 @@ All notable changes, newest first. Versions follow `0.x` while NeuroTwin is a re
   start, voice activity detection with adjustable pauses, barge-in, captions, typing fallback, spoken replies (server voice
   for consenting demo accounts, otherwise the device voice) and a model-assisted fallback that may only pick from a fixed,
   validated menu. Every change still needs a visible Yes. See `docs/COMPANION_PLAN.md` and `docs/COMPANION_EVALUATION.md`.
+- `SUBMISSION.md` (judge-facing summary), MIT `LICENSE` and `THIRD_PARTY_NOTICES.md`.
 
 ### Changed
 - Voice typing (speech to text) is now for demonstration accounts only; real accounts' voices are never sent to a
@@ -25,6 +26,9 @@ All notable changes, newest first. Versions follow `0.x` while NeuroTwin is a re
 - Execution events per run (`events.jsonl`) and the `/workflow` and `/runs/{id}/activity` endpoints.
 
 ### Fixed
+- Emergency words: "Help!", "please help", "I'm hurt", "I've fallen", "my chest hurts", "heart attack", "stroke",
+  feeling faint and Arabic forms (سقطت، النجدة، لا أستطيع التنفس، جلطة) now open the help screen; "I fell asleep" and
+  "I fell behind" no longer do. New English/Arabic benchmark with a held-out history ([docs/EMERGENCY_BENCHMARK.md](docs/EMERGENCY_BENCHMARK.md)).
 - The assistant no longer reads "well" in "well-being" (or "so" in "so-called") as a filler word, so "well-being
   questions" opens the wellbeing activity again instead of the check-in.
 - Alignment and label warping run in a separate process. Before, the server stopped answering for the ~40 s of the
