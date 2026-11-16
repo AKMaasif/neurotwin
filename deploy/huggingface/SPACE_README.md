@@ -3,8 +3,10 @@ title: NeuroTwin
 emoji: 🧠
 colorFrom: blue
 colorTo: indigo
-sdk: docker
-app_port: 7860
+sdk: gradio
+sdk_version: 6.32.0
+python_version: "3.12"
+app_file: app.py
 pinned: false
 license: mit
 short_description: Brain-health research prototype. Not a medical device.
