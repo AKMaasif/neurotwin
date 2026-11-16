@@ -1,0 +1,23 @@
+# Never send secrets, local databases or build output into the image.
+**/.env
+**/*.db
+**/__pycache__
+**/*.pyc
+.git
+.claude
+backend/.venv
+backend/.pytest_cache
+backend/activity_runs
+backend/tests
+backend/eval
+frontend/node_modules
+frontend/dist
+docs
+output
+OASIS-1*
+OASIS-2*
+# Imaging data: only what the running app reads (see deploy/huggingface/DEPLOY.md).
+backend/imaging_data/native
+backend/imaging_data/verification
+backend/imaging_data/oasis2/segmentation_inputs
+backend/imaging_data/OAS1_0001_MR1/source

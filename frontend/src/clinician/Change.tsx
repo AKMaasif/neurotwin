@@ -13,7 +13,7 @@ export function changeHeadline(c: ChangeResult, t: ReturnType<typeof useT>["t"])
 export function ChangeLine({ c }: { c: ChangeResult }) {
   const { t } = useT();
   const unit = c.unit && c.unit !== "1-5" ? ` ${c.unit}` : "";
-  const sign = (v: number) => `${v > 0 ? "+" : ""}${t.num(v, 1)}`;
+  const sign = (v: number, digits = 1) => `${v > 0 ? "+" : ""}${t.num(v, digits)}`;
   return (
     <div className="d-card">
       <span className="k">{t.code(c.measure)} <span className="mono" style={{ fontWeight: 400 }}>{c.protocol_version}</span></span>
@@ -28,8 +28,16 @@ export function ChangeLine({ c }: { c: ChangeResult }) {
           {t("chWindows", { nb: t.num(c.baseline.n), nr: t.num(c.recent.n) })} · {t.date(c.baseline.from)} – {t.date(c.recent.to)}
         </span>
       )}
+      {c.z != null && <span className="muted" style={{ fontSize: 12.5 }}>{t("chZ", { z: sign(c.z, 2) })}</span>}
+      {c.rci && (
+        <span className="muted" style={{ fontSize: 12.5 }} title={c.rci.source}>
+          {t("chRci", { v: sign(c.rci.value, 2), verdict: t(c.rci.reliable ? "chRciYes" : "chRciNo"), crit: t.num(c.rci.critical, 2) })}
+          {c.rci.provisional && <> {t("chRciProvisional", { r: t.num(c.rci.r, 2) })}</>}
+        </span>
+      )}
+      {!!c.excluded.practice && <span className="muted" style={{ fontSize: 12.5 }}>{t("chPractice", { n: t.num(c.excluded.practice) })}</span>}
       {c.include_doubtful && <span className="hint" style={{ color: "var(--warn)" }}>{t("chDoubtfulCounted")}</span>}
-      {Object.values(c.excluded).some((n) => n > 0) && (
+      {[c.excluded.doubtful, c.excluded.unusable, c.excluded.withdrawn, c.excluded.missing].some((n) => n > 0) && (
         <span className="muted" style={{ fontSize: 12.5 }}>
           {t("chExcluded", { doubtful: t.num(c.excluded.doubtful), unusable: t.num(c.excluded.unusable),
             withdrawn: t.num(c.excluded.withdrawn), missing: t.num(c.excluded.missing) })}

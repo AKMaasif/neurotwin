@@ -16,6 +16,11 @@ def rec(i, value, quality="usable", status="current", version="0.1", measure="rt
                     recorded_at=T0 + timedelta(days=7 * i))
 
 
+def P0(rows, **kw):
+    """The comparison itself, without the practice rule (tested separately below)."""
+    return C.compare(rows, practice=0, **kw)
+
+
 def test_abstains_with_too_few_usable_records():
     r = C.compare([rec(i, 500) for i in range(4)])
     assert r.status == "insufficient" and r.difference is None and r.interval is None
@@ -24,35 +29,35 @@ def test_abstains_with_too_few_usable_records():
 def test_doubtful_and_unusable_and_withdrawn_are_not_counted_by_default():
     rows = [rec(0, 500), rec(1, 510), rec(2, 505), rec(3, 900, "doubtful"), rec(4, 50, "unusable"),
             rec(5, 700, status="withdrawn")]
-    r = C.compare(rows)
+    r = P0(rows)
     assert r.status == "insufficient" and r.eligible_n == 3
-    assert r.excluded == {"doubtful": 1, "unusable": 1, "withdrawn": 1, "missing": 0}
+    assert r.excluded == {"practice": 0, "doubtful": 1, "unusable": 1, "withdrawn": 1, "missing": 0}
 
 
 def test_doubtful_counted_only_when_asked():
     rows = [rec(0, 500), rec(1, 510), rec(2, 505), rec(3, 508, "doubtful"), rec(4, 502)]
-    assert C.compare(rows).status == "insufficient"
-    assert C.compare(rows, include_doubtful=True).status in ("within", "outside")
+    assert P0(rows).status == "insufficient"
+    assert P0(rows, include_doubtful=True).status in ("within", "outside")
 
 
 def test_no_variation_abstains_instead_of_claiming_certainty():
-    r = C.compare([rec(i, 500) for i in range(5)])
+    r = P0([rec(i, 500) for i in range(5)])
     assert r.status == "no_variation" and r.interval is None
 
 
 def test_noise_reads_as_within_usual_variation():
-    r = C.compare([rec(0, 600), rec(1, 640), rec(2, 590), rec(3, 625), rec(4, 605)])
+    r = P0([rec(0, 600), rec(1, 640), rec(2, 590), rec(3, 625), rec(4, 605)])
     assert r.status == "within" and r.interval[0] < 0 < r.interval[1]
 
 
 def test_clear_shift_reads_as_outside_with_direction():
-    r = C.compare([rec(0, 500), rec(1, 505), rec(2, 498), rec(3, 700), rec(4, 705)])
+    r = P0([rec(0, 500), rec(1, 505), rec(2, 498), rec(3, 700), rec(4, 705)])
     assert r.status == "outside" and r.direction == "higher" and r.interval[0] > 0
     assert r.baseline.ids == [0, 1, 2] and r.recent.ids == [3, 4]
 
 
 def test_windows_never_overlap():
-    r = C.compare([rec(i, 500 + i * 3) for i in range(5)])
+    r = P0([rec(i, 500 + i * 3) for i in range(5)])
     assert set(r.baseline.ids).isdisjoint(r.recent.ids)
 
 
@@ -60,6 +65,60 @@ def test_versions_are_never_pooled():
     rows = [rec(i, 500 + i) for i in range(3)] + [rec(3 + i, 700 + i, version="0.2") for i in range(3)]
     results = C.compare_all(rows)
     assert {(x.protocol_version, x.status) for x in results} == {("0.1", "insufficient"), ("0.2", "insufficient")}
+
+
+def test_first_two_sessions_of_a_task_are_practice_and_never_compared():
+    # A big learning gain in the first two sessions, then stable: without the practice rule the baseline carries it.
+    rows = [rec(0, 700), rec(1, 610)] + [rec(2 + i, v) for i, v in enumerate([520, 530, 525, 522, 528])]
+    assert P0(rows).difference < -80
+    r = C.compare(rows)
+    assert r.practice_ids == [0, 1] and r.excluded["practice"] == 2 and abs(r.difference) < 5
+    assert r.baseline.ids == [2, 3, 4] and r.as_dict()["needed"] == {"baseline": 3, "recent": 2, "practice": 2}
+
+
+def test_practice_counts_sessions_done_whatever_their_quality():
+    rows = [rec(0, 900, "unusable"), rec(1, 650, "doubtful")] + [rec(2 + i, 500 + i) for i in range(5)]
+    r = C.compare(rows)
+    assert r.practice_ids == [0, 1] and r.excluded == {"practice": 2, "doubtful": 0, "unusable": 0, "withdrawn": 0, "missing": 0}
+    assert r.eligible_n == 5
+
+
+def test_self_reports_have_no_practice_period():
+    rows = [Evidence(id=i, participant_id="p", kind="self_reported", measure="sleep_hours", value_num=7 + (i % 2), unit="h",
+                     protocol_code="daily_checkin", protocol_version="0.1", producer_type="person", producer_id="p",
+                     producer_version="1", quality="usable", quality_reasons=[], status="current",
+                     recorded_at=T0 + timedelta(days=i)) for i in range(5)]
+    r = C.compare(rows)
+    assert r.practice_ids == [] and r.status != "insufficient" and r.as_dict()["needed"]["practice"] == 0
+
+
+def test_z_is_the_difference_in_the_persons_own_spread():
+    rows = [rec(0, 500), rec(1, 505), rec(2, 498), rec(3, 700), rec(4, 705)]
+    r = P0(rows)
+    pooled = ((sum((v - 501) ** 2 for v in (500, 505, 498)) + sum((v - 702.5) ** 2 for v in (700, 705))) / 3) ** 0.5
+    assert r.z == pytest.approx(r.difference / pooled)
+
+
+def test_rci_uses_the_named_reliability_and_says_it_is_provisional():
+    rows = [rec(0, 500), rec(1, 520), rec(2, 510), rec(3, 590), rec(4, 600)]
+    r = P0(rows)
+    ref = C.RELIABILITY[("reaction_time", "rt_median_ms")]
+    sem = ref.sd_ref * (1 - ref.r) ** 0.5
+    s_diff = sem * (1 / 3 + 1 / 2) ** 0.5
+    assert r.rci["value"] == pytest.approx(r.difference / s_diff, abs=0.01)
+    assert r.rci["reliable"] is True and r.rci["provisional"] is True and "Provisional" in r.rci["source"]
+
+
+def test_no_rci_without_a_reliability_figure():
+    r = P0([rec(i, 3 + i % 2, measure="rounds_correct") for i in range(5)])
+    assert r.rci is None
+
+
+def test_rci_never_changes_the_status():
+    # A small shift the interval calls "within" can still exceed the provisional RCI: both are shown, the status is the interval's.
+    rows = [rec(0, 480), rec(1, 560), rec(2, 470), rec(3, 600), rec(4, 530)]
+    r = P0(rows)
+    assert r.status == "within" and r.rci["reliable"] is True
 
 
 def test_t_table_is_never_narrower_than_the_true_value():
@@ -72,10 +131,11 @@ def test_clinician_gets_estimates_for_demo_person(client, login):
     dr = login("demo-dr-layla")
     rows = client.get("/api/participants/demo-fatima/change", headers=dr).json()
     rt = next(r for r in rows if r["measure"] == "rt_median_ms")
-    assert rt["status"] == "insufficient" and rt["eligible_n"] == 4 and rt["excluded"]["doubtful"] == 2
-    rt2 = next(r for r in client.get("/api/participants/demo-fatima/change?include_doubtful=true", headers=dr).json()
-               if r["measure"] == "rt_median_ms")
-    assert rt2["status"] in ("within", "outside") and rt2["method"] == "change-engine/0.1"
+    # Six reaction sessions: the first two are practice, two of the rest are doubtful.
+    assert rt["status"] == "insufficient" and rt["eligible_n"] == 2 and rt["excluded"]["doubtful"] == 2
+    assert rt["excluded"]["practice"] == 2 and len(rt["practice_ids"]) == 2 and rt["method"] == "change-engine/0.2"
+    sleep = next(r for r in rows if r["measure"] == "sleep_hours")
+    assert sleep["status"] in ("within", "outside") and sleep["excluded"]["practice"] == 0 and sleep["z"] is not None
     assert all(r["measure"] not in ("valid_trials", "anticipations", "today_factors") for r in rows)
     trail = client.get("/api/participants/demo-fatima/audit", headers=dr).json()
     assert any(a["action"] == "change.computed" for a in trail)

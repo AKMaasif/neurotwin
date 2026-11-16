@@ -8,29 +8,35 @@ specificity figure, and no clinical benefit is claimed.**
 
 | # | Benchmark | Result | What it means | Full report |
 |---|---|---|---|---|
-| 1 | Backend regression suite | 658 passed, 13 skipped (optional imaging libraries), 0 failed | Every endpoint, rule and guard has a test | `backend/tests` |
+| 1 | Backend regression suite | 733 passed, 12 skipped (optional imaging and FHIR libraries), 0 failed | Every endpoint, rule and guard has a test | `backend/tests` |
 | 2 | Agent guard-rail scenarios | 71/71 | Invented numbers, unsupported claims, diagnosis requests and provider failures are all refused or handled | [AGENT_EVAL_REPORT.md](AGENT_EVAL_REPORT.md) |
 | 3 | Fixed readiness scenarios | 102/102 | End-to-end demo flows behave as specified | [QA_BENCHMARK_REPORT_2026-11-15.md](QA_BENCHMARK_REPORT_2026-11-15.md) |
 | 4 | Assistant understanding (English + Arabic) | Tuning set 51/51; final set 47/50 = 94%, **0 unsafe actions** | 3 known misses: "قمت بالمشي", "I want to prepare for my visit" (no action), "send a message to my daughter" (opened Messages instead of asking) | `backend/eval/run_companion_eval.py` |
-| 5 | Emergency-phrase rule (English + Arabic) | Tuning set 112/112 caught, 77/80 ordinary left alone. Held-out rounds: 85%, 90%, **40%, 0%** | A word list catches the wording it knows and generalises poorly to new kinds of situation; the always-visible help button is the main route | [EMERGENCY_BENCHMARK.md](EMERGENCY_BENCHMARK.md) |
-| 6 | Change engine on 16,000 simulated people | False alarms on stable people 4.1% (95% CI 3.3–5.1%); flags 59% of 3-SD and 81% of 4-SD slowings; abstains 100% when records are too few | Behaves as designed; cautious; practice effect hides part of a real slowing (59% → 31%) | [CHANGE_ENGINE_BENCHMARK.md](CHANGE_ENGINE_BENCHMARK.md) |
+| 5 | Emergency-phrase rule (English + Arabic) | Tuning set 132/132 caught, 94/95 ordinary left alone. Held-out rounds: 85%, 90%, **40%, 0%, 15%** | A word list catches the wording it knows and generalises poorly to new kinds of situation; the always-visible help button (tested on all 19 screens) is the main route, and worrying words get "Do you need urgent help now?" | [EMERGENCY_BENCHMARK.md](EMERGENCY_BENCHMARK.md) |
+| 6 | Change engine on 16,000 simulated people (change-engine/0.2) | False alarms on stable people 4.8% (95% CI 3.9–5.8%); flags 61% of 3-SD and 81% of 4-SD slowings; abstains 100% when records are too few. Practice sessions: false "faster" on stable learners 7.7% → 3.3%; a 3-SD slowing hidden by learning found 31% → 54% | Behaves as designed; cautious; the reliable change index (provisional reliability) is shown beside it | [CHANGE_ENGINE_BENCHMARK.md](CHANGE_ENGINE_BENCHMARK.md) |
 | 7 | Server response time (in process) | Median 6–19 ms for reads, about 40 ms for the assistant; 95th percentile under 65 ms | Fast enough for an interactive demo; network and load not included | [LATENCY_BENCHMARK.md](LATENCY_BENCHMARK.md) |
+| 8 | Test–retest analysis code (simulated studies) | Reproduces Shrout & Fleiss ICC(2,1) 0.29 and ICC(3,1) 0.71 exactly; recovers a true ICC 0.80 as 0.79 (94% interval coverage); using the practice sessions lowers it to 0.75 | The code is right and the study must set practice aside; no real reliability measured yet. Protocol: 39 people | [RELIABILITY_STUDY.md](RELIABILITY_STUDY.md) |
+| 9 | Subgroup analysis (simulated people, sentence sets) | Same false alarms for steady and variable people; a 60 ms slowing flagged 52% vs 22%; device change flagged as slowing 11.7% vs 1.8% | Variable people need a larger change to be seen, and a device change looks like decline: both shown to the clinician, both to measure in the pilot | [SUBGROUP_ANALYSIS.md](SUBGROUP_ANALYSIS.md) |
 
 ## The two findings a reviewer should not miss
 
 **1. Emergency words: do not read the tuning figure as "100% detection".** Each held-out round was written after the
-last fix and run once. Rounds 1 and 2 used similar wording and scored 85% and 90%. Rounds 3 and 4 deliberately used
-new kinds of situation (collapse, stroke signs, overdose, seizure, self-harm, emergency numbers, Gulf dialect) and
-scored 40% and 0%. Every miss was then added to the rule and recorded. The honest conclusion is that a word list is a
+last fix and run once. Rounds 1 and 2 used similar wording and scored 85% and 90%. Rounds 3, 4 and 5 deliberately used
+new kinds of situation (collapse, stroke signs, overdose, seizure, self-harm, emergency numbers, Gulf dialect; then
+choking, not breathing, fire, burns, low blood sugar, a break-in, someone who will not wake) and scored 40%, 0% and 15%. Every miss was then added to the rule and recorded. The honest conclusion is that a word list is a
 fast first line and must not be the only route to help. The personal app therefore shows an urgent-help button on
-every screen, which needs no words at all. A pilot needs real wording from older adults in both languages and a
+every screen, which needs no words at all (a test renders each of the 19 screens in both languages and checks it), and
+the assistant answers worrying but unclear words ("I feel dizzy", "أنا تعبان") with "Do you need urgent help now?"
+and a one-tap button, before doing anything else. A pilot needs real wording from older adults in both languages and a
 clinically reviewed list of situations.
 
 **2. "Within usual variation" is not reassurance.** With 3 baseline and 2 recent records, the engine reliably flags only
 large changes (3–4 times the person's own day-to-day spread). It keeps false alarms near the designed 5%, but a
-smaller real change will often read "within". A practice gain of 40 ms makes 7.7% of stable people look faster and
-halves the chance of flagging a real 3-SD slowing. The engine does not yet model practice; that is a stated limitation
-and a pilot task (test–retest study).
+smaller real change will often read "within". Learning a task also moves results: before change-engine/0.2, a 40 ms
+practice gain made 7.7% of stable people look faster and halved the chance of flagging a real 3-SD slowing. The
+engine now sets aside each person's first 2 sessions of a task as practice, which brings these to 3.3% and 54%, at
+the cost of needing 7 sessions instead of 5. The reliable change index shown beside the interval uses an assumed
+reliability until a test–retest study measures one.
 
 ## How to reproduce
 

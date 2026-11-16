@@ -90,6 +90,11 @@ function People({ people, person, onPerson, goCheck }: {
               <span className="main">
                 <b><bdi>{p.display_name}</bdi></b>
                 <span>{p.last_activity ? t("cLastActivity", { date: t.date(p.last_activity) }) : t("wsNoSessions")}</span>
+                {p.background && (p.background.education || p.background.first_language) && (
+                  <span>{t("cBackground", {
+                    edu: p.background.education ? t(`bg_${p.background.education}` as "bg_none") : t("bgNotSaid"),
+                    lang: p.background.first_language ? t(`bgl_${p.background.first_language}` as "bgl_other") : t("bgNotSaid") })}</span>
+                )}
               </span>
               <span className="end">
                 <span className={`dot ${p.open_items ? "warn" : "ok"}`} aria-hidden="true" />

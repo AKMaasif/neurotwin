@@ -160,3 +160,58 @@ def test_filler_is_removed_only_as_a_separate_word(client, text, tool):
     assert (r.get("tool") == tool) if tool else True
     if text.startswith("well-being"):
         assert r["navigate"] == "wellbeing"
+
+
+# "Do you need urgent help?": worrying words that are not clearly an emergency get one question before anything else.
+@pytest.mark.parametrize("text", ["I'm not feeling well", "I feel dizzy", "my knee hurts", "I'm scared", "أنا تعبان", "أشعر بألم", "حاسس بدوخة"])
+def test_worrying_words_ask_do_you_need_urgent_help(client, text):
+    h = two_tasks(client)
+    r = say(client, h, text)
+    assert r["tool"] == "ask_urgent" and r["needs_confirmation"] is False and r["navigate"] is None
+
+
+@pytest.mark.parametrize("text", ["What do I need to do today?", "I finished the walk", "well-being questions", "I fell asleep early", "I feel well today"])
+def test_ordinary_requests_do_not_ask_about_urgent_help(client, text):
+    h = two_tasks(client)
+    assert say(client, h, text).get("tool") != "ask_urgent"
+
+
+def test_yes_to_the_urgent_question_opens_the_help_screen(client):
+    h = two_tasks(client)
+    say(client, h, "I feel dizzy")
+    r = say(client, h, "yes")
+    assert r["tool"] == "emergency" and r["navigate"] == "urgent"
+
+
+def test_no_to_the_urgent_question_says_help_is_there_and_changes_nothing(client):
+    h = two_tasks(client)
+    say(client, h, "I feel dizzy")
+    r = say(client, h, "no")
+    assert r["tool"] == "urgent_declined" and r["navigate"] is None
+    assert [i["reply"] for i in client.get("/api/care-plan/today").json()["items"]] == [None, None]
+
+
+def test_no_to_the_urgent_question_then_carries_on_with_the_request_and_still_asks_before_a_change(client):
+    h = two_tasks(client)
+    r = say(client, h, "I'm not feeling well, skip the walk today")
+    assert r["tool"] == "ask_urgent" and r["then"] is True
+    r = say(client, h, "no")
+    assert r["tool"] == "mark_not_today" and r["needs_confirmation"] and r["urgent_declined"] is True
+    assert "walk" in r["item"]["text_en"].lower()
+    assert [i["reply"] for i in client.get("/api/care-plan/today").json()["items"]] == [None, None]   # still only a proposal
+
+
+def test_clearly_urgent_words_still_skip_the_question(client):
+    h = two_tasks(client)
+    assert say(client, h, "I feel dizzy and I fell down")["tool"] == "emergency"
+
+
+def test_the_urgent_question_is_audited_without_words(client, app):
+    h = two_tasks(client)
+    say(client, h, "I feel dizzy, secret words")
+    say(client, h, "no")
+    from app.models import AuditEvent
+    with app.state.db.SessionLocal() as db:
+        rows = [a.action for a in db.query(AuditEvent).filter(AuditEvent.action.like("assistant.%"))]
+        text = str([(a.action, a.target) for a in db.query(AuditEvent).all()])
+    assert "assistant.ask_urgent.attempted" in rows and "assistant.urgent_declined" in rows and "secret" not in text

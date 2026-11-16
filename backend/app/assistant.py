@@ -42,24 +42,25 @@ TOOLS = {  # name: (kind, needs confirmation)
     "open_screen": ("navigation", False), "read_today": ("read", False), "explain_instruction": ("read", False),
     "mark_done": ("change", True), "mark_not_today": ("change", True), "snooze": ("change", True),
     "start_activity": ("navigation", False), "emergency": ("navigation", False), "start_concern": ("navigation", False),
+    "ask_urgent": ("read", False),
 }
 
 # Errs on the side of opening the help screen: a false alarm costs one tap back, a miss could cost much more (docs/EMERGENCY_BENCHMARK.md).
 _EMERGENCY = re.compile(
-    r"\b(emergency|urgent|ambulance|help me|i need help|please help|someone help|i am hurt|i['’]?m hurt|i fell(?! asleep| behind| in love| for)|i['’]?ve fallen"
+    r"\b(emergency|urgent|ambulance|help me(?! (?:understand|with|find|read|to|remember|choose|set|change|know|see|use|open|learn|write))|i need help|please help|someone help|i am hurt|i['’]?m hurt|i fell(?! asleep| behind| in love| for)|i['’]?ve fallen"
     r"|i have fallen|fallen down|has fallen|(?:has|have|just) collapsed|collapsed on|can['’]?t get up|cannot get up|unable to get up"
     r"|can['’]?t breathe|cannot breathe|(?:struggling|trouble|difficulty|hard) (?:to )?breath(?:e|ing)|short(?:ness)? of breath|gasping"
-    r"|chest pain|pain in my chest|chest (?:hurts|is hurting|feels tight)|heart attack|stroke(?! of)|seizure|having a fit|chest (?:is )?tight"
+    r"|chest pain|pain in my chest|chest (?:hurts|is hurting|feels tight)|heart attack|stroke(?! of| unit| clinic| nurse| team| ward| service)|seizure|having a fit|chest (?:is )?tight"
     r"|sos|call (?:999|998|997|911|112)|need (?:a doctor|an ambulance) (?:right )?now|(?:not|isn['’]?t) moving|(?:isn['’]?t|not) responding"
     r"|can['’]?t (?:move|feel) my|can['’]?t stand|cannot stand|blacked out|cut myself|words (?:are )?(?:coming out|come out) wrong"
     r"|end my life|kill myself|want to die|suicid\w*|hurt myself"
     r"|face (?:is )?drooping|slurred speech|(?:arm|leg|side) (?:feels |is |has gone |went )?(?:weak|numb)|can['’]?t (?:speak|talk) properly"
-    r"|bleeding|hit my head|unconscious|not breathing|won['’]?t wake up|overdose|too many (?:of my )?(?:pills|tablets|medicines?)"
+    r"|bleeding|hit my head|unconscious|not breathing|(?:isn['’]?t|is not|stopped|has stopped) breathing|choking|allergic reaction|throat (?:is )?(?:closing|swelling|swollen)|anaphyla\w*|fire in the|on fire|(?:there['’]?s|there is) a fire|(?:burn(?:ed|t) (?:my\w*|\w+ \w+) badly|badly burn(?:ed|t))|(?:blood )?sugar (?:is )?(?:very |too |really )?low|hypo(?:glycaemi\w*|glycemi\w*)?|broke into|break-?in|intruder|burglar|(?:speech|words?) (?:is |are )?(?:suddenly )?slurred|can['’]?t wake|cannot wake|don['’]?t know where i am|do not know where i am|won['’]?t wake up|overdose|too many (?:of my )?(?:pills|tablets|medicines?)"
     r"|i feel faint|(?:going|about) to (?:faint|pass out)|might (?:faint|pass out)|passing out|passed out)\b"
     r"|^\W*(?:help\W*)+$"
     r"|طوارئ|إسعاف|اسعاف|ساعدوني|ساعدني|النجدة|نجدة|النجده|نجده|999|998|997|ما (?:ترد|يرد|تتحرك|يتحرك)|لا (?:ترد|يرد|تتحرك|يتحرك)|(?:أحتاج|احتاج|أبغى|ابغى|ابي) (?:طبيب|دكتور) (?:الآن|الان|الحين)"
     r"|صدري ضايق|دايخ|دايخة|ما أقدر أوقف|ما اقدر اوقف|أموت|اموت|انتحار|أنتحر|انتحر|أقتل نفسي|اقتل نفسي|تشنج|نوبة صرع|أحتاج مساعدة|احتاج مساعدة|وقعت|سقطت|سقط|طاح|طاحت|ألم(?: \S+)? في (?:الصدر|صدري)|صدري (?:يؤلمني|يوجعني)"
-    r"|نوبة قلبية|جلطة|يغمى|إغماء|اغماء|أغمي|اغمي|نزيف|ينزف|فاقد الوعي|ضيق (?:في )?(?:ال)?تنفس|ما يتنفس|لا يتنفس"
+    r"|نوبة قلبية|جلطة|يغمى|إغماء|اغماء|أغمي|اغمي|نزيف|ينزف|فاقد الوعي|ضيق (?:في )?(?:ال)?تنفس|ما يتنفس|لا يتنفس|ما تتنفس|لا تتنفس|أختنق|اختنق|يختنق|تختنق|حريق|انحرقت|احترقت|حرقت (?:يدي|نفسي|رجلي)|السكر (?:نازل|منخفض|واطي|هابط)|حرامي|لص في|اقتحم|كلامي (?:ثقيل|متلخبط)|لساني ثقيل|ما (?:أقدر|اقدر) (?:أحرك|احرك)|لا أستطيع تحريك|ما (?:أعرف|اعرف) وين (?:أنا|انا)|لا أعرف أين أنا|(?:ما|لا) (?:يصحى|تصحى|يقوم|تقوم)|(?:أوقظ|اوقظ|أصحي|اصحي) (?:أمي|أبي|ابي|زوجي|زوجتي)"
     r"|لا أستطيع التنفس|لا استطيع التنفس|ما أقدر أتنفس|ما اقدر اتنفس|ما أقدر أقوم|ما اقدر اقوم",
     re.I)
 _NOT_TODAY = re.compile(r"\b(not today|skip|won't do|will not do|can't do (?:it|the \w+|my \w+)? ?today)\b|ليس اليوم|مو اليوم|تخطي|تخطى|لن أفعل", re.I)
@@ -76,9 +77,23 @@ _MIN = re.compile(r"(\d{1,3})\s*(?:min|minutes?|دقيقة|دقائق)", re.I)
 _HOUR = re.compile(r"(\d)\s*(?:hours?|hrs?|ساعة|ساعات)|\b(an hour|ساعة)\b", re.I)
 _CONCERN = re.compile(r"\b(report|raise|tell (my|the) (doctor|clinician)|message (my|the) (doctor|clinician)).{0,25}\b(concern|problem|worry|worried|symptom|issue)\b|\b(i have|i've got|i am having) (a )?(concern|worry|problem)\b|\bsomething (is|feels) wrong\b|أريد الإبلاغ|لدي قلق|عندي مشكلة|لدي مشكلة|أشعر بقلق", re.I)
 _REPORT = re.compile(r"(?:please\s+)?(?:open|show)(?: me)? (?:my |the )?(?:report|activity report)(?: for (?:the )?(?:last |past )?(?:11|eleven) days)?[.!?]?|(?:افتح|أظهر|اعرض) (?:تقريري|التقرير)(?: (?:عن|لـ|ل) ?(?:آخر|اخر) (?:11|١١|أحد عشر|احد عشر) (?:يوما|يومًا|يوم))?[.!؟]?", re.I)
+# Worrying but not clearly urgent: the assistant asks "Do you need urgent help?" before anything else. Asking costs one
+# answer; guessing either way could cost more. Clearly urgent words (_EMERGENCY) still open the help screen at once.
+_DISTRESS = re.compile(
+    r"\b(not feeling (?:well|right|good|ok(?:ay)?|myself)|(?:don['’]?t|do not) feel (?:well|right|good|ok(?:ay)?)|not well|unwell"
+    r"|feel(?:ing|s)? (?:sick|ill|bad|awful|terrible|strange|weird|funny|off|confused|wobbly|shaky|faint-?ish)|i['’]?m sick|i am sick"
+    r"|dizzy|dizziness|light-?headed|in pain|pain|aches?|aching|headache|hurts|throwing up|vomit(?:ing|ed)?|fever|numb(?:ness)?"
+    r"|panic(?:king)?|scared|frightened|afraid|something(?:['’]s| is) wrong with me|not myself)\b"
+    r"|تعبان|تعبانة|تعبانه|مريض|مريضة|دوخة|دوخه|دايخ|دايخة|دوار|\bألم\b|بألم|أتألم|اتألم|وجع|يوجعني|توجعني|خايف|خايفة|خائف|خائفة"
+    r"|مو زين|مب زين|مش كويس|لست بخير|ما أحس بخير|ما احس بخير|لا أشعر أنني بخير|حرارة|أستفرغ|استفرغ",
+    re.I)
 _YES = re.compile(r"^\s*(yes|yeah|yep|ok|okay|sure|please do|do it|go ahead|confirm|that'?s right|correct|right)\b[\s.!]*$|^\s*(نعم|ايوه|أيوه|اي|أجل|تمام|موافق|نفذ|نفّذ|اكيد|أكيد)[\s.!]*$", re.I)
 _NO = re.compile(r"^\s*(no|nope|cancel|stop|don'?t|never mind|nevermind|not now|wrong)\b[\s.!]*$|^\s*(لا|الغ|ألغ|إلغاء|الغي|ألغي|توقف|ليس الآن)[\s.!]*$", re.I)
 _GREET = re.compile(r"^\s*(hi|hello|hey|good (morning|afternoon|evening)|salam)\b|^\s*(مرحبا|مرحباً|أهلا|اهلا|السلام عليكم|صباح الخير|مساء الخير)", re.I)
+_MAKE = re.compile(r"\b(?:make|create|generate|build|write|draw|prepare|design|plan|give me|suggest)\b.{0,40}\b(?:routine|schedule|timetable|to-?do|plan|"
+                   r"list|picture|image|drawing|photo|illustration)|\b(?:daily|day) (?:routine|schedule|plan)\b"
+                   r"|(?:اعمل|اصنع|أنشئ|انشئ|ارسم|اكتب|حضر|جهز|اقترح|سو)\S*\s.{0,30}(?:جدول|روتين|قائمة|خطة|صورة|رسمة)|جدول(?:ا)? يومي|روتين(?:ا)? يومي", re.I)
+_TASK_REF = re.compile(r"(?i)(?:^|[^a-z])(?:it|this|that|task|routine|reminder|one|them)(?:[^a-z]|$)|هذا|هذه|ذلك|المهمة|التذكير")
 _THANKS = re.compile(r"\b(thanks|thank you|cheers)\b|شكرا|شكراً|يعطيك العافية", re.I)
 _CAPS = re.compile(r"\b(what can you do|what do you do|how do you work|how can you help|what can i (say|ask))\b|ماذا يمكنك|ماذا تستطيع|كيف تعمل|ماذا أقول", re.I)
 _RECALL_SAID = re.compile(r"\b(what did i (just )?(say|ask)|what was my (last|previous) (question|message))\b|ماذا قلت|ماذا سألت", re.I)
@@ -166,7 +181,7 @@ def _resolve_item(text: str, rows: list, ctx: dict, restrict: list[int] | None =
     return None, None, ids
 
 
-def parse(text: str, rows: list[tuple[CarePlanItem, dict]], ctx: dict | None = None) -> dict:
+def parse(text: str, rows: list[tuple[CarePlanItem, dict]], ctx: dict | None = None, distress: bool = True) -> dict:
     """Words (and what was just said) to `{tool, arguments}`, a question back, or a yes/no for the proposal that is waiting.
     Order: help first, then an answer to a question just asked, then changes, reading, small talk, navigation."""
     ctx = ctx or {}
@@ -180,6 +195,11 @@ def parse(text: str, rows: list[tuple[CarePlanItem, dict]], ctx: dict | None = N
         t = lead.group("rest").strip()
     if _EMERGENCY.search(t):
         return {"tool": "emergency", "arguments": {}}
+    if distress and _DISTRESS.search(t):
+        # ask first; whatever else they asked for ("I feel unwell, skip the walk") waits for their "no"
+        rest = parse(text, rows, ctx, distress=False)
+        then = rest if rest.get("tool") and rest["tool"] != "emergency" else None
+        return {"tool": "ask_urgent", "arguments": {}, "then": then}
     if _YES.match(t) or _NO.match(t):
         yes = bool(_YES.match(t))
         return {"special": "yes" if yes else "no", "pending": pend.get("kind")}
@@ -195,6 +215,8 @@ def parse(text: str, rows: list[tuple[CarePlanItem, dict]], ctx: dict | None = N
             return {"tool": "snooze", "arguments": {"item_id": pend["item_id"], "minutes": n}, "via": "answer"}
         if n is not None or re.fullmatch(r"\d{1,3}", t):
             return {"tool": None, "reason": "snooze_minutes", "keep": pend}
+    if _MAKE.search(t):         # "make me a daily routine", "draw a picture of my day": for the model (assistant_ai), never a task change
+        return {"tool": None, "reason": "not_understood"}
     change = "mark_not_today" if _NOT_TODAY.search(t) else "snooze" if _SNOOZE.search(t) else "mark_done" if _DONE.search(t) else None
     last_tool = ctx.get("last_tool")
     if not change and last_tool in CHANGES and re.search(r"\b(again|same|the same)\b|نفس|مرة أخرى", t, re.I):
@@ -243,12 +265,16 @@ def parse(text: str, rows: list[tuple[CarePlanItem, dict]], ctx: dict | None = N
         return {"tool": "chat", "arguments": {"kind": "greeting"}}
     if _DETAIL.search(t) or _EXPLAIN.search(t):
         iid, via, tied = _resolve_item(t, rows, ctx)
-        if iid is None and ctx.get("last_item") in [r[0].id for r in rows] and len(t.split()) <= 6:
+        short = len(t.split()) <= 6
+        if iid is None and ctx.get("last_item") in [r[0].id for r in rows] and short:
             iid, via = ctx["last_item"], "context"        # "when is it?", "tell me more"
-        if iid is None and len(rows) == 1:
+        if iid is None and len(rows) == 1 and short:
             iid, via = rows[0][0].id, "only"
         if iid:
             return {"tool": "explain_instruction", "arguments": {"item_id": iid}, "via": via}
+        named = len(_match_items(t, rows)) > 1          # `tied` lists every task when none matched, so it cannot say "a task was named"
+        if not short or not (named or _TASK_REF.search(t)):   # "How many people live in India?" names no task: a general question, not "which task?"
+            return {"tool": None, "reason": "not_understood"}
         return {"tool": None, "reason": "which", "choices": tied or [r[0].id for r in rows], "pending": {"kind": "which", "tool": "explain_instruction", "args": {}}}
     if len(t.split()) > 6:       # a long, mixed sentence is not a plain request to open something; ask again rather than act
         return {"tool": None, "reason": "not_understood"}
@@ -350,7 +376,7 @@ def _cancel_waiting(db: Session, user: User, except_id: str | None = None) -> No
             a.used_at, a.outcome = now(), "cancelled"
 
 
-def message(db: Session, user: User, text: str, nlu_client=None) -> dict:
+def message(db: Session, user: User, text: str, nlu_client=None, ai_client=None) -> dict:
     """Understand one message, using the last few minutes of conversation. Reads and navigation are answered now; a change is returned as a
     proposal with a confirmation id (a typed or spoken "yes" confirms only that one proposal)."""
     if user.role != "participant":
@@ -364,18 +390,45 @@ def message(db: Session, user: User, text: str, nlu_client=None) -> dict:
             if said and not _YES.match(said) and not _NO.match(said) and not _RECALL_SAID.search(said):
                 prev_said = said
                 break
+    from . import assistant_ai as AI            # imported here: assistant_ai -> companion_nlu -> this module
     p = parse(text, rows, ctx)
-    if nlu_client is not None and p.get("tool") is None and p.get("reason") == "not_understood":
+    ai = AI.availability(db, user, ai_client)
+    answer = None
+    if ai == "on" and p.get("tool") is None and p.get("reason") == "not_understood":
+        r = AI.respond(db, user, text, rows, ai_client, "ar" if AI._AR.search(text or "") else "en")
+        if r["route"] == "command" and r.get("parse"):
+            p = r["parse"]
+        elif r["route"] == "urgent":
+            p = {"tool": "ask_urgent", "arguments": {}, "then": None}
+        elif r["route"] == "reply":
+            answer = r["payload"]
+        elif r["route"] == "blocked":
+            answer = {"understood": True, "needs_confirmation": False, "tool": "answer", "kind": "blocked", "lang": r.get("lang")}
+    # the older task-picker still gets a turn when the answering model could not place the request (or is not in use)
+    if answer is None and nlu_client is not None and p.get("tool") is None and p.get("reason") == "not_understood":
         from . import companion_nlu as NLU      # only reached with the flag, a demonstration account and the person's model consent
         p = NLU.propose(db, user, text, rows, nlu_client) or p
     new = {"last_item": ctx.get("last_item"), "last_tool": ctx.get("last_tool"), "last_args": ctx.get("last_args"), "pending": None}
 
     def finish(out: dict, **upd) -> dict:
+        if p.get("after_urgent_no"):
+            out["urgent_declined"] = True     # "No" to "Do you need urgent help?", then what they first asked for
         new.update(upd)
         _remember(db, user, text.strip() or None, out, new)
         db.commit()
         return out
 
+    if answer is not None:
+        return finish(answer)
+    if "special" in p and (ctx.get("pending") or {}).get("kind") == "urgent":
+        then = ctx["pending"].get("then")
+        if p["special"] == "yes":
+            audit(db, user.id, "assistant.emergency.attempted", user.id, None)
+            return finish({"understood": True, "tool": "emergency", "needs_confirmation": False, "navigate": "urgent", "via": "yes"})
+        if not then:
+            audit(db, user.id, "assistant.urgent_declined", user.id, None)
+            return finish({"understood": True, "tool": "urgent_declined", "needs_confirmation": False, "navigate": None})
+        p = {**then, "after_urgent_no": True}
     if "special" in p:
         pend = ctx.get("pending") or {}
         if pend.get("kind") == "confirm":
@@ -400,10 +453,16 @@ def message(db: Session, user: User, text: str, nlu_client=None) -> dict:
         audit(db, user.id, "assistant.not_understood", user.id, None)
         keep = p.get("keep") or p.get("pending")
         choices = [_out(db, db.get(CarePlanItem, i)) for i in p.get("choices", [])]
-        return finish({"understood": False, "reason": p["reason"], "choices": choices}, pending=keep)
+        out = {"understood": False, "reason": p["reason"], "choices": choices}
+        if p["reason"] == "not_understood":
+            out["ai"] = ai            # so the screen can offer what to try next, or say how to switch on general answers
+        return finish(out, pending=keep)
     args = p["arguments"]
     audit(db, user.id, f"assistant.{tool}.attempted", user.id, None)
     via = p.get("via")
+    if tool == "ask_urgent":
+        return finish({"understood": True, "tool": "ask_urgent", "needs_confirmation": False, "navigate": None, "then": bool(p.get("then"))},
+                      pending={"kind": "urgent", "then": p.get("then")})
     if TOOLS.get(tool, ("", False))[1]:
         item = db.get(CarePlanItem, args["item_id"])
         _cancel_waiting(db, user)

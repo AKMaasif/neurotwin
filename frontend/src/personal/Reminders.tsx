@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, AwaitingPlan, DifficultyReason, History, Reminder } from "../api";
+import { api, AwaitingPlan, DifficultyReason, History, OwnRoutine, Reminder } from "../api";
 import { useT } from "../i18n";
 import { ErrorNote, Heading } from "../ui";
 
@@ -17,6 +17,9 @@ export default function Reminders({ onBack }: { onBack: () => void }) {
   const [hist, setHist] = useState<History | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
+  const [own, setOwn] = useState<OwnRoutine | null>(null);
+  useEffect(() => { api.routine().then(setOwn).catch(() => setOwn(null)); }, []);
+  const removeOwn = async () => { setError(null); try { setOwn(await api.clearRoutine()); } catch (e) { setError(e); } };
   const load = useCallback(() => {
     Promise.all([api.reminders(), api.plansAwaiting()])
       .then(([r, p]) => { setItems(r.items); setDay(r.day); setTz(r.timezone); setPlans(p); })
@@ -44,6 +47,16 @@ export default function Reminders({ onBack }: { onBack: () => void }) {
       <div style={{ display: "grid", gap: 12 }}>
         {items?.map((i) => <Task key={i.id} item={i} answer={answer} />)}
       </div>
+      {own && own.items.length > 0 && (
+        <section className="p-card" aria-label={t("remOwnTitle")}>
+          <Heading level={2}>{t("remOwnTitle")}</Heading>
+          <p className="hint">{t("remOwnNote")}</p>
+          <ul style={{ margin: "6px 0", paddingInlineStart: 18 }}>
+            {own.items.map((i, k) => <li key={k}><strong>{i.time}</strong> {i.activity}</li>)}
+          </ul>
+          <button className="link" onClick={removeOwn}>{t("remOwnRemove")}</button>
+        </section>
+      )}
       {!hist ? <button className="btn block" onClick={() => api.history().then(setHist).catch(setError)}>{t("histOpen")}</button> : <Record hist={hist} />}
       {tz && <p className="hint">{t("remTimezone", { tz })}</p>}
       <button className="btn block" onClick={onBack}>{t("backHome")}</button>

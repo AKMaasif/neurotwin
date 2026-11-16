@@ -20,6 +20,8 @@ Record provider/model/version, prompt version, dataset version, case count, expe
 
 Obtain expert review of intended purpose, protocol, scoring, licensing and language adaptation before clinical use. Study repeated measurements under comparable conditions, reproducibility, practice effects, device effects and interruptions. Where justified, predefine analysis of reliability, measurement error and uncertainty. Diagnostic sensitivity/specificity require an independently established reference and adequate sample; no such result is established by current software tests.
 
+The analysis code for test–retest reliability and subgroups, its simulation checks and a pilot protocol are in [RELIABILITY_STUDY.md](RELIABILITY_STUDY.md) and [SUBGROUP_ANALYSIS.md](SUBGROUP_ANALYSIS.md); the reporting map for the first live evaluation is [DECIDE_AI.md](DECIDE_AI.md).
+
 For voice, test spoken English and Arabic separately, including dialect, noise, microphone permission, inaccurate transcripts and assistive needs. Record transcription accuracy, intent accuracy, clarification, cancellation, confirmation, duplicate prevention and successful task completion. Text-parser tests are not spoken interaction tests. Commission native-language review; translated labels alone do not validate a health activity.
 
 ## 4. Workflow usefulness

@@ -6,14 +6,14 @@ import { initial, micOpen, Phase, step, Ev } from "../companion/session";
 import { Engine } from "../companion/engine";
 import { Voice } from "../companion/speak";
 import { defaultVad, isEcho } from "../companion/vad";
-import { replySentences } from "./replyText";
+import { replyLang, replySentences, replySpeech } from "./replyText";
 import type { Screen } from "./PersonalApp";
 
 const NAV: Record<string, Screen> = { prep: "prep", report: "report", concern: "concern", reminders: "reminders", messages: "messages", records: "records", home: "home", urgent: "urgent", checkin: "checkin", reaction: "reaction", memory: "memory", wellbeing: "wellbeing" };
 type Line = { who: "you" | "bot"; text: string };
 type Prefs = { speed: number; volume: number; silence: number; keepBg: boolean; captions: boolean; review: boolean };
 const PREFS_KEY = "nt.companion.prefs";
-const defaults: Prefs = { speed: 1, volume: 1, silence: 1.8, keepBg: false, captions: true, review: false };
+const defaults: Prefs = { speed: 0.9, volume: 1, silence: 1.8, keepBg: false, captions: true, review: false };
 const loadPrefs = (): Prefs => { try { return { ...defaults, ...JSON.parse(localStorage.getItem(PREFS_KEY) || "{}") }; } catch { return defaults; } };
 const savePrefs = (p: Prefs) => { try { localStorage.setItem(PREFS_KEY, JSON.stringify(p)); } catch { /* private mode: settings last for this visit only */ } };
 
@@ -33,6 +33,7 @@ export default function Companion({ user, tabbed, go }: { user: User; tabbed: bo
   const [muted, setMutedState] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [pending, setPending] = useState<AssistantReply | null>(null);
+  const [askUrgent, setAskUrgent] = useState(false);
   const [draft, setDraft] = useState("");
   const [typed, setTyped] = useState("");
   const [memory, setMemory] = useState(true);
@@ -65,10 +66,10 @@ export default function Companion({ user, tabbed, go }: { user: User; tabbed: bo
 
   const add = (who: Line["who"], text: string) => setLines((l) => [...l.slice(-11), { who, text }]);
 
-  const speak = useCallback(async (text: string) => {
+  const speak = useCallback(async (text: string, say: "en" | "ar" = lang) => {
     const cut = text.slice(0, cfg?.limits.speak_chars ?? 600);
     engine.current?.setSpeaking(true);
-    try { voice.current.failed = null; await voice.current.say(cut, lang); } finally { engine.current?.setSpeaking(false); }
+    try { voice.current.failed = null; await voice.current.say(cut, say); } finally { engine.current?.setSpeaking(false); }
     if (voice.current.failed) { setNote(t("cmpServerVoiceFailed", { why: voice.current.failed })); setSource(voice.current.source(lang)); }
     dispatch({ type: "spoken_done" });          // ignored unless the session was speaking
   }, [cfg, lang, dispatch, t]);
@@ -80,15 +81,17 @@ export default function Companion({ user, tabbed, go }: { user: User; tabbed: bo
     try {
       const r = await api.assistantSay(text);
       const out = replySentences(t, r);
+      const said = replySpeech(t, r), sayLang = replyLang(t, r);     // a model answer is spoken in the person's language, without lists
       add("you", text);
       if (out.length) add("bot", out.join(" "));
       setPending(r.needs_confirmation && r.confirmation_id ? r : null);
+      setAskUrgent(r.tool === "ask_urgent");
       if (r.understood && r.navigate && NAV[r.navigate]) go(NAV[r.navigate]);
       const talk = spoken && out.length > 0 && !muted;
       if (turn !== null) {
         const n = dispatch({ type: "replied", turn, speak: talk });
-        if (n.phase === "speaking") void speak(out.join(". "));
-      } else if (sref.current.phase !== "inactive" && sref.current.phase !== "paused" && out.length) void speak(out.join(". "));
+        if (n.phase === "speaking") void speak(said, sayLang);
+      } else if (sref.current.phase !== "inactive" && sref.current.phase !== "paused" && out.length) void speak(said, sayLang);
     } catch (e) {
       setNote(e instanceof ApiError ? e.message : t("cmpFailed"));
       if (turn !== null) dispatch({ type: "reply_failed", turn });
@@ -132,7 +135,7 @@ export default function Companion({ user, tabbed, go }: { user: User; tabbed: bo
   };
   const resume = async () => { dispatch({ type: "resume" }); const e = makeEngine(); e.cfg = { ...defaultVad, silenceMs: prefs.silence * 1000 }; engine.current = e; try { await e.start(); } catch { engine.current = null; dispatch({ type: "denied" }); } };
   const pause = () => { voice.current.stop(); dispatch({ type: "pause" }); };
-  const end = () => { stopAll(); dispatch({ type: "end" }); setLines([]); setPending(null); setDraft(""); setNote(t("cmpEnded")); };
+  const end = () => { stopAll(); dispatch({ type: "end" }); setLines([]); setPending(null); setAskUrgent(false); setDraft(""); setNote(t("cmpEnded")); };
   const mute = () => { const m = !muted; setMutedState(m); engine.current?.setMuted(m); };
   const finished = () => { engine.current?.finish(); };
   const stopSpeaking = () => { voice.current.stop(); engine.current?.setSpeaking(false); dispatch({ type: "stop_speaking" }); };
@@ -229,6 +232,12 @@ export default function Companion({ user, tabbed, go }: { user: User; tabbed: bo
             </div>
           )}
 
+          {askUrgent && (
+            <div className="cmp-card" role="group" aria-label={t("asAskUrgent")}>
+              <p>{t("asAskUrgent")}</p>
+              <div className="cmp-row"><button className="btn primary" onClick={() => { setAskUrgent(false); go("urgent"); }}>{t("asUrgentYes")}</button><button className="btn" onClick={() => { setAskUrgent(false); void handle(lang === "ar" ? "لا" : "no", null, false); }}>{t("asNo")}</button></div>
+            </div>
+          )}
           {pending && (
             <div className="cmp-card" role="group" aria-label={t("asHelper")}>
               <p>{t("cmpSayYes")}</p>
