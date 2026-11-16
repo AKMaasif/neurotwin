@@ -14,7 +14,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
-for k in ("GEMINI_API_KEY", "META_API_KEY", "GEMINI_TTS_MODEL"):
+for k in ("GEMINI_API_KEY", "META_API_KEY"):
     os.environ.pop(k, None)  # never call a provider from a benchmark
 from fastapi.testclient import TestClient  # noqa: E402
 from app.main import create_app  # noqa: E402

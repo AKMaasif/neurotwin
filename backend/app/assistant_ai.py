@@ -35,7 +35,6 @@ INTENTS = ("general_question", "health_general", "my_health", "make_plan", "make
 ANSWERED = ("general_question", "health_general", "chat")          # model text is shown (after the guard)
 TIMEOUT_S = 12.0
 MAX_SCREEN_WORDS = 130
-MAX_SPEECH_WORDS = 55
 MAX_PLAN = 12
 
 _calls = {"day": None, "n": 0}
@@ -72,14 +71,13 @@ Decide what the person wants and answer in the same step:
 {"intent": one of %(intents)s,
  "lang": "en" or "ar" (the language of the person's message; Arabic script means "ar"),
  "screen_text": what to show on screen,
- "speech_text": the same answer for reading aloud,
  "command": {"tool": one of %(tools)s, "item": number from today's list or null, "minutes": number or null, "screen": one of %(screens)s or null} or null,
  "plan": [{"time": "HH:MM", "activity": "..."}] or null}
 
 Intents:
 - general_question: any everyday or general-knowledge question (geography, history, science, numbers, language, cooking, how things work, a joke). Answer it.
 - health_general: general health and well-being information (sleep, food, exercise, memory habits, what a condition is in general). Answer it.
-- my_health: questions about THIS person's own results, memory, decline, scores or diagnosis. Leave screen_text and speech_text empty.
+- my_health: questions about THIS person's own results, memory, decline, scores or diagnosis. Leave screen_text empty.
 - make_plan: they want a daily routine, schedule or to-do list. Fill "plan" with 6 to 10 items for one day, in time order. Put today's care-team tasks from the list at their times, written as given. Add simple, safe activities (water, a short walk, meals, rest, reading, a call to family, a wind-down before bed). screen_text is one short sentence introducing the plan.
 - make_image: they want a picture, drawing or image made. Leave the texts empty.
 - app_command: they want to act on today's list (did it = mark_done, skip today = mark_not_today, remind later = snooze, what is on today = read_today, a question about one task = explain_instruction), open a screen (open_screen), or tell their clinician about a worry (start_concern). Fill "command"; leave the texts empty.
@@ -91,7 +89,7 @@ Intents:
 How to write:
 - Write natively in the person's language, never a translation. Arabic: clear Modern Standard Arabic, warm and simple. English: plain, simple English.
 - Calm, warm and respectful, like an experienced nurse. Short sentences. No exclamation marks, no emojis, no markdown symbols except lines starting with "- ".
-- screen_text at most 100 words. speech_text at most 45 words, plain spoken sentences with no lists or symbols, numbers written as they are said.
+- screen_text at most 100 words.
 - Facts that change over time (population, prices, records, office holders): give the figure with the year it is from, and say it changes. If you are not sure, say so plainly. Never invent sources.
 - Health information: general only. Never give doses, never say to start, stop or change a medicine, never diagnose or predict anything about this person, never say "nothing to worry about". Suggest their clinician for what fits them.
 - Never give links, phone numbers or e-mail addresses. Never say that help is on its way.
@@ -208,17 +206,13 @@ def interpret(raw: str, rows: list[tuple[CarePlanItem, dict]], fallback_lang: st
     screen, why = guard(data.get("screen_text") or "", lang, health=health)
     if screen is None:
         return {"route": "blocked", "why": why, "lang": lang}
-    speech, why = guard(data.get("speech_text") or "", lang, health=health)
-    if speech is None and why != "empty":
-        return {"route": "blocked", "why": why, "lang": lang}
     screen = _cap_words(screen, MAX_SCREEN_WORDS)
-    speech = _cap_words(speech or re.sub(r"(?m)^- ", "", screen).replace("\n", " "), MAX_SPEECH_WORDS)
     if intent == "make_plan":
         plan = _plan(data.get("plan"), lang)
         if not plan:
             return {"route": "blocked", "why": "bad_plan", "lang": lang}
-        return {"route": "reply", "payload": {**base, "tool": "plan", "text": screen, "speech": speech, "plan": plan}}
-    return {"route": "reply", "payload": {**base, "tool": "answer", "text": screen, "speech": speech}}
+        return {"route": "reply", "payload": {**base, "tool": "plan", "text": screen, "plan": plan}}
+    return {"route": "reply", "payload": {**base, "tool": "answer", "text": screen}}
 
 
 def respond(db: Session, user: User, text: str, rows: list[tuple[CarePlanItem, dict]], client, fallback_lang: str) -> dict:

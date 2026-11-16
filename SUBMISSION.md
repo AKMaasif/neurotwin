@@ -52,7 +52,7 @@ Safety gates: no activity without consent · no sharing without a purpose-scoped
 screen before anything else, with no model, and worrying words ("I feel dizzy") get "Do you need urgent help now?" · no change estimate without enough usable records · no model text without
 validation · no change to the care plan without a visible "Yes" and a clinician decision.
 
-Real participants' words and voices never reach an external AI provider; voice typing and the server voice are limited
+Real participants' words never reach an external AI provider; model answers in the typed assistant are limited
 to demonstration accounts ([privacy and providers](docs/COMPANION_PRIVACY_AND_PROVIDERS.md)).
 
 ## Evidence that it works as designed
@@ -83,7 +83,7 @@ specificity figures**, and no claim of clinical benefit is made.
 |---|---|
 | Health impact and clinical relevance | Within-person change over time (ADPHC: "change over time, not one test moment") with practice sessions set aside, z-score and reliable change index; vision, hearing, sleep, setting and feeling unwell asked before every activity, education and first language once, all shown to the clinician; closed loop from concern to recorded outcome; family support without exposing results |
 | Technical depth and architecture | Deterministic core separate from gated model use; append-only evidence with provenance; [ARCHITECTURE.md](docs/ARCHITECTURE.md) |
-| Working solution and demo quality | Live link with one-click demo views; English and Arabic with right-to-left layout; voice companion |
+| Working solution and demo quality | Live link with one-click demo views; English and Arabic with right-to-left layout; typed assistant |
 | Responsible AI, safety and data governance | Purpose-scoped consent and sharing, audit log without values, output validator, abstention, demo-only external AI, emergency rule without a model; subgroup analysis; DECIDE-AI readiness map |
 | Scalability and deployment readiness | FastAPI + PostgreSQL, Alembic migrations, CI, HL7 FHIR R4 export, environment-only configuration, daily provider-call caps |
 | Commercial viability and path to pilot | [Business case](docs/BUSINESS_CASE.md): providers pay AED 15 per enrolled person per month (cost to serve about USD 1.18, margin about 71%), less a year than one AED 200 remote-data review Abu Dhabi already pays for (DoH Addendum 30, CPT 99091); GCC 60+ population triples by 2050 and UAE dementia cases rise 18-fold; no verified competitor is Arabic-first or measures change over time; Abu Dhabi, Dubai, Saudi Arabia, then Asia; pilot gates below |
@@ -107,7 +107,7 @@ specificity figures**, and no claim of clinical benefit is made.
 - AI answers in the assistant use an outside model (Gemini) for demonstration accounts that agreed to it; real
   accounts' words are never sent. Answers pass fixed safety rules (no doses, medicine changes, diagnoses or contact
   details) but can still be wrong, and say so on screen. Picture generation is not built.
-- Arabic wording has not yet had a native Gulf clinical reviewer; speech recognition quality is not measured.
+- Arabic wording has not yet had a native Gulf clinical reviewer.
 - Every screen checked in desktop browsers and at phone width (390 px) in English, Arabic and largest text; not yet
   tested with older adults on real devices.
 

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import VoiceButton from "../voice";
 import { api, Concern, ConcernSince, ConcernTopic } from "../api";
 import { Key, useT } from "../i18n";
 import { ErrorNote, Heading, Status } from "../ui";
@@ -83,7 +82,6 @@ export default function ConcernScreen({ go, onBack }: { go: (s: Screen) => void;
           </fieldset>
           <label className="field"><span>{t("cnWords")}</span>
             <textarea className="note" rows={4} maxLength={600} value={text} onChange={(e) => setText(e.target.value)} /></label>
-          <VoiceButton onText={(w) => setText((x) => (x ? `${x} ${w}` : w).slice(0, 600))} />
           <button className="btn primary block" disabled={!ready} onClick={preview}>{t("cnPreview")}</button>
         </section>
       ) : (

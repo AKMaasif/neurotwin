@@ -46,7 +46,7 @@ the SIL Open Font License 1.1.
 
 ## External AI services (optional, off unless keys are set)
 
-Google Gemini (text drafts, demo-account speech-to-text, optional server voice) and Meta Llama API (text drafts) are
+Google Gemini (text drafts and typed-assistant answers) and Meta Llama API (text drafts) are
 used under their providers' terms. Keys stay on the server. Real participants' data is never sent to them; see
 [docs/COMPANION_PRIVACY_AND_PROVIDERS.md](docs/COMPANION_PRIVACY_AND_PROVIDERS.md).
 

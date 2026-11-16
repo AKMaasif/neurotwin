@@ -1,7 +1,7 @@
 import type { AssistantItem, AssistantReply } from "../api";
 import type { Key, T } from "../i18n";
 
-/** What the assistant said, as plain sentences. Shared by the Ask screen and the voice companion so both show and say the same words. */
+/** What the assistant said, as plain sentences, for the Ask screen. */
 export const itemTitle = (t: T, i: AssistantItem) => [i.title, t.lang === "ar" ? i.text_ar ?? i.text_en : i.text_en ?? i.text_ar].filter(Boolean).join(": ");
 const confirmLine = (t: T, r: AssistantReply) => t(r.tool === "mark_done" ? "asConfirmDone" : r.tool === "mark_not_today" ? "asConfirmNot" : "asConfirmSnooze", { n: r.minutes ?? 0 });
 const answerWord = (t: T, a: string | null) => (a === "done" ? t("remDone") : a === "not_today" ? t("remNotToday") : "—");
@@ -10,16 +10,10 @@ const answerWord = (t: T, a: string | null) => (a === "done" ? t("remDone") : a 
 const FIXED: Partial<Record<string, Key>> = { my_health: "asMyHealth", not_allowed: "asNotAllowed", make_image: "asImageSoon", blocked: "asBlocked" };
 const AI_WHY: Record<"off" | "needs_consent" | "real_data", Key> = { off: "asAiOff", needs_consent: "asAiNeedsConsent", real_data: "asAiRealData" };
 
-/** What to say aloud: the model's plain spoken version when there is one (no lists or symbols), otherwise the screen sentences. */
-export function replySpeech(t: T, r: AssistantReply): string {
-  if ((r.tool === "answer" || r.tool === "plan") && r.speech && !(r.kind && FIXED[r.kind])) return r.speech;
-  return replySentences(t, r).join(". ");
-}
-
 /** The language the reply is written in: a model answer follows the person's message, even when the screen is in the other language. */
 export const replyLang = (t: T, r: AssistantReply): "en" | "ar" => (r.tool === "answer" || r.tool === "plan") && r.lang && !(r.kind && FIXED[r.kind]) ? r.lang : t.lang;
 
-  /** What the bot said, as plain sentences (used for display of text-only parts and for reading aloud). */
+  /** What the bot said, as plain sentences. */
 export function replySentences(t: T, r: AssistantReply): string[] {
     const out: string[] = [];
     if (!r.understood) {

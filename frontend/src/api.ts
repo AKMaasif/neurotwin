@@ -90,22 +90,14 @@ export type AssistantReply = {
   cancelled?: boolean; kind?: "greeting" | "thanks" | "capabilities" | AnswerKind; said?: string | null; entries?: { item: AssistantItem; reply: string | null }[];
   via?: "context" | "answer" | "yes" | "words" | "order" | "other" | "only" | null; already?: "done" | "not_today" | null; pending?: boolean; expires_minutes?: number; ok?: boolean;
   then?: boolean; urgent_declined?: boolean;
-  /** Model answers (assistant_ai.py), already checked by the server's fixed rules. `speech` is the plain version for reading aloud. */
-  text?: string; speech?: string; lang?: "en" | "ar"; plan?: RoutineItem[];
+  /** Model answers (assistant_ai.py), already checked by the server's fixed rules. */
+  text?: string; lang?: "en" | "ar"; plan?: RoutineItem[];
   /** With "not understood": whether model answers are on, or why not. */
   ai?: "on" | "off" | "needs_consent" | "real_data";
 };
 export type AnswerKind = "general_question" | "health_general" | "my_health" | "make_plan" | "make_image" | "chat" | "not_allowed" | "blocked";
 export type RoutineItem = { time: string; activity: string };
 export type OwnRoutine = { items: RoutineItem[]; saved_at: string | null };
-export type CompanionConfig = {
-  enabled: boolean;
-  stt: { available: boolean; consented: boolean };
-  tts: { server: boolean; why_not: string | null };
-  model: { available: boolean; consented: boolean };
-  defaults: { silence_ms: number; min_speech_ms: number; max_turn_s: number; speed: number; volume: number };
-  limits: { speak_chars: number };
-};
 export type AssistantHistory = { memory: boolean; keeps_days: number; messages: { id: number; who: "you" | "bot"; text: string | null; payload: AssistantReply | null; at: string }[] };
 export type ConcernTopic = "memory_or_thinking" | "mood_or_worry" | "sleep" | "body_or_pain" | "medicine_question" | "something_else";
 export type ConcernSince = "today" | "few_days" | "week_or_more" | "not_sure";
@@ -412,27 +404,6 @@ export const api = {
   inbox: () => get<Message[]>("/api/messages"),
   readMessage: (id: number) => post<{ ok: boolean }>(`/api/messages/${id}/read`),
   hideMessage: (id: number) => post<{ ok: boolean }>(`/api/messages/${id}/hide`),
-  voiceStatus: () => get<{ available: boolean; provider: string | null }>("/api/voice/status"),
-  transcribe: async (audio: Blob, language: string) => {
-    const res = await fetch(`/api/voice/transcribe?language=${language}`, {
-      method: "POST", credentials: "same-origin", body: audio,
-      headers: { "Content-Type": audio.type.split(";")[0] || "audio/webm", ...(csrf ? { "X-CSRF-Token": csrf } : {}) } });
-    if (!res.ok) {
-      const detail = await res.json().then((j) => j.detail).catch(() => null);
-      throw new ApiError(res.status, typeof detail === "string" ? detail : "Voice typing could not be used.");
-    }
-    return res.json() as Promise<{ text: string; provider: string; model: string }>;
-  },
-  companionConfig: () => get<CompanionConfig>("/api/companion/config"),
-  speak: async (text: string, language: string) => {
-    const res = await fetch("/api/voice/speak", { method: "POST", credentials: "same-origin", body: JSON.stringify({ text, language }),
-      headers: { "Content-Type": "application/json", ...(csrf ? { "X-CSRF-Token": csrf } : {}) } });
-    if (!res.ok) {
-      const detail = await res.json().then((j) => j.detail).catch(() => null);
-      throw new ApiError(res.status, typeof detail === "string" ? detail : "Spoken replies are not available.");
-    }
-    return res.blob();
-  },
   audit: (pid: string) => get<AuditRow[]>(`/api/participants/${encodeURIComponent(pid)}/audit`),
 
   clinicianParticipants: () => get<ClinicianParticipant[]>("/api/clinician/participants"),

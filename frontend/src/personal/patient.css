@@ -187,36 +187,7 @@
 }
 .personal.txt-l .p-main > *, .personal.txt-x .p-main > * { min-width: 0; overflow-wrap: anywhere; }
 
-/* ---- Voice companion (persistent across patient screens) ---- */
-.cmp-wrap { position: fixed; inset-inline-end: 14px; bottom: 14px; z-index: 60; max-width: calc(100vw - 28px); }
-.cmp-wrap.has-tabs { bottom: 104px; }
-.cmp-launch { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 6px 18px 6px 8px; border-radius: 32px; border: 2px solid #3b2616; background: #fffaf2; color: #3b2616; font: inherit; font-weight: 800; cursor: pointer; box-shadow: 0 6px 18px rgba(59,38,22,.25); text-align: start; }
-.cmp-launch-text { display: grid; line-height: 1.2; } .cmp-launch-text small { font-weight: 600; font-size: 13px; }
-.cmp-avatar { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex: none; border-radius: 50%; background: #3b2616; color: #ffd9a0; border: 3px solid #ffd9a0; }
-.cmp-wrap[data-phase="listening"] .cmp-avatar, .cmp-wrap[data-phase="hearing"] .cmp-avatar { outline: 3px solid #1c6f88; outline-offset: 2px; }
-.cmp-wrap[data-phase="denied"] .cmp-avatar, .cmp-wrap[data-phase="failed"] .cmp-avatar { outline: 3px dashed #8a3b12; outline-offset: 2px; }
-@media (prefers-reduced-motion: no-preference) { .cmp-wrap[data-phase="speaking"] .cmp-avatar { animation: cmp-pulse 1.4s ease-in-out infinite; } }
-@keyframes cmp-pulse { 50% { transform: scale(1.08); } }
-.cmp-panel { width: min(400px, calc(100vw - 28px)); max-height: min(78vh, 640px); overflow: auto; display: grid; gap: 10px; padding: 14px; border-radius: 22px; background: #fffaf2; color: #3b2616; border: 2px solid #3b2616; box-shadow: 0 10px 30px rgba(59,38,22,.35); }
-.cmp-wrap.big .cmp-panel { width: min(640px, calc(100vw - 28px)); max-height: calc(100vh - 110px); }   /* leaves the header, with "Need urgent help?", visible */
-.cmp-wrap.big { inset-inline-start: 14px; } .cmp-wrap.big.has-tabs { bottom: 104px; }
-.cmp-head { display: flex; align-items: center; gap: 10px; } .cmp-title { display: grid; flex: 1; min-width: 0; } .cmp-state { font-size: 14px; font-weight: 600; }
-.cmp-ico { min-width: 44px; min-height: 44px; border-radius: 12px; border: 2px solid #3b2616; background: #fff; color: #3b2616; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
-.cmp-meter { height: 8px; border-radius: 4px; background: #e9dccb; overflow: hidden; } .cmp-meter i { display: block; height: 100%; background: #1c6f88; transition: width .08s linear; }
-.cmp-note { margin: 0; padding: 8px 10px; border-radius: 10px; background: #fff1d9; border: 1px solid #c9a46a; }
-.cmp-card { display: grid; gap: 8px; padding: 10px; border-radius: 14px; border: 1px solid #c9a46a; background: #fff; } .cmp-card p { margin: 0; }
-.cmp-card label { display: grid; gap: 4px; font-weight: 600; } .cmp-check { display: flex !important; align-items: center; gap: 8px; }
-.cmp-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; } .cmp-controls { display: flex; gap: 8px; flex-wrap: wrap; }
-.cmp-controls .btn, .cmp-row .btn, .cmp-panel .btn { min-height: 48px; }
-.cmp-log { display: grid; gap: 6px; max-height: 220px; overflow: auto; padding: 8px; border-radius: 12px; background: #fff; border: 1px solid #e0cfb6; } .cmp-log p { margin: 0; }
-.cmp-type { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
-.cmp-panel input[type="range"] { width: 100%; min-height: 32px; }
-.cmp-panel :focus-visible, .cmp-launch:focus-visible, .cmp-ico:focus-visible { outline: 3px solid #1c6f88; outline-offset: 2px; }
-.cmp-wrap, .cmp-wrap * { box-sizing: border-box; } .cmp-type input { min-width: 0; }
-
-/* Phone width: the voice-companion button floats above the tabs, so leave room for it under the last card; the
-   header puts "Need urgent help?" on its own full-width row instead of wrapping beside the name. */
-.personal.has-tabs:has(.cmp-wrap) .p-main { padding-bottom: 200px; }
+/* Phone width: the header puts "Need urgent help?" on its own full-width row instead of wrapping beside the name. */
 @media (max-width: 480px) {
   .personal .p-bar { flex-wrap: wrap; row-gap: 10px; }
   .personal .p-bar .who { display: contents; }

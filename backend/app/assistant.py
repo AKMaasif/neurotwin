@@ -378,7 +378,7 @@ def _cancel_waiting(db: Session, user: User, except_id: str | None = None) -> No
 
 def message(db: Session, user: User, text: str, nlu_client=None, ai_client=None) -> dict:
     """Understand one message, using the last few minutes of conversation. Reads and navigation are answered now; a change is returned as a
-    proposal with a confirmation id (a typed or spoken "yes" confirms only that one proposal)."""
+    proposal with a confirmation id (a typed "yes" confirms only that one proposal)."""
     if user.role != "participant":
         raise Refused(404, "Not found, or you do not have access.")
     d = CP.local_today(db, user)
@@ -406,7 +406,7 @@ def message(db: Session, user: User, text: str, nlu_client=None, ai_client=None)
             answer = {"understood": True, "needs_confirmation": False, "tool": "answer", "kind": "blocked", "lang": r.get("lang")}
     # the older task-picker still gets a turn when the answering model could not place the request (or is not in use)
     if answer is None and nlu_client is not None and p.get("tool") is None and p.get("reason") == "not_understood":
-        from . import companion_nlu as NLU      # only reached with the flag, a demonstration account and the person's model consent
+        from . import companion_nlu as NLU      # only reached with a demonstration account and the person's model consent
         p = NLU.propose(db, user, text, rows, nlu_client) or p
     new = {"last_item": ctx.get("last_item"), "last_tool": ctx.get("last_tool"), "last_args": ctx.get("last_args"), "pending": None}
 

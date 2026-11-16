@@ -17,7 +17,6 @@ CASES = [
     ("linked_journey", "tests/test_care_journeys.py", "Authorized links, versioned follow-up, explicit outcomes, source freshness and patient access"),
     ("fixed_guardrails", "tests/test_readiness_cases.py", "Report navigation, unsupported commands, emergency priority, citations and fingerprints"),
     ("activity_agents", "tests/test_activity_analysis.py", "Scripted agent pipeline, missing evidence, refusal, handoffs, review, cancellation and recovery"),
-    ("voice_plumbing", "tests/test_voice_assistant.py", "Mock transcription, confirmation, repeat requests and consent"),
     ("source_quality", "tests/test_evidence_and_quality.py", "Attribution, context, missing data, correction and protocol rules"),
     ("change_rules", "tests/test_change.py", "Within-person calculations and abstention; no clinical threshold validation"),
     ("migration", "tests/test_migration_with_data.py", "Old and half-upgraded databases preserve existing records"),
@@ -50,13 +49,13 @@ def main():
               "git_commit": subprocess.run(["git", "rev-parse", "HEAD"], cwd=BACKEND, capture_output=True, text=True).stdout.strip(),
               "working_tree": subprocess.run(["git", "status", "--short"], cwd=BACKEND, capture_output=True, text=True).stdout.strip(),
               "scope": "Developer-authored software regression scenarios with synthetic data and stand-in providers; not an independent or clinical benchmark.",
-              "not_measured": ["live model quality", "live speech recognition", "clinical sensitivity or specificity", "test-retest reliability", "clinical benefit", "Arabic clinical suitability"],
+              "not_measured": ["live model quality", "clinical sensitivity or specificity", "test-retest reliability", "clinical benefit", "Arabic clinical suitability"],
               "groups": [{"id": i, "tests": t, "expected": e} for i, t, e in CASES],
               "counts": {s: sum(r["result"] == s for r in results) for s in ("passed", "failed", "error", "skipped")},
               "results": results, "exit_code": completed.returncode}
     (out / "report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     lines = ["# Readiness software evaluation", "", report["scope"], "", f"Executed: {report['at']}", "", str(report["counts"]), "",
-             "Live-model quality, speech accuracy, measurement validity and clinical outcomes were not measured.", "",
+             "Live-model quality, measurement validity and clinical outcomes were not measured.", "",
              "| Case | Actual result | Seconds |", "|---|---|---|"]
     lines += [f"| {r['test']} | {r['result']} | {r['seconds']:.3f} |" for r in results]
     (out / "report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")

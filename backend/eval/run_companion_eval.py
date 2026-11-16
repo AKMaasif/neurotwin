@@ -1,4 +1,4 @@
-"""Text-understanding evaluation for the voice companion's fixed rules (after speech-to-text, before any action).
+"""Text-understanding evaluation for the assistant's fixed rules (typed sentences, before any action).
 Usage: python eval/run_companion_eval.py dev|final [--json out.json]
 
 What this measures: whether the typed-or-transcribed sentence is mapped to the right allowed action and task. It does NOT measure speech

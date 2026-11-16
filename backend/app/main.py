@@ -24,9 +24,8 @@ from . import emergency as EM
 from . import patient_report as PR
 from . import drafts as D
 from . import llm
+from . import companion_nlu as NLU
 from . import messages as M
-from . import voice as V
-from . import companion as COMP
 from . import profile as PF
 from . import protocols as P
 from . import quality as Q
@@ -137,11 +136,6 @@ class CarePlanReplyIn(BaseModel):
     snooze_minutes: int | None = None
     reason: str | None = Field(default=None, max_length=30)
     note: str | None = Field(default=None, max_length=200)
-
-
-class SpeakIn(BaseModel):
-    text: str = Field(max_length=COMP.MAX_SPEAK_CHARS)
-    language: Lang = "en"
 
 
 class ConsentIn(BaseModel):
@@ -315,8 +309,6 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
                 synthetic_history.apply(db)
     app.state.demo = bool(config.SEED_DEMO if seed_demo is None else seed_demo)
     app.state.get_llm = lambda: llm.get_client()      # looked up on each call, so a replaced client is used
-    app.state.get_stt = llm.get_stt_client
-    app.state.get_tts = llm.get_tts_client
     app.add_middleware(SafeRequestLog)
     app.add_middleware(ImagingRequestGuard)
 
@@ -395,31 +387,6 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
         return {"mode": st["mode"],
                 "providers": {k: {"state": state(k, v), "role": v["role"]} for k, v in st["providers"].items()},
                 "checked": checks, "analysis": {"state": "running" if running else "idle", "running": running}}
-
-    @app.get("/api/voice/status")
-    def voice_status(request: Request, user: User = Depends(current_user)):
-        c = request.app.state.get_stt() if user.is_demo else None      # real accounts' voices stay here (voice.py)
-        return {"available": c is not None, "provider": c.provider if c else None}
-
-    @app.post("/api/voice/transcribe")
-    async def voice_transcribe(request: Request, language: str = "en", user: User = Depends(current_user),
-                               db: Session = Depends(get_db)):
-        declared = request.headers.get("content-length")
-        if declared and declared.isdigit() and int(declared) > V.MAX_BYTES:
-            raise HTTPException(413, "That recording is too long. Keep it under a minute.")
-        audio = await request.body()
-        return V.transcribe(db, user, audio, request.headers.get("content-type", ""), language, request.app.state.get_stt())
-
-    @app.get("/api/companion/config")
-    def companion_config(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
-        return COMP.config(db, user, request.app.state.get_stt(), request.app.state.get_tts(), llm.get_client() is not None)
-
-    @app.post("/api/voice/speak")
-    def voice_speak(body: SpeakIn, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
-        if not COMP.enabled():
-            raise HTTPException(404, "Not found.")
-        audio = COMP.speak(db, user, body.text, body.language, request.app.state.get_tts(), os.environ.get("GEMINI_TTS_VOICE") or llm.DEFAULT_TTS_VOICE)
-        return Response(content=audio, media_type="audio/wav", headers={"Cache-Control": "no-store"})
 
     @app.get("/api/protocols")
     def list_protocols(_: User = Depends(current_user)):
@@ -755,7 +722,7 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
     def assistant_message(body: AssistantIn, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
         model = request.app.state.get_llm()
         # the model routes and answers what the fixed rules do not know (assistant_ai.py); demo accounts with consent only
-        return AS.message(db, user, body.text, COMP.nlu_client(db, user, model), ai_client=model)
+        return AS.message(db, user, body.text, NLU.client_for(db, user, model), ai_client=model)
 
     @app.post("/api/assistant/confirm")
     def assistant_confirm(body: AssistantConfirmIn, user: User = Depends(current_user), db: Session = Depends(get_db)):

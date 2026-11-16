@@ -22,7 +22,7 @@ without FreeSurfer execution; the supplied derivative viewer remains a labelled 
 ## What is in this version (0.3)
 
 The core, as first released in 0.2. Later additions (care plans and reminders, family messages, the text assistant,
-concern reports, Brain Analytics, agent analysis, care journeys and the optional voice companion) are listed in
+concern reports, Brain Analytics, agent analysis and care journeys) are listed in
 [CHANGELOG.md](CHANGELOG.md) and [docs/STATUS.md](docs/STATUS.md).
 
 
@@ -116,8 +116,6 @@ Stop the server, delete `backend\neurotwin.db`, start it again.
 | `NEUROTWIN_SECURE_COOKIES` | `0` | Set to `1` when served over HTTPS (any deployment) |
 | `NEUROTWIN_SESSION_HOURS` | `8` | How long a sign-in lasts |
 | `NEUROTWIN_SEED_HISTORY` | `0` | `1` adds six months of synthetic history to the demo people |
-| `NEUROTWIN_COMPANION` | `0` | `1` turns on the voice companion in the personal app ([details](docs/COMPANION_PRIVACY_AND_PROVIDERS.md)) |
-| `GEMINI_TTS_MODEL`, `GEMINI_TTS_VOICE` | empty | Server voice for the companion. Off unless a model is set; otherwise the device's own voice is used |
 
 Model keys, daily call caps and the imaging settings are listed in `backend/.env.example` and the docs linked from it.
 

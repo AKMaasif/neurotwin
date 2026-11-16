@@ -19,7 +19,6 @@ import Reminders from "./Reminders";
 import Assistant from "./Assistant";
 import ConcernScreen from "./Concern";
 import Messages from "./Messages";
-import Companion from "./Companion";
 import Account from "../Account";
 import "./patient.css";
 
@@ -122,7 +121,6 @@ export default function PersonalApp({ user, onSignOut, start = "home", startRead
         <button className="link" onClick={() => go("urgent")}>{t("urgentHelp")}</button>
         <button className="link" onClick={() => go("about")}>{t("aboutLink")}</button>
       </footer>
-      <Companion user={user} tabbed={tabbed} go={go} />
       {tabbed && (
         <nav className="pt-tabs" aria-label={t("appName")}>
           {([["home", "ptTabToday", House], ["reminders", "ptTabReminders", BellRing], ["messages", "ptTabMessages", MessageCircle], ["records", "recordsTitle", ChartNoAxesColumn]] as const).map(([s, label, Icon]) => (

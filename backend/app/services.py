@@ -33,6 +33,8 @@ def consent_state(db: Session, participant_id: str) -> dict[str, dict]:
                       .order_by(ConsentEvent.id)).all()
     state = {s: {"scope": s, "granted": False, "at": None, "text_version": None} for s in CONSENT_SCOPES}
     for r in rows:
+        if r.scope not in state:      # a scope no longer offered (e.g. the removed voice_recording) stays in the record, not in the state
+            continue
         state[r.scope] = {"scope": r.scope, "granted": r.decision == "granted", "at": r.at,
                           "text_version": r.text_version}
     return state

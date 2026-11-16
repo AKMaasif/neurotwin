@@ -55,7 +55,6 @@
 .fam-bubble { background: var(--f-soft); border-radius: 18px 18px 18px 6px; padding: 18px 20px; font-size: 19px; white-space: pre-wrap; }
 [dir="rtl"] .fam-bubble { border-radius: 18px 18px 6px 18px; }
 .fam-actions { display: flex; flex-wrap: wrap; gap: 10px; }
-.fam-voice { background: #fff6e0; border-radius: 12px; padding: 10px 14px; font-size: 15px; }
 .fam-sent { list-style: none; display: grid; gap: 10px; }
 .fam-sent li { background: #f5f7fd; border-radius: 14px; padding: 12px 14px; display: grid; gap: 2px; }
 .fam-sent small { color: var(--f-muted); }
