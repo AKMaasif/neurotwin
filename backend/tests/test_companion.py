@@ -150,10 +150,11 @@ def test_gemini_speech_request_and_response_shape_with_a_mocked_transport():
         bad.speak("x", None, "en")
 
 
-def test_tts_client_needs_a_key_and_defaults_to_the_documented_speech_model():
+def test_tts_client_is_opt_in_needing_both_a_key_and_a_speech_model():
     assert llm.get_tts_client({}) is None
     assert llm.get_tts_client({"GEMINI_TTS_MODEL": "m"}) is None
-    assert llm.get_tts_client({"GEMINI_API_KEY": "k"}).model == llm.DEFAULT_TTS_MODEL == "gemini-3.8-flash-tts"
+    assert llm.get_tts_client({"GEMINI_API_KEY": "k"}) is None                        # a key alone never turns the server voice on
+    assert llm.get_tts_client({"GEMINI_API_KEY": "k", "GEMINI_TTS_MODEL": " "}) is None
     assert llm.get_tts_client({"GEMINI_API_KEY": "k", "GEMINI_TTS_MODEL": "m"}).model == "m"
 
 

@@ -182,16 +182,16 @@ def _wav(pcm: bytes, rate: int) -> bytes:
             + b"data" + struct.pack("<I", len(pcm)) + pcm)
 
 
-DEFAULT_TTS_MODEL = "gemini-3.8-flash-tts"      # from Google's speech-generation page; override with GEMINI_TTS_MODEL
+DEFAULT_TTS_MODEL = "gemini-3.8-flash-tts"      # suggested value for GEMINI_TTS_MODEL (from Google's speech-generation page); never used unless set
 DEFAULT_TTS_VOICE = "Puck"                      # described as "Upbeat"; the page does not label gender, so audition voices and set GEMINI_TTS_VOICE
 
 
 def get_tts_client(env: dict | None = None):
     """Text to speech through Gemini, only when GEMINI_TTS_MODEL names a model. None otherwise (the browser's voice is used instead)."""
     env = os.environ if env is None else env
-    if not env.get("GEMINI_API_KEY"):
+    if not env.get("GEMINI_API_KEY") or not (env.get("GEMINI_TTS_MODEL") or "").strip():
         return None
-    return GeminiClient(env["GEMINI_API_KEY"], env.get("GEMINI_TTS_MODEL") or DEFAULT_TTS_MODEL)
+    return GeminiClient(env["GEMINI_API_KEY"], env["GEMINI_TTS_MODEL"].strip())
 
 
 def get_stt_client(env: dict | None = None):

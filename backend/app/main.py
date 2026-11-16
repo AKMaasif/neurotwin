@@ -376,8 +376,8 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
                 "checked": checks, "analysis": {"state": "running" if running else "idle", "running": running}}
 
     @app.get("/api/voice/status")
-    def voice_status(request: Request, _: User = Depends(current_user)):
-        c = request.app.state.get_stt()
+    def voice_status(request: Request, user: User = Depends(current_user)):
+        c = request.app.state.get_stt() if user.is_demo else None      # real accounts' voices stay here (voice.py)
         return {"available": c is not None, "provider": c.provider if c else None}
 
     @app.post("/api/voice/transcribe")
