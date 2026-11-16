@@ -46,12 +46,21 @@ TOOLS = {  # name: (kind, needs confirmation)
 
 # Errs on the side of opening the help screen: a false alarm costs one tap back, a miss could cost much more (docs/EMERGENCY_BENCHMARK.md).
 _EMERGENCY = re.compile(
-    r"\b(emergency|urgent|ambulance|help me|i need help|please help|someone help|i am hurt|i['’]?m hurt|i fell(?! asleep| behind)|i['’]?ve fallen"
-    r"|i have fallen|fallen down|can['’]?t breathe|cannot breathe|chest pain|pain in my chest|chest (?:hurts|is hurting|feels tight)|heart attack|stroke"
-    r"|i feel faint|(?:going|about) to faint|might faint|passing out)\b"
-    r"|^\W*help\W*$"
-    r"|طوارئ|إسعاف|اسعاف|ساعدوني|ساعدني|النجدة|نجدة|أحتاج مساعدة|احتاج مساعدة|وقعت|سقطت|ألم(?: \S+)? في (?:الصدر|صدري)|نوبة قلبية|جلطة"
-    r"|لا أستطيع التنفس|لا استطيع التنفس|ما أقدر أتنفس|ما اقدر اتنفس",
+    r"\b(emergency|urgent|ambulance|help me|i need help|please help|someone help|i am hurt|i['’]?m hurt|i fell(?! asleep| behind| in love| for)|i['’]?ve fallen"
+    r"|i have fallen|fallen down|has fallen|(?:has|have|just) collapsed|collapsed on|can['’]?t get up|cannot get up|unable to get up"
+    r"|can['’]?t breathe|cannot breathe|(?:struggling|trouble|difficulty|hard) (?:to )?breath(?:e|ing)|short(?:ness)? of breath|gasping"
+    r"|chest pain|pain in my chest|chest (?:hurts|is hurting|feels tight)|heart attack|stroke(?! of)|seizure|having a fit|chest (?:is )?tight"
+    r"|sos|call (?:999|998|997|911|112)|need (?:a doctor|an ambulance) (?:right )?now|(?:not|isn['’]?t) moving|(?:isn['’]?t|not) responding"
+    r"|can['’]?t (?:move|feel) my|can['’]?t stand|cannot stand|blacked out|cut myself|words (?:are )?(?:coming out|come out) wrong"
+    r"|end my life|kill myself|want to die|suicid\w*|hurt myself"
+    r"|face (?:is )?drooping|slurred speech|(?:arm|leg|side) (?:feels |is |has gone |went )?(?:weak|numb)|can['’]?t (?:speak|talk) properly"
+    r"|bleeding|hit my head|unconscious|not breathing|won['’]?t wake up|overdose|too many (?:of my )?(?:pills|tablets|medicines?)"
+    r"|i feel faint|(?:going|about) to (?:faint|pass out)|might (?:faint|pass out)|passing out|passed out)\b"
+    r"|^\W*(?:help\W*)+$"
+    r"|طوارئ|إسعاف|اسعاف|ساعدوني|ساعدني|النجدة|نجدة|النجده|نجده|999|998|997|ما (?:ترد|يرد|تتحرك|يتحرك)|لا (?:ترد|يرد|تتحرك|يتحرك)|(?:أحتاج|احتاج|أبغى|ابغى|ابي) (?:طبيب|دكتور) (?:الآن|الان|الحين)"
+    r"|صدري ضايق|دايخ|دايخة|ما أقدر أوقف|ما اقدر اوقف|أموت|اموت|انتحار|أنتحر|انتحر|أقتل نفسي|اقتل نفسي|تشنج|نوبة صرع|أحتاج مساعدة|احتاج مساعدة|وقعت|سقطت|سقط|طاح|طاحت|ألم(?: \S+)? في (?:الصدر|صدري)|صدري (?:يؤلمني|يوجعني)"
+    r"|نوبة قلبية|جلطة|يغمى|إغماء|اغماء|أغمي|اغمي|نزيف|ينزف|فاقد الوعي|ضيق (?:في )?(?:ال)?تنفس|ما يتنفس|لا يتنفس"
+    r"|لا أستطيع التنفس|لا استطيع التنفس|ما أقدر أتنفس|ما اقدر اتنفس|ما أقدر أقوم|ما اقدر اقوم",
     re.I)
 _NOT_TODAY = re.compile(r"\b(not today|skip|won't do|will not do|can't do (?:it|the \w+|my \w+)? ?today)\b|ليس اليوم|مو اليوم|تخطي|تخطى|لن أفعل", re.I)
 _DONE = re.compile(r"\b(i did|i have done|i've done|i finished|i have finished|i completed|i (?:just )?(?:drank|ate|took|walked)|done with|finished|completed|done)\b|\bتم\b|أنهيت|انتهيت|خلصت|أكملت|اكملت|فعلت|قمت ب", re.I)
