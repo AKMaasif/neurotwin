@@ -56,12 +56,16 @@ to demonstration accounts ([privacy and providers](docs/COMPANION_PRIVACY_AND_PR
 
 | Check | Result | Where |
 |---|---|---|
-| Backend regression suite | 657 passed, 13 skipped (optional imaging libraries), 0 failed | `backend/tests`, CI on Python 3.10 and 3.12 |
+| Backend regression suite | 658 passed, 13 skipped (optional imaging libraries), 0 failed | `backend/tests`, CI on Python 3.10 and 3.12 |
 | Frontend unit tests and build | 21 passed; type check and build pass | `frontend`, CI |
-| Emergency-phrase benchmark (English and Arabic) | Tuning set: 72/72 emergencies caught, 47/50 ordinary sentences left alone. Two held-out rounds: 85% then 90% caught; every miss fixed and recorded | [EMERGENCY_BENCHMARK.md](docs/EMERGENCY_BENCHMARK.md) |
+| Emergency-phrase rule (English and Arabic) | Tuning set: 112/112 emergencies caught, 77/80 ordinary sentences left alone. Four held-out rounds: 85%, 90%, then 40% and 0% on deliberately new kinds of situation; every miss fixed and recorded. The word list is a first line; an urgent-help button is on every screen | [EMERGENCY_BENCHMARK.md](docs/EMERGENCY_BENCHMARK.md) |
+| Change engine on 16,000 simulated people | False alarms on stable people 4.1% (95% CI 3.3–5.1%); flags 59% of 3-SD and 81% of 4-SD slowings; abstains when records are too few; practice effect measured | [CHANGE_ENGINE_BENCHMARK.md](docs/CHANGE_ENGINE_BENCHMARK.md) |
+| Server response time (in process) | Median 6–19 ms for reads, about 40 ms for the assistant; 95th percentile under 65 ms | [LATENCY_BENCHMARK.md](docs/LATENCY_BENCHMARK.md) |
 | Agent scenario benchmark | 71/71 guard-rail scenarios (altered numbers, unsupported claims, diagnosis requests, provider failure) | [AGENT_EVAL_REPORT.md](docs/AGENT_EVAL_REPORT.md) |
 | Fixed readiness scenarios | 102/102 | [QA_BENCHMARK_REPORT](docs/QA_BENCHMARK_REPORT_2026-11-15.md) |
-| Assistant understanding (typed or transcribed) | Developer-written English and Arabic sentences; known misses listed | `backend/eval/run_companion_eval.py` |
+| Assistant understanding (typed or transcribed) | Final set 47/50 = 94% (English and Arabic), 0 unsafe actions; 3 known misses listed | `backend/eval/run_companion_eval.py` |
+
+All runs, with the two findings a reviewer should not miss: [BENCHMARK_REPORT_2026-11-16.md](docs/BENCHMARK_REPORT_2026-11-16.md).
 
 These are software checks on developer-written and synthetic cases. **They are not clinical accuracy, sensitivity or
 specificity figures**, and no claim of clinical benefit is made.
@@ -81,7 +85,7 @@ specificity figures**, and no claim of clinical benefit is made.
 
 - Activities are prototype digital tasks, not validated instruments; change-engine settings are engineering
   defaults awaiting statistician and clinician review.
-- Practice effects on repeated activities are not yet modelled; hearing, vision and mood are not yet captured per
+- Practice effects on repeated activities are measured in simulation but not yet modelled; hearing, vision and mood are not yet captured per
   session, so the clinician must read change estimates with those factors in mind.
 - No integration with Malaffi, Sahatna or any electronic health record exists; it is a design goal, not a feature.
 - Arabic wording has not yet had a native Gulf clinical reviewer; speech recognition quality is not measured.
