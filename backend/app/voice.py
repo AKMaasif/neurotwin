@@ -5,6 +5,8 @@
 - The clip is sent to the speech provider once and is never written to disk or to the database. Only the text comes
   back, and it goes into a text box for the person to read and fix: nothing is sent or saved because of it.
 - A transcript is untrusted text. It is not given to any model, and it is not evidence.
+- Demonstration accounts (synthetic data) only. A real account's voice is never sent to a provider until one is approved
+  for real health data; real people type instead.
 - Limits: 2.5 MB and a daily call cap, so the open demo cannot spend the owner's quota without bound.
 - A participant needs their voice-recording consent switched on; the audit log records that a clip was transcribed,
   never its words.
@@ -54,6 +56,8 @@ def transcribe(db: Session, user: User, audio: bytes, content_type: str, languag
         raise Refused(422, "No sound was received.")
     if len(audio) > MAX_BYTES:
         raise Refused(413, "That recording is too long. Keep it under a minute.")
+    if not user.is_demo:     # real accounts' voices never go to an external provider until one is approved for real health data
+        raise Refused(403, "Voice typing is only available on demonstration accounts. Please type instead.")
     if user.role == "participant" and not consent_state(db, user.id).get("voice_recording", {}).get("granted"):
         raise Refused(403, "Voice recording is switched off for you. You can turn it on under Consent.")
     _take_call()

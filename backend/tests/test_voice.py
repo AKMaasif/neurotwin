@@ -66,6 +66,22 @@ def test_participant_needs_voice_consent(client, app):
     assert post(client, h).status_code == 200
 
 
+@pytest.mark.parametrize("uid", ["demo-fatima", "demo-mariam"])
+def test_real_accounts_voices_are_never_sent_to_the_provider(client, app, uid):
+    from app.models import User
+    fake = FakeSTT()
+    app.state.get_stt = lambda: fake
+    h = sign_in(client, uid)
+    client.post("/api/consents", json={"scope": "voice_recording", "granted": True, "language": "en"}, headers=h)
+    with app.state.db.SessionLocal() as db:
+        db.get(User, uid).is_demo = False
+        db.commit()
+    assert post(client, h).status_code == 403 and fake.calls == []
+    assert client.get("/api/voice/status").json()["available"] is False
+    if uid == "demo-fatima":
+        assert client.get("/api/companion/config").json()["stt"]["available"] is False
+
+
 def test_requires_sign_in(client):
     assert client.post("/api/voice/transcribe", content=b"x", headers={"Content-Type": "audio/webm"}).status_code in (401, 403)
 

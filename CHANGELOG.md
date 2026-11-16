@@ -4,7 +4,15 @@ All notable changes, newest first. Versions follow `0.x` while NeuroTwin is a re
 
 ## Unreleased
 
+### Added
+- Voice companion in the personal app, behind `NEUROTWIN_COMPANION` (off by default): a persistent panel, explicit
+  start, voice activity detection with adjustable pauses, barge-in, captions, typing fallback, spoken replies (server voice
+  for consenting demo accounts, otherwise the device voice) and a model-assisted fallback that may only pick from a fixed,
+  validated menu. Every change still needs a visible Yes. See `docs/COMPANION_PLAN.md` and `docs/COMPANION_EVALUATION.md`.
+
 ### Changed
+- Voice typing (speech to text) is now for demonstration accounts only; real accounts' voices are never sent to a
+  provider. The server voice is off unless `GEMINI_TTS_MODEL` is set (a Gemini key alone no longer turns it on).
 - Saved analyses have a single **Run agent** button (the recorded replay); "Show result now" and "Run live" were removed.
   A new real run starts from **Run Agent Analysis** as before.
 
@@ -17,6 +25,8 @@ All notable changes, newest first. Versions follow `0.x` while NeuroTwin is a re
 - Execution events per run (`events.jsonl`) and the `/workflow` and `/runs/{id}/activity` endpoints.
 
 ### Fixed
+- The assistant no longer reads "well" in "well-being" (or "so" in "so-called") as a filler word, so "well-being
+  questions" opens the wellbeing activity again instead of the check-in.
 - Alignment and label warping run in a separate process. Before, the server stopped answering for the ~40 s of the
   registration, and Cancel could not take effect until it finished.
 
