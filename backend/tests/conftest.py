@@ -100,9 +100,9 @@ def consent(client, headers, granted=True, scope="participation"):
 
 
 def run_reaction(client, headers, *, status="completed", rt=500, valid=5, early=0, assisted=False, unwell=None,
-                 interruptions=0):
+                 interruptions=0, conditions=None):
     s = client.post("/api/sessions", json={"protocol_code": "reaction_time", "protocol_version": "0.1",
-                                           "assisted": assisted, "unwell_today": unwell}, headers=headers)
+                                           "assisted": assisted, "unwell_today": unwell, **(conditions or {})}, headers=headers)
     assert s.status_code == 200, s.text
     obs = [{"measure": "rt_median_ms", "kind": "observed", "value_num": rt, "unit": "ms"},
            {"measure": "valid_trials", "kind": "observed", "value_num": valid, "unit": "count"},

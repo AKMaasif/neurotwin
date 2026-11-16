@@ -62,16 +62,17 @@ class GeminiClient:
         except (httpx.HTTPError, KeyError, ValueError) as e:
             _raise("Gemini", e)
 
-    def complete(self, system: str, user: str, json_mode: bool = False, images: list[bytes] | None = None) -> Reply:
+    def complete(self, system: str, user: str, json_mode: bool = False, images: list[bytes] | None = None, timeout: float | None = None,
+                 temperature: float = 0.2) -> Reply:
         """`images` are PNG bytes sent after the text, in order (inline data). The image request shape is unverified until a live call has been made."""
         parts = [{"text": user}] + [{"inline_data": {"mime_type": "image/png", "data": base64.b64encode(b).decode()}} for b in images or []]
         body = {"system_instruction": {"parts": [{"text": system}]},
                 "contents": [{"role": "user", "parts": parts}],
-                "generationConfig": {"temperature": 0.2}}
+                "generationConfig": {"temperature": temperature}}
         if json_mode:
             body["generationConfig"]["responseMimeType"] = "application/json"
         try:
-            r = self._http.post(f"/models/{self.model}:generateContent", json=body)
+            r = self._http.post(f"/models/{self.model}:generateContent", json=body, **({"timeout": timeout} if timeout else {}))
             r.raise_for_status()
             parts = r.json()["candidates"][0]["content"]["parts"]
             return Reply("".join(p.get("text", "") for p in parts), self.provider, self.model)
@@ -103,7 +104,7 @@ class GeminiClient:
         documented speech-generation interface (generationConfig.responseModalities AUDIO, speechConfig voice, speech_metadata.style). It has
         NOT yet been checked against a live call from this project. If the model rejects the style field, the same words are retried with the
         style written into the text; any failure makes the app fall back to the browser's own voice, which the panel tells the person."""
-        style = ("very friendly, cheerful and energetic, in clear Arabic" if language == "ar" else "very friendly, cheerful and energetic, like a kind helper who is glad to see them, but never rushed")
+        style = SPEECH_STYLE["ar" if language == "ar" else "en"]
         speech = {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice}}} if voice else {}
         gen = {"responseModalities": ["AUDIO"], **({"speechConfig": speech} if speech else {})}
         bodies = [{"contents": [{"role": "user", "parts": [{"text": text, "speech_metadata": {"style": style}}]}], "generationConfig": gen},
@@ -141,16 +142,17 @@ class MetaClient:
         except (httpx.HTTPError, KeyError, ValueError) as e:
             _raise("Meta", e)
 
-    def complete(self, system: str, user: str, json_mode: bool = False, images: list[bytes] | None = None) -> Reply:
+    def complete(self, system: str, user: str, json_mode: bool = False, images: list[bytes] | None = None, timeout: float | None = None,
+                 temperature: float = 0.2) -> Reply:
         """`images` are PNG bytes sent as data-URI image parts after the text (OpenAI style). Unverified until a live call has been made."""
         content = user if not images else [{"type": "text", "text": user}] + [
             {"type": "image_url", "image_url": {"url": "data:image/png;base64," + base64.b64encode(b).decode()}} for b in images]
-        body = {"model": self.model, "temperature": 0.2,
+        body = {"model": self.model, "temperature": temperature,
                 "messages": [{"role": "system", "content": system}, {"role": "user", "content": content}]}
         if json_mode:
             body["response_format"] = {"type": "json_object"}
         try:
-            r = self._http.post("/chat/completions", json=body)
+            r = self._http.post("/chat/completions", json=body, **({"timeout": timeout} if timeout else {}))
             r.raise_for_status()
             return Reply(r.json()["choices"][0]["message"]["content"] or "", self.provider, self.model)
         except (httpx.HTTPError, KeyError, IndexError, ValueError) as e:
@@ -183,7 +185,14 @@ def _wav(pcm: bytes, rate: int) -> bytes:
 
 
 DEFAULT_TTS_MODEL = "gemini-3.8-flash-tts"      # suggested value for GEMINI_TTS_MODEL (from Google's speech-generation page); never used unless set
-DEFAULT_TTS_VOICE = "Puck"                      # described as "Upbeat"; the page does not label gender, so audition voices and set GEMINI_TTS_VOICE
+DEFAULT_TTS_VOICE = "Sulafat"                   # described as "Warm"; Google does not label gender, so audition (Sulafat, Vindemiatrix, Achernar) and set GEMINI_TTS_VOICE
+# A calm medical-assistant voice: warm and unhurried, never excited (docs/ASSISTANT_WORKFLOW.md section 4).
+SPEECH_STYLE = {
+    "en": "calm, warm and reassuring, like an experienced nurse speaking to an older adult; a moderate, steady pace with clear pronunciation "
+          "and gentle pauses between sentences; friendly but not excited, never cheerful-salesy or rushed",
+    "ar": "بصوت هادئ ودافئ ومطمئن، مثل ممرضة ذات خبرة تتحدث مع شخص كبير في السن؛ بعربية فصحى واضحة، بسرعة معتدلة وثابتة، "
+          "مع وقفات لطيفة بين الجمل؛ ودود دون حماس زائد ودون استعجال",
+}
 
 
 def get_tts_client(env: dict | None = None):

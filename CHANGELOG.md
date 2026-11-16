@@ -5,11 +5,51 @@ All notable changes, newest first. Versions follow `0.x` while NeuroTwin is a re
 ## Unreleased
 
 ### Added
+- Assistant redesign, phase A (`docs/ASSISTANT_WORKFLOW.md`): what the fixed rules do not know goes to one model call
+  that routes and answers (`app/assistant_ai.py`): general questions ("What is the population of India?"), general
+  health information, a daily routine drafted from today's tasks and saved only when the person taps Save (their own
+  list, shown under Reminders; `GET/PUT/DELETE /api/me/routine`, migration 0010), and app commands checked against the
+  same fixed menu. English and Arabic follow the person's message. Every answer passes a fixed guard (no doses,
+  medicine changes, diagnoses, false reassurance, contact details; right language) or is replaced by a fixed reply;
+  questions about the person's own health, pictures and anything not allowed get fixed wording. Demonstration accounts
+  with `assistant_model` consent only; real accounts' words are never sent. Emergency and worrying words are still
+  caught first. Short general questions are no longer mistaken for questions about a task.
+- Calmer voice: a calm, warm female medical-assistant style (server voice Sulafat, speed 0.9); the device voice prefers
+  a female voice at natural pitch. Model answers have a separate spoken version without lists or symbols.
+- `docs/BUSINESS_CASE.md`: who pays, price, cost to serve, market size (UAE, GCC, Asia), target users, competitors,
+  go-to-market for Abu Dhabi, Dubai, Saudi Arabia and Asia, a six-year plan and risks, with seven charts
+  (`docs/business/make_charts.py`). Estimates are marked; unverified facts are listed separately. Abu Dhabi's telemedicine tariff
+  (DoH Addendum 30, CPT 99091 at AED 200), the licensing and the data-residency rules are verified and cited.
+- HL7 FHIR R4 export of a person's records (`GET /api/participants/{id}/fhir`, `app/fhir.py`): Patient, Observation,
+  Provenance and Consent in a collection Bundle with stable ids; for the person or a clinician they chose; audited
+  as `fhir.exported`; "Download FHIR R4" on the clinician report. `docs/INTEGRATION_DESIGN.md`: route to the
+  facility health record, Malaffi and Sahatna, consent, identity, terminology and gates.
+- Test–retest reliability code (`app/reliability.py`: ICC(2,1) and ICC(3,1) with confidence intervals, SEM,
+  minimal detectable change, Bland–Altman, sample size) and subgroup analysis (`app/subgroups.py`: Wilson and Newcombe
+  intervals, minimum group size), both checked against published examples, with simulation runners and a pilot
+  protocol. See `docs/RELIABILITY_STUDY.md` and `docs/SUBGROUP_ANALYSIS.md`.
+- `docs/DECIDE_AI.md`: readiness map and outline protocol for the first live clinical evaluation.
 - Voice companion in the personal app, behind `NEUROTWIN_COMPANION` (off by default): a persistent panel, explicit
   start, voice activity detection with adjustable pauses, barge-in, captions, typing fallback, spoken replies (server voice
   for consenting demo accounts, otherwise the device voice) and a model-assisted fallback that may only pick from a fixed,
   validated menu. Every change still needs a visible Yes. See `docs/COMPANION_PLAN.md` and `docs/COMPANION_EVALUATION.md`.
 - `SUBMISSION.md` (judge-facing summary), MIT `LICENSE` and `THIRD_PARTY_NOTICES.md`.
+- "Today's conditions" before each activity: can you see the screen clearly, hear clearly, did you sleep well, are you
+  somewhere quiet, do you feel unwell. All optional. Not seeing clearly or a noisy place make the record doubtful;
+  poor sleep and hearing difficulty are noted without lowering it (quality rules 0.2). The person's education and
+  first language, asked once on an "About you" screen (open to demo accounts too), shown to the clinician as context only. Migration 0009.
+- Change engine 0.2: each person's first 2 sessions of a task are practice and never compared (self-reports have no
+  practice period); every estimate also shows a z-score (the difference in the person's own day-to-day spread) and a
+  reliable change index (Jacobson–Truax) from a named reliability figure, marked provisional because it is assumed,
+  not measured. The status still comes from the 95% interval only. The benchmark compares the engine with and without
+  practice sessions.
+- "Do you need urgent help now?": worrying but not clearly urgent words ("I feel dizzy", "my knee hurts", "أنا تعبان")
+  get this question first, with a one-tap "Yes, I need help now" button in the Ask screen and the voice companion. "No"
+  says where the help button is and then carries on with what was asked (a change still needs its own Yes). A test
+  renders every personal-app screen in English and Arabic and checks the urgent-help button is there; the enlarged
+  companion panel no longer covers it. Held-out emergency round 5 recorded (3/20), then fixed: not breathing,
+  choking, allergic reaction, fire, burns, low blood sugar, break-in, slurred speech, someone who will not wake,
+  disorientation; "help me understand" and "the stroke unit" no longer fire.
 - Benchmarks: change engine on simulated people, server response time, and two more held-out emergency rounds
   ([docs/BENCHMARK_REPORT_2026-11-16.md](docs/BENCHMARK_REPORT_2026-11-16.md)).
 
@@ -28,6 +68,10 @@ All notable changes, newest first. Versions follow `0.x` while NeuroTwin is a re
 - Execution events per run (`events.jsonl`) and the `/workflow` and `/runs/{id}/activity` endpoints.
 
 ### Fixed
+- Phone width (390 px), checked on every screen in English, Arabic and largest text: the patient header puts
+  "Need urgent help?" on its own full-width row; the last card is no longer hidden behind the floating companion
+  button; the clinician person view stacks the header above the rail and canvas so nothing runs under the mobile
+  navigation; the printable report no longer overflows (wide tables and the timeline scroll inside their own box).
 - Emergency words: "Help!", "please help", "I'm hurt", "I've fallen", "my chest hurts", "heart attack", "stroke",
   feeling faint and Arabic forms (سقطت، النجدة، لا أستطيع التنفس، جلطة) now open the help screen; "I fell asleep" and
   "I fell behind" no longer do. Also collapse, "can't get up", breathing difficulty, stroke signs, bleeding,

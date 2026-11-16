@@ -445,3 +445,25 @@ textarea.note { width: 100%; min-height: 64px; border: 1px solid var(--line); bo
 .cj-grid label{display:grid;gap:6px;min-width:0}.cj-grid input,.cj-grid select,.cj-grid textarea{width:100%;max-width:100%;font:inherit;padding:9px;border:1px solid #a8bac7;border-radius:6px;background:#fff;color:#1b2b3c;box-sizing:border-box}
 .cj-grid textarea{min-height:80px;resize:vertical}.cj-actions{display:flex;gap:10px;flex-wrap:wrap}
 @media(max-width:650px){.cj-grid{grid-template-columns:1fr}}
+
+/* Phone width: let a person's context lines in the caseload wrap instead of being cut off. */
+@media (max-width: 600px) { .list-row .main span { white-space: normal; } }
+
+/* Phone width, clinician person view: the name-and-period bar gets its own row above the records instead of being
+   squeezed beside the action buttons; the tool rail sits beside the records rather than over them, and the records
+   keep scrolling inside their own area so they never run under the bottom menu. */
+@media (max-width: 600px) {
+  .ws[data-pane="stage"] .ws-stage { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .ws-stage > .stage-top { position: static; grid-column: 1 / -1; grid-row: 1; margin: 12px 12px 0; flex-wrap: wrap; }
+  .stage-top .pill { flex: 1 1 100%; border-radius: 16px; }
+  .stage-top .pill .t { white-space: normal; }
+  .ws-stage > .rail { position: static; grid-column: 1; grid-row: 2; align-self: start; margin-block-start: 12px; margin-inline-start: 12px; }
+  .ws-stage > .canvas { grid-column: 2; grid-row: 2; min-width: 0; min-height: 0; padding: 12px; }
+}
+/* Phone width, printable report: its header rows (actions; brand and date) wrap instead of running off the page. */
+@media (max-width: 600px) {
+  .report-scrim { padding: 8px; }
+  .report { grid-template-columns: minmax(0, 1fr); padding: 20px 14px; }
+  .report .bar { flex-wrap: wrap; gap: 8px; } .report .bar > div { flex-wrap: wrap; }
+  .report table { display: block; overflow-x: auto; }
+}

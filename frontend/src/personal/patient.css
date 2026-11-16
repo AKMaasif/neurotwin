@@ -52,6 +52,12 @@
 .personal .choice .dot { border-color: #b59876; }
 .personal .choice[aria-pressed="true"] .dot, .personal .choice[aria-checked="true"] .dot { border-color: var(--pt-deep); }
 .personal .choice[aria-pressed="true"] .dot::after, .personal .choice[aria-checked="true"] .dot::after { background: var(--pt-deep); }
+/* Today's conditions: one row per question, answers side by side; stacks on narrow phones */
+.personal .cond-row { display: grid; gap: 8px; padding: 12px 0; border-top: 2px solid var(--pt-line); }
+.personal .cond-q { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 19px; }
+.personal .cond-q svg { flex: none; color: var(--pt-deep); }
+.personal .cond-a { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.personal .cond-a .choice { min-height: 56px; }
 
 /* ---- Today ---- */
 .pt-hello { display: grid; gap: 6px; }
@@ -192,7 +198,7 @@
 @media (prefers-reduced-motion: no-preference) { .cmp-wrap[data-phase="speaking"] .cmp-avatar { animation: cmp-pulse 1.4s ease-in-out infinite; } }
 @keyframes cmp-pulse { 50% { transform: scale(1.08); } }
 .cmp-panel { width: min(400px, calc(100vw - 28px)); max-height: min(78vh, 640px); overflow: auto; display: grid; gap: 10px; padding: 14px; border-radius: 22px; background: #fffaf2; color: #3b2616; border: 2px solid #3b2616; box-shadow: 0 10px 30px rgba(59,38,22,.35); }
-.cmp-wrap.big .cmp-panel { width: min(640px, calc(100vw - 28px)); max-height: calc(100vh - 28px); }
+.cmp-wrap.big .cmp-panel { width: min(640px, calc(100vw - 28px)); max-height: calc(100vh - 110px); }   /* leaves the header, with "Need urgent help?", visible */
 .cmp-wrap.big { inset-inline-start: 14px; } .cmp-wrap.big.has-tabs { bottom: 104px; }
 .cmp-head { display: flex; align-items: center; gap: 10px; } .cmp-title { display: grid; flex: 1; min-width: 0; } .cmp-state { font-size: 14px; font-weight: 600; }
 .cmp-ico { min-width: 44px; min-height: 44px; border-radius: 12px; border: 2px solid #3b2616; background: #fff; color: #3b2616; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
@@ -207,3 +213,13 @@
 .cmp-panel input[type="range"] { width: 100%; min-height: 32px; }
 .cmp-panel :focus-visible, .cmp-launch:focus-visible, .cmp-ico:focus-visible { outline: 3px solid #1c6f88; outline-offset: 2px; }
 .cmp-wrap, .cmp-wrap * { box-sizing: border-box; } .cmp-type input { min-width: 0; }
+
+/* Phone width: the voice-companion button floats above the tabs, so leave room for it under the last card; the
+   header puts "Need urgent help?" on its own full-width row instead of wrapping beside the name. */
+.personal.has-tabs:has(.cmp-wrap) .p-main { padding-bottom: 200px; }
+@media (max-width: 480px) {
+  .personal .p-bar { flex-wrap: wrap; row-gap: 10px; }
+  .personal .p-bar .who { display: contents; }
+  .personal .p-bar > :first-child { margin-inline-end: auto; }
+  .personal .p-bar .p-urgent-btn { order: 10; flex: 1 0 100%; }
+}

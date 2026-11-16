@@ -17,6 +17,7 @@ from . import change as C
 from . import config
 from . import careplan as CP
 from . import extraction as EX
+from . import fhir as FH
 from . import assistant as AS
 from . import concerns as CN
 from . import emergency as EM
@@ -26,6 +27,7 @@ from . import llm
 from . import messages as M
 from . import voice as V
 from . import companion as COMP
+from . import profile as PF
 from . import protocols as P
 from . import quality as Q
 from . import services as S
@@ -105,6 +107,20 @@ class TimezoneIn(BaseModel):
     timezone: str = Field(min_length=1, max_length=64)
 
 
+class RoutineItemIn(BaseModel):
+    time: str = Field(max_length=5)
+    activity: str = Field(max_length=120)
+
+
+class RoutineIn(BaseModel):
+    items: list[RoutineItemIn] = Field(max_length=12)
+
+
+class BackgroundIn(BaseModel):
+    education: str | None = Field(default=None, max_length=20)
+    first_language: str | None = Field(default=None, max_length=20)
+
+
 class MessageIn(BaseModel):
     participant_id: str = Field(min_length=1, max_length=40)
     text: str = Field(max_length=1000)
@@ -147,6 +163,10 @@ class SessionStartIn(BaseModel):
     assisted: bool = False
     assistance_note: str | None = Field(default=None, max_length=200)
     unwell_today: bool | None = None
+    see_clearly: bool | None = None
+    hear_clearly: bool | None = None
+    slept_well: bool | None = None
+    quiet_place: bool | None = None
 
 
 class ObservationBody(BaseModel):
@@ -219,6 +239,7 @@ def session_out(s: ActivitySession) -> dict:
     return {"id": s.id, "protocol_code": s.protocol_code, "protocol_version": s.protocol_version,
             "language": s.language, "device": s.device, "assisted": s.assisted, "assistance_note": s.assistance_note,
             "unwell_today": s.unwell_today, "interruptions": s.interruptions, "status": s.status,
+            "conditions": {k: getattr(s, k) for k in ("see_clearly", "hear_clearly", "slept_well", "quiet_place")},
             "started_at": iso(s.started_at), "ended_at": iso(s.ended_at)}
 
 
@@ -293,7 +314,7 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
                 from . import synthetic_history
                 synthetic_history.apply(db)
     app.state.demo = bool(config.SEED_DEMO if seed_demo is None else seed_demo)
-    app.state.get_llm = llm.get_client
+    app.state.get_llm = lambda: llm.get_client()      # looked up on each call, so a replaced client is used
     app.state.get_stt = llm.get_stt_client
     app.state.get_tts = llm.get_tts_client
     app.add_middleware(SafeRequestLog)
@@ -442,7 +463,8 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
     @app.post("/api/sessions")
     def start_session(body: SessionStartIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
         s = S.start_session(db, user, body.protocol_code, body.protocol_version, body.language, body.device,
-                            body.assisted, body.assistance_note, body.unwell_today)
+                            body.assisted, body.assistance_note, body.unwell_today,
+                            {k: getattr(body, k) for k in S.CONDITIONS})
         return session_out(s)
 
     @app.post("/api/sessions/{session_id}/complete")
@@ -530,6 +552,20 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
                 if c[w]:
                     c[w] = {**c[w], "from": iso(c[w]["from"]), "to": iso(c[w]["to"])}
         return r
+
+    @app.get("/api/participants/{pid}/fhir")
+    def fhir_export(pid: str, include_history: bool = False, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        """The person's records as an HL7 FHIR R4 Bundle, for the person themself or a clinician they chose.
+        Nothing is sent anywhere; the caller downloads the file. See app/fhir.py for what is in it and what is not."""
+        require_evidence_access(db, user, pid)
+        person = db.get(User, pid)
+        if person is None or person.role != "participant":
+            raise HTTPException(404, "Not found, or you do not have access.")
+        b = FH.bundle(db, person, include_history)
+        S.audit(db, user.id, "fhir.exported", pid, FH.EXPORT_VERSION)
+        db.commit()
+        return JSONResponse(b, media_type="application/fhir+json",
+                            headers={"Content-Disposition": f'attachment; filename="neurotwin-{pid}-fhir-r4.json"'})
 
     @app.get("/api/participants/{pid}/change")
     def change(pid: str, include_doubtful: bool = False, user: User = Depends(current_user),
@@ -716,8 +752,10 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
         return {"source": "rules", "fields": fields, "flags": EX.check(text, fields)}
 
     @app.post("/api/assistant/message")
-    def assistant_message(body: AssistantIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
-        return AS.message(db, user, body.text, COMP.nlu_client(db, user, llm.get_client()))
+    def assistant_message(body: AssistantIn, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        model = request.app.state.get_llm()
+        # the model routes and answers what the fixed rules do not know (assistant_ai.py); demo accounts with consent only
+        return AS.message(db, user, body.text, COMP.nlu_client(db, user, model), ai_client=model)
 
     @app.post("/api/assistant/confirm")
     def assistant_confirm(body: AssistantConfirmIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
@@ -811,6 +849,31 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
     def set_my_preferences(body: TimezoneIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
         return {"timezone": CP.set_timezone(db, user, body.timezone)}
 
+    @app.get("/api/me/background")
+    def my_background(user: User = Depends(current_user), db: Session = Depends(get_db)):
+        if user.role != "participant":
+            raise HTTPException(404, "Not found, or you do not have access.")
+        return {**PF.get(db, user.id), "options": {"education": PF.EDUCATION, "first_language": PF.LANGUAGES}}
+
+    @app.put("/api/me/background")
+    def set_my_background(body: BackgroundIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return {**PF.put(db, user, body.education, body.first_language),
+                "options": {"education": PF.EDUCATION, "first_language": PF.LANGUAGES}}
+
+    @app.get("/api/me/routine")
+    def my_routine(user: User = Depends(current_user), db: Session = Depends(get_db)):
+        if user.role != "participant":
+            raise HTTPException(404, "Not found, or you do not have access.")
+        return PF.get_routine(db, user.id)
+
+    @app.put("/api/me/routine")
+    def save_my_routine(body: RoutineIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return PF.put_routine(db, user, [i.model_dump() for i in body.items])
+
+    @app.delete("/api/me/routine")
+    def clear_my_routine(user: User = Depends(current_user), db: Session = Depends(get_db)):
+        return PF.clear_routine(db, user)
+
     @app.get("/api/participants/{pid}/audit")
     def list_audit(pid: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
         require_evidence_access(db, user, pid)
@@ -837,7 +900,7 @@ def create_app(database_url: str | None = None, seed_demo: bool | None = None, s
             from . import synthetic_history as SH
             syn = SH.summary(db, p.id) if p.is_demo else None
             out.append({**user_out(p), "shared_since": iso(g.created_at), "open_items": open_items,
-                        "last_activity": iso(last),
+                        "last_activity": iso(last), "background": PF.get(db, p.id),
                         "dataset": {"id": syn["id"], "label": syn["label"], "note": syn["note"], "sessions": syn["sessions"],
                                     "from": syn["from"], "to": syn["to"]} if syn else None})
         return out

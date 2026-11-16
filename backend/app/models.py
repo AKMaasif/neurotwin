@@ -89,6 +89,11 @@ class ActivitySession(Base):
     assisted: Mapped[bool] = mapped_column(Boolean, default=False)
     assistance_note: Mapped[str | None] = mapped_column(String(200), nullable=True)
     unwell_today: Mapped[bool | None] = mapped_column(Boolean, nullable=True)  # None = not asked / not answered
+    # Today's conditions, asked before an activity (None = not asked / prefer not to say). See app/quality.py for how they are used.
+    see_clearly: Mapped[bool | None] = mapped_column(Boolean, nullable=True)   # can see the screen clearly (with glasses if used)
+    hear_clearly: Mapped[bool | None] = mapped_column(Boolean, nullable=True)  # can hear clearly (with a hearing aid if used)
+    slept_well: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    quiet_place: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     interruptions: Mapped[int] = mapped_column(Integer, default=0)
     status: Mapped[str] = mapped_column(String(20), default="in_progress")
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
@@ -291,6 +296,11 @@ class PatientPreference(Base):
     trusted_name: Mapped[str | None] = mapped_column(String(80), nullable=True)    # someone the person chose to ring in an emergency
     trusted_phone: Mapped[str | None] = mapped_column(String(24), nullable=True)   # used only to open the phone's own dialer; never contacted by us
     assistant_memory: Mapped[bool] = mapped_column(Boolean, default=True)   # keep the assistant conversation so follow-ups make sense
+    # Background that changes how results read (asked once, optional, editable by the person; clinicians with a grant see it).
+    education: Mapped[str | None] = mapped_column(String(20), nullable=True)       # see profile.EDUCATION
+    first_language: Mapped[str | None] = mapped_column(String(20), nullable=True)  # see profile.LANGUAGES
+    # The person's OWN daily routine, saved by them from an assistant draft. Separate from the clinician's care plan, never evidence.
+    own_routine: Mapped[dict | None] = mapped_column(JSON, nullable=True)          # {"items": [{"time": "HH:MM", "activity": str}], "saved_at": iso}
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 

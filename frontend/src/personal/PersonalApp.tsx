@@ -14,6 +14,7 @@ import Who5 from "./Who5";
 import Sharing from "./Sharing";
 import Records from "./Records";
 import Emergency from "./Emergency";
+import Background from "./Background";
 import Reminders from "./Reminders";
 import Assistant from "./Assistant";
 import ConcernScreen from "./Concern";
@@ -22,13 +23,20 @@ import Companion from "./Companion";
 import Account from "../Account";
 import "./patient.css";
 
-export type Screen = "home" | "consent" | "checkin" | "reaction" | "sharing" | "reminders" | "messages" | "records" | "account" | "urgent" | "about" | "assistant" | "concern" | "memory" | "wellbeing" | "report" | "prep" | "display";
+/** Every screen of the personal app. The help-button test renders each one, so a new screen is checked as soon as it is added here. */
+export const SCREENS = ["home", "consent", "checkin", "reaction", "sharing", "reminders", "messages", "records", "account", "urgent", "about", "assistant",
+  "concern", "memory", "wellbeing", "report", "prep", "display", "background"] as const;
+export type Screen = (typeof SCREENS)[number];
 
 const TAB_SCREENS: Screen[] = ["home", "reminders", "messages", "records"];
 
-export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut: () => void }) {
+export default function PersonalApp({ user, onSignOut, start = "home", startReady = false }: {
+  user: User; onSignOut: () => void;
+  /** Tests only: open on this screen with loading already finished. */
+  start?: Screen; startReady?: boolean;
+}) {
   const { t } = useT();
-  const [screen, setScreen] = useState<Screen>("home");
+  const [screen, setScreen] = useState<Screen>(start);
   const [display, setDisplay] = useState(loadDisplay);
   const [consent, setConsent] = useState<Consent | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -36,7 +44,7 @@ export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut
   const [waiting, setWaiting] = useState(0);
   const [concernNews, setConcernNews] = useState(0);
   const [error, setError] = useState<unknown>(null);
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(startReady);
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -80,6 +88,13 @@ export default function PersonalApp({ user, onSignOut }: { user: User; onSignOut
     <>
       <Heading>{t("acTitle")}</Heading>
       <Account user={user} large />
+      <Background />
+      <button className="btn block" onClick={home}>{t("backHome")}</button>
+    </>
+  );
+  else if (screen === "background") body = (
+    <>
+      <Background />
       <button className="btn block" onClick={home}>{t("backHome")}</button>
     </>
   );
@@ -161,6 +176,7 @@ function Home({ user, sessions, participating, unread, waiting, concernNews, go 
     { s: "wellbeing" as Screen, title: t("w5Title"), meta: t("w5Meta"), Icon: HeartPulse, cls: "c1" },
     { s: "consent" as Screen, title: t("consentTitle"), meta: t("consentMeta"), Icon: ShieldCheck, cls: "c1" },
     { s: "sharing" as Screen, title: t("sharingTitle"), meta: t("sharingMeta"), Icon: Users, cls: "c2" },
+    { s: "background" as Screen, title: t("bgTitle"), meta: t("bgLink"), Icon: UserRound, cls: "c3" },
     { s: "about" as Screen, title: t("aboutTitle"), meta: t("aboutLink"), Icon: InfoIcon, cls: "c4" },
     ...(!user.is_demo ? [{ s: "account" as Screen, title: t("acTitle"), meta: t("acLink"), Icon: UserRound, cls: "c5" }] : []),
   ];
