@@ -1,5 +1,5 @@
 <h1 align="center">
-  <a href="https://drive.google.com/file/d/1EM4OFCxiv-046rlXYg-HILrgM6ErL4UL/view?usp=drive_link">
+  <a href="https://drive.google.com/file/d/1EM4OFCxiv-046rlXYg-HILrgM6ErL4UL/view?usp=drivesdk">
     <img src="docs/media/readme/cover.jpg" alt="NeuroTwin: AI and brain health, 3-minute demo. A research prototype; the screen shows the Brain Analytics workspace with a 3D cortical surface and MRI slices." width="100%">
   </a>
 </h1>
@@ -11,7 +11,7 @@
 **Future Health Digital Innovation Challenge · Population Health · Protecting brain health earlier**
 
 [![Live demo on Hugging Face](https://img.shields.io/badge/Live_Demo-Open_NeuroTwin-2EA44F?style=for-the-badge&logo=huggingface&logoColor=white&labelColor=555555)](https://aasif-6379-neurotwin.hf.space/)
-[![Demo video](https://img.shields.io/badge/Demo_Video-3_Minutes-FF0000?style=for-the-badge&logo=youtube&logoColor=white&labelColor=555555)](https://drive.google.com/file/d/1EM4OFCxiv-046rlXYg-HILrgM6ErL4UL/view?usp=drive_link)
+[![Demo video](https://img.shields.io/badge/Demo_Video-3_Minutes-FF0000?style=for-the-badge&logo=youtube&logoColor=white&labelColor=555555)](https://drive.google.com/file/d/1EM4OFCxiv-046rlXYg-HILrgM6ErL4UL/view?usp=drivesdk)
 [![User manual](https://img.shields.io/badge/User_Manual-PDF-1A73E8?style=for-the-badge&logo=googledrive&logoColor=white&labelColor=555555)](https://drive.google.com/file/d/1ryXGpUxw7SC13aR0EqAKlfmMMMG3H76w/view?usp=sharing)
 [![Business case](https://img.shields.io/badge/Business_Case-AED_15_per_person_per_month-7B2FBE?style=for-the-badge&labelColor=555555)](docs/BUSINESS_CASE.md)
 <br>
@@ -24,7 +24,7 @@
 [![Research prototype](https://img.shields.io/badge/Status-Research_Prototype_%C2%B7_Not_a_Medical_Device-B23B3B?style=for-the-badge&labelColor=555555)](docs/STATUS.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-D4A72C?style=for-the-badge&labelColor=555555)](LICENSE)
 
-**[Open the live demo](https://aasif-6379-neurotwin.hf.space/)** · [Watch the demo video](https://drive.google.com/file/d/1EM4OFCxiv-046rlXYg-HILrgM6ErL4UL/view?usp=drive_link) ·
+**[Open the live demo](https://aasif-6379-neurotwin.hf.space/)** · [Watch the demo video](https://drive.google.com/file/d/1EM4OFCxiv-046rlXYg-HILrgM6ErL4UL/view?usp=drivesdk) ·
 [Read the user manual](https://drive.google.com/file/d/1ryXGpUxw7SC13aR0EqAKlfmMMMG3H76w/view?usp=sharing) ·
 [See it work](#see-it-work) · [Business analysis](#business-analysis) · [Research findings](#research-findings) ·
 [Run locally](#run-locally)
