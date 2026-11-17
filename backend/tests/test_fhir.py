@@ -159,11 +159,11 @@ def test_leaves_out_what_is_not_part_of_the_record(client, login):
 
 def test_consent_follows_the_latest_decision(client, login):
     h = login("demo-fatima")
-    client.post("/api/consents", json={"scope": "voice_recording", "granted": True}, headers=h)
-    client.post("/api/consents", json={"scope": "voice_recording", "granted": False}, headers=h)
+    client.post("/api/consents", json={"scope": "assistant_model", "granted": True}, headers=h)
+    client.post("/api/consents", json={"scope": "assistant_model", "granted": False}, headers=h)
     by = check_r4(export(client, h))
-    voice = [c for c in by["Consent"] if c["category"][1]["coding"][0]["code"] == "voice_recording"]
-    assert len(voice) == 1 and voice[0]["status"] == "inactive" and voice[0]["provision"]["type"] == "deny"
+    model = [c for c in by["Consent"] if c["category"][1]["coding"][0]["code"] == "assistant_model"]
+    assert len(model) == 1 and model[0]["status"] == "inactive" and model[0]["provision"]["type"] == "deny"
 
 
 def test_validates_with_a_fhir_library_when_installed(client, login):

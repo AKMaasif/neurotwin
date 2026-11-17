@@ -4,6 +4,15 @@ All notable changes, newest first. Versions follow `0.x` while NeuroTwin is a re
 
 ## Unreleased
 
+### Removed
+- The voice features. The assistant is typed only: the voice companion panel, voice typing (microphone) in Ask, Tell
+  my clinician and family messages, and "Read aloud" are gone, with `/api/voice/status`, `/api/voice/transcribe`,
+  `/api/voice/speak` and `/api/companion/config`, the speech-to-text and text-to-speech clients, the `voice_recording`
+  consent scope and the `NEUROTWIN_COMPANION`, `GEMINI_TTS_*`, `NEUROTWIN_STT_DAILY_CALLS` and
+  `NEUROTWIN_TTS_DAILY_CALLS` settings. Model answers no longer carry a spoken version. The model task-picker for
+  wording the fixed rules miss (`companion_nlu.py`) stays for the typed assistant, on demonstration accounts with
+  `assistant_model` consent. Earlier `voice_recording` consent decisions stay in the record and the FHIR export.
+
 ### Added
 - Assistant redesign, phase A (`docs/ASSISTANT_WORKFLOW.md`): what the fixed rules do not know goes to one model call
   that routes and answers (`app/assistant_ai.py`): general questions ("What is the population of India?"), general

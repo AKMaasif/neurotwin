@@ -49,18 +49,17 @@ def J(**kw):
 
 # ---- pure: interpret() and guard() ---------------------------------------------------------------------------------------------------
 
-def test_general_question_is_answered_with_a_spoken_version():
-    out = AI.interpret(J(intent="general_question", lang="en", screen_text="India has about 1.4 billion people (2024 figure). It changes every year.",
-                         speech_text="India has about one point four billion people."), [], "en")
+def test_general_question_is_answered():
+    out = AI.interpret(J(intent="general_question", lang="en", screen_text="India has about 1.4 billion people (2024 figure). It changes every year."), [], "en")
     assert out["route"] == "reply"
     p = out["payload"]
     assert p["tool"] == "answer" and p["kind"] == "general_question" and p["lang"] == "en"
-    assert "1.4 billion" in p["text"] and p["speech"].startswith("India has about one point four")
+    assert "1.4 billion" in p["text"] and "speech" not in p
 
 
 def test_arabic_question_is_answered_in_arabic_and_english_text_is_refused():
-    ok = AI.interpret(J(intent="general_question", lang="ar", screen_text="يبلغ عدد سكان الهند نحو مليار وأربعمئة مليون نسمة.", speech_text=""), [], "ar")
-    assert ok["route"] == "reply" and ok["payload"]["lang"] == "ar" and ok["payload"]["speech"]     # speech falls back to the screen text
+    ok = AI.interpret(J(intent="general_question", lang="ar", screen_text="يبلغ عدد سكان الهند نحو مليار وأربعمئة مليون نسمة."), [], "ar")
+    assert ok["route"] == "reply" and ok["payload"]["lang"] == "ar" and ok["payload"]["text"]
     bad = AI.interpret(J(intent="general_question", lang="ar", screen_text="India has about 1.4 billion people."), [], "ar")
     assert bad == {"route": "blocked", "why": "wrong_language", "lang": "ar"}
 
@@ -81,11 +80,6 @@ def test_health_answers_with_unsafe_content_are_blocked(text, why):
 def test_amounts_are_fine_outside_health_answers():
     out = AI.interpret(J(intent="general_question", lang="en", screen_text="Use 200 g of flour and 2 eggs."), [], "en")
     assert out["route"] == "reply"
-
-
-def test_unsafe_speech_text_is_blocked_too():
-    out = AI.interpret(J(intent="health_general", lang="en", screen_text="Sleep helps memory.", speech_text="Take 20 mg before bed."), [], "en")
-    assert out["route"] == "blocked" and out["why"] == "dose"
 
 
 @pytest.mark.parametrize("intent", ["my_health", "not_allowed", "make_image"])
@@ -132,7 +126,6 @@ def test_long_answers_are_cut_at_a_sentence():
     long = " ".join(["This is a sentence."] * 60)
     out = AI.interpret(J(intent="general_question", lang="en", screen_text=long), [], "en")
     assert len(out["payload"]["text"].split()) <= AI.MAX_SCREEN_WORDS and out["payload"]["text"].endswith(".")
-    assert len(out["payload"]["speech"].split()) <= AI.MAX_SPEECH_WORDS
 
 
 # ---- the fixed rules hand these to the model instead of refusing or guessing ---------------------------------------------------------
@@ -163,14 +156,13 @@ def test_without_consent_the_model_is_not_called_and_the_screen_says_how_to_swit
 
 
 def test_with_consent_a_general_question_is_answered_and_nothing_personal_beyond_the_list_is_sent(app, client):
-    m = FakeModel(J(intent="general_question", lang="en", screen_text="India has about 1.4 billion people (2024 figure).",
-                    speech_text="India has about one point four billion people."))
+    m = FakeModel(J(intent="general_question", lang="en", screen_text="India has about 1.4 billion people (2024 figure)."))
     app.state.get_llm = lambda: m
     h = login(client)
     consent(client, h)
     r = client.post("/api/assistant/message", json={"text": "what is the current population of india"}, headers=h).json()
     assert r["understood"] is True and r["tool"] == "answer" and r["kind"] == "general_question"
-    assert "1.4 billion" in r["text"] and r["speech"]
+    assert "1.4 billion" in r["text"]
     sent = m.calls[0]
     assert sent["json_mode"] is True and sent["timeout"] == AI.TIMEOUT_S
     assert "Message: what is the current population of india" in sent["user"]
