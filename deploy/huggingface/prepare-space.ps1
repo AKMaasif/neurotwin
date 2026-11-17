@@ -28,7 +28,7 @@ $img = Join-Path $root "backend\imaging_data"
 $dimg = Join-Path $out "backend\imaging_data"
 robocopy (Join-Path $img "OAS1_0001_MR1\assets") (Join-Path $dimg "OAS1_0001_MR1\assets") /E /NFL /NDL /NJH /NJS /NP | Out-Null
 robocopy (Join-Path $img "agent_analysis") (Join-Path $dimg "agent_analysis") /E /NFL /NDL /NJH /NJS /NP | Out-Null
-robocopy (Join-Path $img "oasis2") (Join-Path $dimg "oasis2") /E /XD segmentation_inputs /XF *.err *.log /NFL /NDL /NJH /NJS /NP | Out-Null
+robocopy (Join-Path $img "oasis2") (Join-Path $dimg "oasis2") /E /XD segmentation_inputs /XF *.err *.log list_part*.txt /NFL /NDL /NJH /NJS /NP | Out-Null
 if ($LASTEXITCODE -ge 8) { throw "Copying imaging data failed (robocopy code $LASTEXITCODE)" }
 
 # 3. The web app is built here, because a Gradio Space has no Node.js. The built files go into the upload.
@@ -46,17 +46,13 @@ robocopy (Join-Path $root "frontend\dist") (Join-Path $out "frontend\dist") /E /
 #    and a .gitignore that keeps the imaging data and the built web app.
 Copy-Item (Join-Path $PSScriptRoot "SPACE_README.md") (Join-Path $out "README.md") -Force
 Copy-Item (Join-Path $PSScriptRoot "app.py") (Join-Path $out "app.py") -Force
+# Written without a byte-order mark (PowerShell 5.1's "utf8" adds one). `spaces` is Hugging Face's ZeroGPU package: free
+# accounts get Gradio Spaces only on ZeroGPU, and app.py uses it to pass ZeroGPU's startup check.
+$noBom = New-Object System.Text.UTF8Encoding $false
 $reqs = Get-Content (Join-Path $root "backend\requirements.txt"), (Join-Path $root "backend\requirements-imaging.txt") |
   Where-Object { $_ -and -not $_.StartsWith("#") -and $_ -notmatch '^pytest' }
-$reqs | Set-Content -Encoding utf8 (Join-Path $out "requirements.txt")
-@"
-__pycache__/
-*.pyc
-.env
-*.db
-data/
-frontend/node_modules/
-"@ | Set-Content -Encoding utf8 (Join-Path $out ".gitignore")
+[IO.File]::WriteAllLines((Join-Path $out "requirements.txt"), [string[]]($reqs + "spaces"), $noBom)
+[IO.File]::WriteAllLines((Join-Path $out ".gitignore"), [string[]]@("__pycache__/", "*.pyc", ".env", "*.db", "data/", "frontend/node_modules/"), $noBom)
 
 # 5. Safety check: no secrets or databases in the folder.
 $bad = Get-ChildItem -Recurse -Force $out -File | Where-Object { $_.Name -eq ".env" -or $_.Extension -eq ".db" }

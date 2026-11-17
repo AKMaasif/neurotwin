@@ -7,7 +7,8 @@ your PC by `prepare-space.ps1`.
 The hosted app behaves like `start-imaging.ps1`: imaging is on for `dr.layla`, the demo people have six months of
 synthetic history, and the AI settings come from the same values as your `backend/.env`.
 
-Free tier ("CPU basic"): 2 CPUs, 16 GB memory. The Space sleeps after about 48 hours without visitors and wakes on the
+On a free account, Gradio Spaces run on **ZeroGPU** hardware (CPU basic needs PRO). NeuroTwin needs no GPU: `app.py`
+declares one GPU function that is never called, so ZeroGPU's startup check passes, and everything runs on the CPU. The Space sleeps after about 48 hours without visitors and wakes on the
 next visit. Its disk is not kept: the demo database is rebuilt on every restart, which is fine for a demo.
 
 ## Before you start
@@ -20,7 +21,7 @@ next visit. Its disk is not kept: the demo database is rebuilt on every restart,
 ## Steps
 
 1. **Create the Space.** At https://huggingface.co/new-space: name `neurotwin`, licence MIT, SDK **Gradio**
-   with the **Blank** template, hardware **CPU basic (free)**, visibility **Public**.
+   with the **Blank** template, hardware **ZeroGPU (free)**, the only free choice for Gradio, visibility **Public**.
 
 2. **Add your settings.** In the Space: *Settings → Variables and secrets*.
    - **Secrets** (hidden): `GEMINI_API_KEY`, `META_API_KEY`.
