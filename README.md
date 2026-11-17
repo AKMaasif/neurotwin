@@ -20,7 +20,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-SQLAlchemy_%2B_Alembic-009688?style=for-the-badge&logo=fastapi&logoColor=white&labelColor=555555)](docs/ARCHITECTURE.md)
 [![React 18 and Vite](https://img.shields.io/badge/React_18-Vite_%2B_TypeScript-149ECA?style=for-the-badge&logo=react&logoColor=white&labelColor=555555)](frontend/package.json)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white&labelColor=555555)](backend/requirements.txt)
-[![Backend tests](https://img.shields.io/badge/pytest-746_Passing-2EA44F?style=for-the-badge&logo=pytest&logoColor=white&labelColor=555555)](#evidence-that-it-works-as-designed)
+[![Backend tests](https://img.shields.io/badge/pytest-727_Passing-2EA44F?style=for-the-badge&logo=pytest&logoColor=white&labelColor=555555)](#evidence-that-it-works-as-designed)
 [![Research prototype](https://img.shields.io/badge/Status-Research_Prototype_%C2%B7_Not_a_Medical_Device-B23B3B?style=for-the-badge&labelColor=555555)](docs/STATUS.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-D4A72C?style=for-the-badge&labelColor=555555)](LICENSE)
 
@@ -382,7 +382,7 @@ test–retest study.
 
 | Check | Result | Where |
 |---|---|---|
-| Backend regression suite | **746 passed**, 12 skipped (optional imaging and FHIR libraries), 0 failed | `backend/tests`, CI on Python 3.10 and 3.12 |
+| Backend regression suite | **727 passed**, 14 skipped (optional imaging, research and FHIR libraries not installed), 0 failed | `backend/tests`, CI on Python 3.10 and 3.12 |
 | Frontend unit tests and build | **39 passed**; type check and build pass | `frontend`, CI |
 | Emergency-phrase rule (English and Arabic) | Tuning set: 132/132 emergencies caught, 94/95 ordinary sentences left alone; held-out rounds and every miss recorded | [EMERGENCY_BENCHMARK.md](docs/EMERGENCY_BENCHMARK.md) |
 | Change engine on 16,000 simulated people | False alarms on stable people 4.8% (95% CI 3.9–5.8%); flags 61% of 3-SD and 81% of 4-SD slowings; abstains when records are too few | [CHANGE_ENGINE_BENCHMARK.md](docs/CHANGE_ENGINE_BENCHMARK.md) |

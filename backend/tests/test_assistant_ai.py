@@ -243,8 +243,12 @@ def test_a_short_general_question_is_not_taken_for_a_question_about_a_task(app, 
     app.state.get_llm = lambda: m
     h = login(client)
     consent(client, h)
-    assert client.get("/api/care-plan/today").json()["items"]                     # the demo person has tasks today
+    items = client.get("/api/care-plan/today").json()["items"]
+    assert items                                                                   # the demo person has tasks today (how many depends on the day)
     r = client.post("/api/assistant/message", json={"text": "كم عدد سكان الهند؟"}, headers=h).json()
     assert r["tool"] == "answer" and r["lang"] == "ar" and len(m.calls) == 1
     r = client.post("/api/assistant/message", json={"text": "when is it"}, headers=h).json()
-    assert r["reason"] == "which" and len(m.calls) == 1                           # a real question about a task still asks which one
+    if len(items) == 1:                                                            # a real question about a task: the only one ...
+        assert r["tool"] == "explain_instruction" and len(m.calls) == 1
+    else:                                                                          # ... or, with several, "which one?"
+        assert r["reason"] == "which" and len(m.calls) == 1

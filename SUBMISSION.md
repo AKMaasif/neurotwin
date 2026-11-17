@@ -20,10 +20,11 @@ outcome rather than being lost.
 
 ## How to try it (about 5 minutes)
 
-1. Open the live link and press a demo view. No password is needed; the views are shared synthetic accounts.
+1. Open the [live demo](https://aasif-6379-neurotwin.hf.space/) and press a demo view (the free hosting sleeps when
+   idle, so the first load can take a minute). No password is needed; the views are shared synthetic accounts.
 2. **Older adult (Fatima, Arabic; Yousef, English)**: give consent, do the daily check-in and the reaction activity
    (answering "Today's conditions" first),
-   ask the assistant "what is on today?", and say or type "I need help" to see the help screen. In Ask NeuroTwin,
+   ask the assistant "what is on today?", and type "I need help" to see the help screen. In Ask NeuroTwin,
    press "Allow AI answers", then ask a general question ("What is the population of India?" or "كم عدد سكان الهند؟")
    or "Make me a daily routine", and save it as your own routine.
 3. **Family (Mariam, Omar)**: see which activities were done, never the results; send a short message.
@@ -59,8 +60,8 @@ to demonstration accounts ([privacy and providers](docs/COMPANION_PRIVACY_AND_PR
 
 | Check | Result | Where |
 |---|---|---|
-| Backend regression suite | 775 passed, 12 skipped (optional imaging and FHIR libraries), 0 failed | `backend/tests`, CI on Python 3.10 and 3.12 |
-| Frontend unit tests and build | 60 passed; type check and build pass | `frontend`, CI |
+| Backend regression suite | 727 passed, 14 skipped (optional imaging, research and FHIR libraries not installed), 0 failed | `backend/tests`, CI on Python 3.10 and 3.12 |
+| Frontend unit tests and build | 39 passed; type check and build pass | `frontend`, CI |
 | Emergency-phrase rule (English and Arabic) | Tuning set: 132/132 emergencies caught, 94/95 ordinary sentences left alone. Five held-out rounds: 85%, 90%, then 40%, 0% and 15% on deliberately new kinds of situation; every miss fixed and recorded. The word list is a first line: worrying words get "Do you need urgent help now?", and the urgent-help button is on every screen (a test renders all 19 screens in English and Arabic) | [EMERGENCY_BENCHMARK.md](docs/EMERGENCY_BENCHMARK.md) |
 | Change engine on 16,000 simulated people | False alarms on stable people 4.8% (95% CI 3.9–5.8%); flags 61% of 3-SD and 81% of 4-SD slowings; abstains when records are too few. Setting aside the first 2 sessions as practice cuts false "faster" flags on learners from 7.7% to 3.3% and finds 54% (was 31%) of slowings hidden by learning | [CHANGE_ENGINE_BENCHMARK.md](docs/CHANGE_ENGINE_BENCHMARK.md) |
 | Server response time (in process) | Median 6–19 ms for reads, about 40 ms for the assistant; 95th percentile under 65 ms | [LATENCY_BENCHMARK.md](docs/LATENCY_BENCHMARK.md) |
@@ -70,7 +71,7 @@ to demonstration accounts ([privacy and providers](docs/COMPANION_PRIVACY_AND_PR
 | Subgroup analysis | Same false-alarm rate for steady and variable people, but a real 60 ms slowing is flagged for 52% of steady and 22% of variable people; a switch to a slower device is flagged as slowing 11.7% vs 1.8%. Ready to run on pilot data by education, first language, language and device | [SUBGROUP_ANALYSIS.md](docs/SUBGROUP_ANALYSIS.md) |
 | FHIR R4 export | A person's records as a FHIR R4 Bundle (Patient, Observation with UCUM units and data-absent reasons, Provenance, Consent); stable ids, references resolve, R4 rules checked in 8 tests; only the person or their chosen clinician, audited | [INTEGRATION_DESIGN.md](docs/INTEGRATION_DESIGN.md) |
 | Assistant AI answers and safety guard | 42 tests: routing, unsafe answers blocked (dose, medicine change, diagnosis, reassurance, contact details, wrong language), routine checks, consent and real-account protection, provider failure; checked live with Gemini in English and Arabic | `backend/tests/test_assistant_ai.py` |
-| Assistant understanding (typed or transcribed) | Final set 47/50 = 94% (English and Arabic), 0 unsafe actions; 3 known misses listed | `backend/eval/run_companion_eval.py` |
+| Assistant understanding (typed) | Final set 47/50 = 94% (English and Arabic), 0 unsafe actions; 3 known misses listed | `backend/eval/run_companion_eval.py` |
 
 All runs, with the two findings a reviewer should not miss: [BENCHMARK_REPORT_2026-11-16.md](docs/BENCHMARK_REPORT_2026-11-16.md).
 
