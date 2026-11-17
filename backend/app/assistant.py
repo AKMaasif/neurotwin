@@ -268,8 +268,8 @@ def parse(text: str, rows: list[tuple[CarePlanItem, dict]], ctx: dict | None = N
         short = len(t.split()) <= 6
         if iid is None and ctx.get("last_item") in [r[0].id for r in rows] and short:
             iid, via = ctx["last_item"], "context"        # "when is it?", "tell me more"
-        if iid is None and len(rows) == 1 and short:
-            iid, via = rows[0][0].id, "only"
+        if iid is None and len(rows) == 1 and short and _TASK_REF.search(t):   # "when is it?" means the one task;
+            iid, via = rows[0][0].id, "only"                                      # "How many people live in India?" does not
         if iid:
             return {"tool": "explain_instruction", "arguments": {"item_id": iid}, "via": via}
         named = len(_match_items(t, rows)) > 1          # `tied` lists every task when none matched, so it cannot say "a task was named"
