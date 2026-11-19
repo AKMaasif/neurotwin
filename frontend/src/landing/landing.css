@@ -239,3 +239,23 @@ html { scroll-behavior: smooth; }
   .lp-portals { gap: 8px; margin-top: 14px; }
   .lp-portal, .lp-portal.main { min-height: 46px; }
 }
+
+/* ---- One person, one moment ---- */
+.lp-story { padding-block: 110px 0; }
+.lp-story h2 { max-width: 980px; font-size: clamp(24px, 2.8vw, 32px); line-height: 1.35; letter-spacing: -.01em; font-weight: 700; }
+.lp-story-grid { margin-top: 40px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.lp-story-card { border-radius: 24px; padding: 28px; }
+.lp-story-card h3 { font-size: 20px; font-weight: 800; }
+.lp-story-card p { margin-top: 10px; font-size: 16px; line-height: 1.65; }
+.lp-story-card.pain { background: var(--lp-soft); color: var(--lp-ink); border: 1px solid var(--lp-line); }
+.lp-story-card.pain p { color: var(--lp-body); }
+.lp-story-card.fix { background: var(--lp-navy); color: #fff; }
+.lp-story-card.fix p { color: #d3e6f0; }
+.lp-story-why { margin-top: 20px; border-inline-start: 4px solid var(--lp-eyebrow); padding-block: 6px; padding-inline: 20px 0; }
+.lp-story-why h3 { font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--lp-eyebrow); }
+.lp-story-why p { margin-top: 6px; font-size: 18px; line-height: 1.6; color: var(--lp-ink); }
+.lp-story-go { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 12px; }
+.lp-story-note { margin-top: 18px; font-size: 13px; color: var(--lp-body); }
+.lp-btn.outline { color: var(--lp-navy); border-color: var(--lp-navy); background: #fff; }
+.lp-btn.outline:hover { background: var(--lp-soft); }
+.lp-btn:disabled { opacity: .6; cursor: default; }

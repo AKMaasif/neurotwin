@@ -16,3 +16,6 @@ backend/imaging_data/
 *.hdr
 activity_runs/
 output/
+
+# Challenge submission deck (personal details)
+docs/submission/
