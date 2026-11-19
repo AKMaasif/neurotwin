@@ -126,6 +126,7 @@ export default function Landing({ demo, busy, error, onEnter, fallback }: Landin
                 <Brand tone="light" />
               </a>
               <div className="lp-links">
+                <a href="#lp-story">{t("lpNavStory")}</a>
                 <a href="#lp-how">{t("lpNavHow")}</a>
                 <a href="#lp-access">{t("lpNavAccess")}</a>
                 <a href="#lp-principles">{t("lpNavPrinciples")}</a>
@@ -185,6 +186,28 @@ export default function Landing({ demo, busy, error, onEnter, fallback }: Landin
         <div className="lp-wrap"><ul className="lp-trust reveal">
           <li>{t("lpTrust1")}</li><li>{t("lpTrust2")}</li><li>{t("lpTrust3")}</li><li>{t("lpTrust4")}</li>
         </ul></div>
+
+        {/* ---- One person, one moment ---- */}
+        <section id="lp-story" className="lp-wrap lp-story" aria-labelledby="lp-story-h">
+          <Eyebrow>{t("lpStoryEyebrow")}</Eyebrow>
+          <h2 id="lp-story-h" className="reveal">{t("lpStoryTitle")}</h2>
+          <div className="lp-story-grid">
+            <div className="lp-story-card pain reveal"><h3>{t("lpStoryPainT")}</h3><p>{t("lpStoryPainB")}</p></div>
+            <div className="lp-story-card fix reveal"><h3>{t("lpStoryFixT")}</h3><p>{t("lpStoryFixB")}</p></div>
+          </div>
+          <div className="lp-story-why reveal"><h3>{t("lpStoryWhyT")}</h3><p>{t("lpStoryWhyB")}</p></div>
+          {demo && demo.length > 0 && (
+            <div className="lp-story-go reveal">
+              {([["fatima", "lpStoryOpenPat", "navy"], ["dr.layla", "lpStoryOpenCli", "outline"]] as const).map(([id, label, tone]) => {
+                const account = demo.find((a) => a.username === id);
+                return account
+                  ? <button key={id} type="button" className={`lp-btn ${tone}`} disabled={busy !== null} onClick={() => onEnter(account)}>{t(label)}</button>
+                  : null;
+              })}
+            </div>
+          )}
+          <p className="lp-story-note">{t("lpStoryNote")}</p>
+        </section>
 
         {/* ---- Anatomy ---- */}
         <section className="lp-band-wrap" aria-labelledby="lp-anat-h">
