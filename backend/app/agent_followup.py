@@ -1,4 +1,4 @@
-"""A6 Follow-up Planner: suggestions for the clinician to consider, each traceable to a limitation or flag. Gemini drafts, rules decide.
+"""A6 Follow-up Planner: suggestions for the clinician to consider, each traceable to a limitation or flag. the writing model drafts, rules decide.
 
 Not built to advise: no medication, treatment, referral, urgency or "when to worry". Every item must cite at least one limitation, flag, alignment
 flag, the uncertainty statement, the segmentation source or a small structure. Items are drafts; the clinician accepts or rejects each one
@@ -73,7 +73,7 @@ def plan(run: dict, run_dir: Path, client=None, env: dict | None = None) -> dict
     user, n, out, sts, verdict = listing, 0, None, None, V.Verdict(False, [V.Problem(-1, "bad_format", "The reply was not the requested JSON.")])
     while n < 2:
         n += 1
-        out = R.invoke(run_dir, "A6", "gemini", SYSTEM, user, ids, attempt=n, client=client, env=env)
+        out = R.invoke(run_dir, "A6", R.writer(env), SYSTEM, user, ids, attempt=n, client=client, env=env)
         if out["status"] != "completed":
             break
         d = _json(out["text"])

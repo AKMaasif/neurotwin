@@ -4,6 +4,11 @@ All notable changes, newest first. Versions follow `0.x` while NeuroTwin is a re
 
 ## Unreleased
 
+### Added
+- xAI Grok as a writing provider (`XAI_API_KEY`, `XAI_MODEL`) for the assistant, drafts and agents, chosen with
+  `NEUROTWIN_AI_PROVIDER` or `NEUROTWIN_AGENTS_WRITER`. Meta stays the independent checker. Gemini stays available.
+  Screens name the writer in use; earlier results keep the provider that made them.
+
 ### Removed
 - The voice features. The assistant is typed only: the voice companion panel, voice typing (microphone) in Ask, Tell
   my clinician and family messages, and "Read aloud" are gone, with `/api/voice/status`, `/api/voice/transcribe`,

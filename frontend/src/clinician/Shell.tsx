@@ -41,7 +41,7 @@ function StatusFooter({ onDetails }: { onDetails: () => void }) {
     window.addEventListener("focus", load);
     return () => { live = false; window.clearInterval(id); window.removeEventListener("focus", load); };
   }, []);
-  const name: Record<string, string> = { gemini: "Gemini", meta: "Meta" };
+  const name: Record<string, string> = { gemini: "Gemini", grok: "Grok", meta: "Meta" };
   return (
     <footer className="shell-foot" aria-label={t("shFootLabel")}>
       {failed && !s ? <span>{t("shStatusFailed")}</span> : !s ? <span>{t("loading")}</span> : (

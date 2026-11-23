@@ -15,7 +15,8 @@ USERNAMES = {"demo-fatima": "fatima", "demo-yousef": "yousef", "demo-mariam": "m
 def _isolate_provider_state(monkeypatch):
     """Tests must not inherit real keys or another test's quota/health state."""
     from app import agent_runtime
-    for key in ("GEMINI_API_KEY", "META_API_KEY", "GEMINI_MODEL", "META_MODEL",
+    for key in ("GEMINI_API_KEY", "META_API_KEY", "GEMINI_MODEL", "META_MODEL", "XAI_API_KEY", "XAI_MODEL",
+                "NEUROTWIN_AI_PROVIDER", "NEUROTWIN_AGENTS_WRITER",
                 "NEUROTWIN_AGENTS_DAILY_CALLS"):
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setattr(agent_runtime, "_cap", {"day": None, "n": 0})

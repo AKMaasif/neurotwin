@@ -87,3 +87,21 @@ def test_mock_is_labelled_scripted_and_not_counted_as_outside(tmp_path):
     assert out["provider"] == "mock-gemini" and out["model"] == "scripted-demo"
     assert R.read(tmp_path, R.EGRESS)[0]["sent_outside"] is False and R.read(tmp_path, R.TRACE)[0]["scripted"] is True
     assert json.loads(out["text"])["statements"][0]["cites"]
+
+
+def test_writer_is_chosen_by_settings_and_the_checker_stays_meta():
+    assert R.writer({}) == "gemini"
+    assert R.writer({"NEUROTWIN_AI_PROVIDER": "grok"}) == "grok"
+    assert R.writer({"NEUROTWIN_AI_PROVIDER": "meta"}) == "gemini"                       # the checker never writes for the agents
+    assert R.writer({"NEUROTWIN_AGENTS_WRITER": "gemini", "NEUROTWIN_AI_PROVIDER": "grok"}) == "gemini"
+    env = {"NEUROTWIN_AI_PROVIDER": "grok", "XAI_API_KEY": "secret-key", "XAI_MODEL": "g", "META_API_KEY": "k2", "META_MODEL": "m"}
+    assert R.mode(env) == "live" and R.client_for("grok", env).provider == "grok"
+    s = R.status(env)
+    assert set(s["providers"]) == {"grok", "meta"} and all(p["available"] for p in s["providers"].values())
+    assert "secret-key" not in json.dumps(s)
+
+
+def test_a_missing_grok_key_is_unavailable_not_replaced(tmp_path):
+    env = {"NEUROTWIN_AI_PROVIDER": "grok", "GEMINI_API_KEY": "k", "GEMINI_MODEL": "g"}
+    out = R.invoke(tmp_path, "A3", R.writer(env), "sys", "Facts:", [], env=env)
+    assert out["status"] == "unavailable" and out["provider"] == "grok"

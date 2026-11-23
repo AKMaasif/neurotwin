@@ -344,7 +344,7 @@ def summarise(rdir: Path, ledger: dict, person: User, env=None, clients=None) ->
     verdict = V.Verdict(False, [V.Problem(-1, "bad_format", "The reply was not the requested JSON.")])
     while tries < 2:
         tries += 1
-        out = _call(rdir, "AH-summariser", "gemini", SUMMARISER_SYSTEM, user, ids, person, env, (clients or {}).get("gemini"), tries)
+        out = _call(rdir, "AH-summariser", R.writer(env), SUMMARISER_SYSTEM, user, ids, person, env, (clients or {}).get(R.writer(env)), tries)
         if out["status"] != "completed":
             break
         data = _json(out["text"])
@@ -402,7 +402,7 @@ def propose_charts(rdir: Path, ledger: dict, person: User, env=None, clients=Non
     ranges are dropped with a reason, and the wording of `why` goes through the same validator as any statement."""
     fl = [V.Fact.of(f["id"], f["text"]) for f in ledger["facts"]]
     listing, ids = R.serialise(ledger)
-    out = _call(rdir, "AH-charts", "gemini", CHARTS_SYSTEM, listing, ids, person, env, (clients or {}).get("gemini"))
+    out = _call(rdir, "AH-charts", R.writer(env), CHARTS_SYSTEM, listing, ids, person, env, (clients or {}).get(R.writer(env)))
     meta = _stage_meta(out, PROMPTS["charts"])
     if out["status"] != "completed":
         return {"status": out["status"], "reason": out["reason"], "charts": [], "dropped": [], **meta}
@@ -650,7 +650,8 @@ def roster(env: dict | None = None) -> dict:
                    "scripted": bool(info["provider"] and str(info["provider"]).startswith("mock")),
                    "verified": bool(c and c["ok"]), "last_check": c["at"] if c else None,
                    "last_check_ok": c["ok"] if c else None}
-    which = {"summarise": ("gemini", "summariser"), "challenge": ("meta", "challenger"), "check": ("meta", "checker"), "charts": ("gemini", "charts")}
+    w = R.writer(env)
+    which = {"summarise": (w, "summariser"), "challenge": ("meta", "challenger"), "check": ("meta", "checker"), "charts": (w, "charts")}
     stages = []
     for sid, kind, name in STAGES:
         row = {"id": sid, "kind": kind, "name": name, "note": KIND_NOTE[kind]}

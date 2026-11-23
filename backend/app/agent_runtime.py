@@ -25,7 +25,7 @@ from . import llm
 
 VERSION = "agent-runtime/0.1"
 EGRESS, TRACE = "egress.jsonl", "agents.jsonl"
-ROLES = {"gemini": "drafts and explains", "meta": "checks independently"}
+WRITERS, CHECKER = ("gemini", "grok"), "meta"   # the checker is never the writer: the check stays independent
 _cap = {"day": None, "n": 0}
 # The outcome of the most recent real (non-scripted) call per provider, kept in memory only: it is how the footer can say a
 # provider answered recently. Nothing here ever calls a provider; it only records calls a clinician's work already made.
@@ -51,7 +51,22 @@ def mode(env: dict | None = None) -> str:
     m = (env.get("NEUROTWIN_AGENTS_MODE") or "").strip().lower()
     if m in ("live", "mock", "off"):
         return m
-    return "live" if (env.get("GEMINI_API_KEY") or env.get("META_API_KEY")) else "off"
+    return "live" if any(env.get(k) for k in ("GEMINI_API_KEY", "META_API_KEY", "XAI_API_KEY")) else "off"
+
+
+def writer(env: dict | None = None) -> str:
+    """The provider that drafts: NEUROTWIN_AGENTS_WRITER, else the app's own provider when that can write, else Gemini.
+    It is chosen by settings only; one writer never silently stands in for another."""
+    env = os.environ if env is None else env
+    for k in ("NEUROTWIN_AGENTS_WRITER", "NEUROTWIN_AI_PROVIDER"):
+        v = (env.get(k) or "").strip().lower()
+        if v in WRITERS:
+            return v
+    return "gemini"
+
+
+def roles(env: dict | None = None) -> dict:
+    return {writer(env): "drafts and explains", CHECKER: "checks independently"}
 
 
 SCRIPTED_EXPLAIN_AR = [("تمت مقارنة فحصين للشخص نفسه. نص تجريبي مبرمج.", "F-interval"), ("لم تُقدَّر بعدُ درجة عدم اليقين في القياسات. نص تجريبي مبرمج.", "F-uncertainty")]
@@ -138,20 +153,23 @@ class MockClient:
 
 
 def client_for(provider: str, env: dict | None = None):
-    """The client for 'gemini' or 'meta' under the current mode, or None when it is not available."""
+    """The client for 'gemini', 'grok' or 'meta' under the current mode, or None when it is not available."""
     env = os.environ if env is None else env
     m = mode(env)
     if m == "off":
         return None
     if m == "mock":
         return MockClient(provider)
-    key = {"gemini": "GEMINI_API_KEY", "meta": "META_API_KEY"}[provider]
+    prefix = {"gemini": "GEMINI", "meta": "META", "grok": "XAI"}[provider]
+    key = f"{prefix}_API_KEY"
     if not env.get(key):
         return None
-    pick = f"AGENTS_{provider.upper()}_MODEL"
-    model = env.get(pick) or env.get(f"{provider.upper()}_MODEL")
+    pick = f"AGENTS_{prefix}_MODEL"
+    model = env.get(pick) or env.get(f"{prefix}_MODEL")
     if provider == "gemini":
         c = llm.GeminiClient(env[key], model)
+    elif provider == "grok":
+        c = llm.GrokClient(env[key], model)
     else:
         c = llm.MetaClient(env[key], model, env.get("META_API_BASE_URL"))
     return c if c.model else None
@@ -161,9 +179,9 @@ def status(env: dict | None = None) -> dict:
     """Names and booleans only, never a key."""
     env = os.environ if env is None else env
     out = {"mode": mode(env), "version": VERSION, "daily_limit": daily_limit(env), "send_images": env.get("NEUROTWIN_AGENTS_SEND_IMAGES") == "1", "providers": {}}
-    for p in ROLES:
+    for p, role in roles(env).items():
         c = client_for(p, env)
-        out["providers"][p] = {"role": ROLES[p], "available": c is not None, "provider": c.provider if c else None, "model": c.model if c else None}
+        out["providers"][p] = {"role": role, "available": c is not None, "provider": c.provider if c else None, "model": c.model if c else None}
     return out
 
 

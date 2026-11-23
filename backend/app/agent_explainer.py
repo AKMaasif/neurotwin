@@ -1,7 +1,7 @@
 """A3 Evidence Explainer, A4 Cross-Checker and A8 Report QA for Agent Analysis (English, and Arabic with a fixed glossary and a back-translation check).
 
 Flow, all on a finished run and only after a clinician asks for it:
-  ledger (rules) -> A3 drafts statements that cite fact ids (Gemini) -> claim checker (validator.py, rules)
+  ledger (rules) -> A3 drafts statements that cite fact ids (the writer) -> claim checker (validator.py, rules)
   -> A4 independently judges each statement against the facts it cites (Meta) -> A8 gate (rules) -> stored in ai.json.
 
 Nothing here approves anything. The result is an AI draft for clinician review and says so. A model never touches the
@@ -132,7 +132,7 @@ def explain(run: dict, run_dir: Path, language: str = "en", a3_client=None, a4_c
     user, attempt, statements, verdict, out = listing, 0, None, V.Verdict(False, [V.Problem(-1, "bad_format", "The reply was not the requested JSON.")]), None
     while attempt < MAX_ATTEMPTS:
         attempt += 1
-        out = R.invoke(run_dir, "A3", "gemini", system, user, ids, attempt=attempt, client=a3_client, env=env)
+        out = R.invoke(run_dir, "A3", R.writer(env), system, user, ids, attempt=attempt, client=a3_client, env=env)
         if out["status"] != "completed":
             break
         statements = parse_statements(out["text"])

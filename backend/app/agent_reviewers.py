@@ -1,4 +1,4 @@
-"""A1 Quality Reviewer, A2 Findings Challenger and A5 Ask-the-Evidence (all Gemini drafts; rules decide what is kept).
+"""A1 Quality Reviewer, A2 Findings Challenger and A5 Ask-the-Evidence (all drafts by the writing model; rules decide what is kept).
 
 A1 gives a verdict on whether the pair is fit to compare. A rule gate computes the lowest acceptable caution from the run record; the model
 cannot be more permissive than the gate, and a verdict that is overridden is recorded as such.
@@ -134,7 +134,7 @@ def _draft(run_dir, agent, system, user, ids, facts, parse, a_client, env, node,
     base = user
     while attempt < 2:
         attempt += 1
-        out = R.invoke(run_dir, agent, "gemini", system, user, ids, attempt=attempt, client=a_client, env=env)
+        out = R.invoke(run_dir, agent, R.writer(env), system, user, ids, attempt=attempt, client=a_client, env=env)
         if out["status"] != "completed":
             break
         parsed = parse(_json(out["text"]))
@@ -258,7 +258,7 @@ def ask(run: dict, run_dir: Path, question: str, who: str = "", a5_client=None, 
     if not ledger["complete"]:
         raise ValueError("The run has no measurements to ask about.")
     AC.log(run_dir, "ask_evidence", "running", "Choosing tools to look the answer up.", tool="A5 Ask-the-Evidence")
-    out = R.invoke(run_dir, "A5-tools", "gemini", A5_PICK, f"Question: {q}", [], client=a5_client, env=env)
+    out = R.invoke(run_dir, "A5-tools", R.writer(env), A5_PICK, f"Question: {q}", [], client=a5_client, env=env)
     if out["status"] != "completed":
         AC.log(run_dir, "ask_evidence", out["status"], out["reason"] or "No answer.", tool="A5 Ask-the-Evidence")
         return done(out["status"], out["reason"] or "", provider=out["provider"], model=out["model"])
@@ -276,7 +276,7 @@ def ask(run: dict, run_dir: Path, question: str, who: str = "", a5_client=None, 
         return done("no_evidence", "This run does not contain that.", provider=out["provider"], model=out["model"])
     facts = [V.Fact.of(f["id"], f["text"]) for f in results]
     body = "Tool results:\n" + "\n".join(f"{f['id']}: {f['text']}" for f in results) + f"\n\nQuestion: {q}"
-    ans = R.invoke(run_dir, "A5", "gemini", A5_ANSWER, body, [f["id"] for f in results], client=a5_client, env=env)
+    ans = R.invoke(run_dir, "A5", R.writer(env), A5_ANSWER, body, [f["id"] for f in results], client=a5_client, env=env)
     if ans["status"] != "completed":
         AC.log(run_dir, "ask_evidence", ans["status"], ans["reason"] or "No answer.", tool="A5 Ask-the-Evidence")
         return done(ans["status"], ans["reason"] or "", provider=ans["provider"], model=ans["model"])

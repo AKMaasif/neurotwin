@@ -18,7 +18,7 @@ from app import config  # noqa: E402,F401
 def main() -> int:
     found = llm.clients()
     if not found:
-        print("No keys found. Copy .env.example to .env in the backend folder and add GEMINI_API_KEY or META_API_KEY.")
+        print("No keys found. Copy .env.example to .env in the backend folder and add XAI_API_KEY, GEMINI_API_KEY or META_API_KEY.")
         return 1
     failed = False
     for name, client in found.items():

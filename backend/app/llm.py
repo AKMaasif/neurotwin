@@ -1,9 +1,10 @@
 """Model providers behind one small interface.
 
-The rest of the app asks for text and gets text back; it never knows which provider answered. Two providers:
+The rest of the app asks for text and gets text back; it never knows which provider answered. Three providers:
 
 - Gemini      Google's Generative Language API. Key in the `x-goog-api-key` header, never in the URL.
 - Meta        Meta's Model API, OpenAI-style chat completions with a Bearer key.
+- Grok        xAI's API, OpenAI-style chat completions with a Bearer key.
 
 Rules this module keeps:
 - Keys come from the environment (or backend/.env) and never leave the server. They are not logged, and an error
@@ -24,6 +25,7 @@ import httpx
 
 GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
 META_BASE_DEFAULT = "https://api.meta.ai/v1"
+GROK_BASE_DEFAULT = "https://api.x.ai/v1"
 TIMEOUT_S = 120.0
 
 
@@ -82,11 +84,13 @@ class GeminiClient:
 
 class MetaClient:
     provider = "meta"
+    label = "Meta"
+    base_default = META_BASE_DEFAULT
 
     def __init__(self, api_key: str, model: str | None, base_url: str | None = None,
                  transport: httpx.BaseTransport | None = None):
         self.model = model or ""
-        self._http = httpx.Client(base_url=(base_url or META_BASE_DEFAULT).rstrip("/"), timeout=TIMEOUT_S,
+        self._http = httpx.Client(base_url=(base_url or self.base_default).rstrip("/"), timeout=TIMEOUT_S,
                                   transport=transport, headers={"Authorization": f"Bearer {api_key}"})
 
     def list_models(self) -> list[str]:
@@ -95,7 +99,7 @@ class MetaClient:
             r.raise_for_status()
             return sorted(m["id"] for m in r.json().get("data", []))
         except (httpx.HTTPError, KeyError, ValueError) as e:
-            _raise("Meta", e)
+            _raise(self.label, e)
 
     def complete(self, system: str, user: str, json_mode: bool = False, images: list[bytes] | None = None, timeout: float | None = None,
                  temperature: float = 0.2) -> Reply:
@@ -111,7 +115,14 @@ class MetaClient:
             r.raise_for_status()
             return Reply(r.json()["choices"][0]["message"]["content"] or "", self.provider, self.model)
         except (httpx.HTTPError, KeyError, IndexError, ValueError) as e:
-            _raise("Meta", e)
+            _raise(self.label, e)
+
+
+class GrokClient(MetaClient):
+    """xAI's API takes the same OpenAI-style requests; only the address, the key and the name differ."""
+    provider = "grok"
+    label = "Grok"
+    base_default = GROK_BASE_DEFAULT
 
 
 def clients(env: dict | None = None) -> dict:
@@ -122,6 +133,8 @@ def clients(env: dict | None = None) -> dict:
         out["gemini"] = GeminiClient(env["GEMINI_API_KEY"], env.get("GEMINI_MODEL"))
     if env.get("META_API_KEY"):
         out["meta"] = MetaClient(env["META_API_KEY"], env.get("META_MODEL"), env.get("META_API_BASE_URL"))
+    if env.get("XAI_API_KEY"):
+        out["grok"] = GrokClient(env["XAI_API_KEY"], env.get("XAI_MODEL"))
     return out
 
 
@@ -139,4 +152,4 @@ def status(env: dict | None = None) -> dict:
     active = get_client(env)
     return {"provider": active.provider if active else None, "model": active.model if active else None,
             "configured": active is not None,
-            "keys_present": {"gemini": bool(env.get("GEMINI_API_KEY")), "meta": bool(env.get("META_API_KEY"))}}
+            "keys_present": {"gemini": bool(env.get("GEMINI_API_KEY")), "meta": bool(env.get("META_API_KEY")), "grok": bool(env.get("XAI_API_KEY"))}}
