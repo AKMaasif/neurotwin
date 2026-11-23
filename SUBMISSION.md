@@ -105,7 +105,7 @@ specificity figures**, and no claim of clinical benefit is made.
   exists; the route (through the facility's own health record, not directly to Malaffi) is designed in
   [INTEGRATION_DESIGN.md](docs/INTEGRATION_DESIGN.md) and must be confirmed with DoH and Malaffi. Activity codes are
   NeuroTwin's own; no LOINC mapping yet.
-- AI answers in the assistant use an outside model (Gemini) for demonstration accounts that agreed to it; real
+- AI answers in the assistant use an outside model (Grok or Gemini, set on the server) for demonstration accounts that agreed to it; real
   accounts' words are never sent. Answers pass fixed safety rules (no doses, medicine changes, diagnoses or contact
   details) but can still be wrong, and say so on screen. Picture generation is not built.
 - Arabic wording has not yet had a native Gulf clinical reviewer.

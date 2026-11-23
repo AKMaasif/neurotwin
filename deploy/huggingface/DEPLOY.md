@@ -15,7 +15,7 @@ next visit. Its disk is not kept: the demo database is rebuilt on every restart,
 
 - **OASIS terms.** The Space contains de-identified OASIS-1 and OASIS-2 scans (about 600 MB), and files in a public
   Space can be downloaded. Confirm that your OASIS permission allows this public hosting.
-- **Your API quota.** Anyone with the link can use the live AI features, charged to your Gemini and Meta keys.
+- **Your API quota.** Anyone with the link can use the live AI features, charged to your Grok (or Gemini) and Meta keys.
   Keep the `*_DAILY_CALLS` limits low (for example 50).
 
 ## Steps
@@ -24,9 +24,9 @@ next visit. Its disk is not kept: the demo database is rebuilt on every restart,
    with the **Blank** template, hardware **ZeroGPU (free)**, the only free choice for Gradio, visibility **Public**.
 
 2. **Add your settings.** In the Space: *Settings → Variables and secrets*.
-   - **Secrets** (hidden): `GEMINI_API_KEY`, `META_API_KEY`.
+   - **Secrets** (hidden): `XAI_API_KEY` (or `GEMINI_API_KEY`), `META_API_KEY`.
    - **Variables**, with the values from `backend/.env`: `NEUROTWIN_AI_PROVIDER`, `NEUROTWIN_AGENTS_MODE`,
-     `GEMINI_MODEL`, `META_API_BASE_URL`, `META_MODEL`, `NEUROTWIN_AGENTS_SEND_IMAGES`,
+     `XAI_MODEL` (or `GEMINI_MODEL`), `META_API_BASE_URL`, `META_MODEL`, `NEUROTWIN_AGENTS_SEND_IMAGES`,
      `NEUROTWIN_AI_DAILY_CALLS`, `NEUROTWIN_AGENTS_DAILY_CALLS`, `NEUROTWIN_NLU_DAILY_CALLS`.
    - Already set by `app.py`, so you don't add them: imaging for `demo-dr-layla`, synthetic history, secure cookies.
 

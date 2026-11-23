@@ -7,7 +7,7 @@ Conditions (all checked when drafting is offered, again at release, and again ev
   4. the family member holds the participant's `participation_updates` grant.
 Withdrawing consent or the grant, or reopening the review, hides the summary at once; the release record is kept as history.
 
-The text is drafted by a model (Gemini) from a small set of facts: the interval, the uncertainty statement and at most two facts the clinician chose.
+The text is drafted by the writing model from a small set of facts: the interval, the uncertainty statement and at most two facts the clinician chose.
 Rules refuse numbers that are not in those facts, technical jargon, condition names, "normal", reassurance and alarm; the draft must say that uncertainty is not
 estimated and must invite the family to talk with the clinician. English, or Arabic (fixed glossary, back-translation parity, and a clinician who reads Arabic must confirm at release); Arabic needs a native clinical reader before it is relied on.
 """
@@ -154,7 +154,7 @@ def draft(run: dict, run_dir: Path, selected: list[str], client=None, env: dict 
     user, n, out, sts, verdict = listing, 0, None, None, V.Verdict(False, [V.Problem(-1, "bad_format", "The reply was not the requested JSON.")])
     while n < 2:
         n += 1
-        out = R.invoke(run_dir, "A7", "gemini", system, user, ids, attempt=n, client=client, env=env)
+        out = R.invoke(run_dir, "A7", R.writer(env), system, user, ids, attempt=n, client=client, env=env)
         if out["status"] != "completed":
             break
         d = _json(out["text"])

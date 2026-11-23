@@ -1,7 +1,7 @@
 """A9 Visual Comparison: a model looks at the same slices of both scans and points at visible differences; rules check every pointer.
 
 Flow (on request, only with NEUROTWIN_AGENTS_SEND_IMAGES=1 unless the mock is on):
-  rules choose key slices -> A9 (Gemini, sees images + region facts) lists observations with a position and a measured region
+  rules choose key slices -> A9 (the writer, sees images + region facts) lists observations with a position and a measured region
   -> rules check each observation (known slice, position inside the picture and on tissue, no forbidden wording or numbers, cites a measured region)
   -> A9 cross-check (Meta, sees the same images) marks each as agreed / disputed / not visible -> stored in visual.json.
 
@@ -111,7 +111,7 @@ def observe(run: dict, run_dir: Path, a9_client=None, b_client=None, env: dict |
     rec = {"version": VERSION, "run_id": run["run_id"], "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "slices": slices,
            "review_state": "ai_draft_not_reviewed", "note": "Model impressions of two images. Unvalidated, not measured, not a finding, not a diagnosis. A clinician reviews."}
     AC.log(run_dir, "visual_comparison", "running", f"Looking at {len(slices)} slice positions of both scans.", tool="A9 Visual Comparison")
-    out = R.invoke(run_dir, "A9", "gemini", A9_SYSTEM, user, ids, client=a9_client, env=env, images=images)
+    out = R.invoke(run_dir, "A9", R.writer(env), A9_SYSTEM, user, ids, client=a9_client, env=env, images=images)
     if out["status"] != "completed":
         rec.update(observer={"status": out["status"], "reason": out["reason"], "provider": out["provider"], "model": out["model"]}, observations=[], cross_check={"status": "skipped", "items": []})
         AC.log(run_dir, "visual_comparison", out["status"], out["reason"] or "No result.", tool="A9 Visual Comparison")

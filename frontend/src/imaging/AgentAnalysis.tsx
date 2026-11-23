@@ -49,6 +49,10 @@ export default function AgentAnalysis() {
     setShape(sh); if (sh) setIndex(i => Math.min(i, sh[axis] - 1));
   }, [run?.run_id, run?.alignment !== null]);
 
+  // the provider that drafts on this server, named so the person always knows where text or images would go
+  const writerId = Object.keys(aiStatus?.providers ?? {}).find(k => k !== "meta") ?? "";
+  const writer = ({ gemini: "Gemini", grok: "Grok" } as Record<string, string>)[writerId] ?? "the writing model set on this server";
+
   const start = async (retry?: boolean) => {
     setError(""); stopReveal(); setRecorded(false);
     try {
@@ -241,7 +245,7 @@ export default function AgentAnalysis() {
         <ul>{items.map(i => <li key={i}>{i}</li>)}</ul></div>)}</section>}
 
     {run?.report && shown(4) && <section className="ag-ai" id="ag-ai" aria-label="AI explanation draft"><h2>AI explanation <small>draft, not reviewed</small></h2>
-      <p className="cmp-note-plain">Optional. A language model (Gemini) writes an explanation from the numbered facts above; a rule-based checker refuses added numbers or claims, and a second model (Meta) checks each sentence. It is a draft for the clinician: not a diagnosis, not a prediction. English, or Arabic with fixed draft terms and a back-translation check; Arabic has not been reviewed by a native clinical reader.</p>
+      <p className="cmp-note-plain">Optional. A language model ({writer}) writes an explanation from the numbered facts above; a rule-based checker refuses added numbers or claims, and a second model (Meta) checks each sentence. It is a draft for the clinician: not a diagnosis, not a prediction. English, or Arabic with fixed draft terms and a back-translation check; Arabic has not been reviewed by a native clinical reader.</p>
       {!ai && <div className="ag-actions"><label>Language<select value={aiLang} onChange={e => setAiLang(e.target.value as "en" | "ar")}><option value="en">English</option><option value="ar">العربية (Arabic)</option></select></label><button onClick={explain} disabled={aiBusy || aiStatus?.mode === "off"} title={aiStatus?.mode === "off" ? "No model provider is configured on this server." : ""}>{aiBusy ? "Drafting and checking…" : "Draft AI explanation"}</button>
         {aiStatus?.mode === "off" && <span className="cmp-note-plain">No model provider is configured on this server, so this agent cannot run.</span>}</div>}
       {ai && <div>
@@ -258,10 +262,10 @@ export default function AgentAnalysis() {
     </section>}
 
     {run?.report && shown(4) && <section className="ag-ai ag-vis" id="ag-vis" aria-label="AI visual comparison"><h2>AI visual comparison <small>impressions, not measured</small></h2>
-      <p className="cmp-note-plain">Optional. A model (Gemini) looks at the same slices of both scans and points at places where the pictures seem to differ; a second model (Meta) reads them too, and rules refuse pointers on empty background or with forbidden wording. A pointer is drawn only if it matches one of the largest measured differences. These are unvalidated impressions, not findings, not a diagnosis.</p>
+      <p className="cmp-note-plain">Optional. A model ({writer}) looks at the same slices of both scans and points at places where the pictures seem to differ; a second model (Meta) reads them too, and rules refuse pointers on empty background or with forbidden wording. A pointer is drawn only if it matches one of the largest measured differences. These are unvalidated impressions, not findings, not a diagnosis.</p>
       {!vis && <div className="ag-actions">
-        {visInfo?.mode !== "mock" && <label><input type="checkbox" checked={visOk} onChange={e => setVisOk(e.target.checked)} />I agree that key slices (images) of both scans are sent to Gemini and Meta.</label>}
-        <button onClick={look} disabled={visBusy || visInfo?.mode === "off" || (visInfo?.mode !== "mock" && (!visOk || !visInfo?.images_allowed))}>{visBusy ? "Looking and checking…" : "Compare the scans with AI"}</button>
+        {visInfo?.mode !== "mock" && <label><input type="checkbox" checked={visOk} onChange={e => setVisOk(e.target.checked)} />I agree that key slices (images) of both scans are sent to {writer} and Meta.</label>}
+        <button onClick={look} disabled={visBusy || visInfo?.mode === "off" || (visInfo?.mode !== "mock" && (!writerId || !visOk || !visInfo?.images_allowed))}>{visBusy ? "Looking and checking…" : "Compare the scans with AI"}</button>
         {visInfo?.mode === "off" && <span className="cmp-note-plain">No model provider is configured on this server.</span>}
         {visInfo && visInfo.mode === "live" && !visInfo.images_allowed && <span className="cmp-note-plain">Sending images is switched off on this server (NEUROTWIN_AGENTS_SEND_IMAGES).</span>}</div>}
       {vis && <div>
@@ -284,7 +288,7 @@ export default function AgentAnalysis() {
     </section>}
 
     {run?.report && shown(4) && <section className="ag-ai ag-rev" id="ag-rev" aria-label="AI review and questions"><h2>AI review and questions <small>drafts, not reviewed</small></h2>
-      <p className="cmp-note-plain">Optional. A quality reviewer says whether the pair is fit to compare (a fixed rule sets the least cautious answer it may give); a challenger lists reasons a difference may be noise and questions to ask. You can also ask a question: it is answered only from numbered facts of this run, and questions about diagnosis, prediction, normal ranges or treatment are refused. Drafts by Gemini; not a diagnosis.</p>
+      <p className="cmp-note-plain">Optional. A quality reviewer says whether the pair is fit to compare (a fixed rule sets the least cautious answer it may give); a challenger lists reasons a difference may be noise and questions to ask. You can also ask a question: it is answered only from numbered facts of this run, and questions about diagnosis, prediction, normal ranges or treatment are refused. New drafts by {writer}; not a diagnosis.</p>
       {!rev && <div className="ag-actions"><button onClick={runReview} disabled={revBusy || revMode === "off"}>{revBusy ? "Reviewing…" : "Run the AI review"}</button>
         {revMode === "off" && <span className="cmp-note-plain">No model provider is configured on this server.</span>}</div>}
       {rev && <div>
@@ -324,7 +328,7 @@ export default function AgentAnalysis() {
     </section>}
 
     {run?.report && shown(4) && fam && <section className="ag-ai ag-fam" id="ag-fam" aria-label="Family summary"><h2>Family summary <small>only after approval and consent</small></h2>
-      <p className="cmp-note-plain">Optional. A model (Gemini) drafts a short, plain summary for one authorised family member. You read it, then release it. It is shown to the family member only while you have approved the review, the participant has agreed to share a scan-comparison summary, and the participant authorised that family member; if any of these ends, it disappears for them. English or Arabic; an Arabic summary is released only after you confirm that you have read it in Arabic.</p>
+      <p className="cmp-note-plain">Optional. A model ({writer}) drafts a short, plain summary for one authorised family member. You read it, then release it. It is shown to the family member only while you have approved the review, the participant has agreed to share a scan-comparison summary, and the participant authorised that family member; if any of these ends, it disappears for them. English or Arabic; an Arabic summary is released only after you confirm that you have read it in Arabic.</p>
       <ol className="ag-fam-checks" aria-label="Conditions">{fam.preconditions.map(c => <li key={c.name} className={c.ok ? "ok" : "no"}><strong>{c.ok ? "Met" : "Not met"}</strong> {c.name}: {c.detail}</li>)}</ol>
       {!fam.link && <div className="ag-actions"><label>Participant this run concerns<select value={famPart} onChange={e => setFamPart(e.target.value)}><option value="">Choose…</option>{fam.participants.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
         <button disabled={famBusy || !famPart} onClick={() => famDo(() => api.agentFamilyLink(run.run_id, famPart))}>Link this run</button>

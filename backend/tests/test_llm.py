@@ -59,6 +59,7 @@ def test_meta_lists_models():
 @pytest.mark.parametrize("make", [
     lambda t: llm.GeminiClient(KEY, "m", transport=t),
     lambda t: llm.MetaClient(KEY, "m", transport=t),
+    lambda t: llm.GrokClient(KEY, "m", transport=t),
 ])
 def test_errors_never_carry_the_key_or_the_reply(make):
     def refuse(request):
@@ -91,7 +92,7 @@ def test_not_configured_means_none_not_a_fake():
 
 def test_status_shows_names_and_booleans_only():
     s = llm.status({"NEUROTWIN_AI_PROVIDER": "meta", "META_API_KEY": KEY, "META_MODEL": "m"})
-    assert s == {"provider": "meta", "model": "m", "configured": True, "keys_present": {"gemini": False, "meta": True}}
+    assert s == {"provider": "meta", "model": "m", "configured": True, "keys_present": {"gemini": False, "meta": True, "grok": False}}
     assert KEY not in str(s)
 
 
@@ -114,3 +115,24 @@ def test_status_endpoint_needs_sign_in_and_hides_keys(client, login, monkeypatch
     monkeypatch.setenv("GEMINI_MODEL", "m")
     r = client.get("/api/ai/status", headers=login("demo-dr-layla"))
     assert r.json()["configured"] is True and KEY not in r.text
+
+
+def test_grok_request_shape_and_selection():
+    seen = {}
+
+    def handler(request):
+        seen["url"], seen["auth"], seen["body"] = str(request.url), request.headers["authorization"], json.loads(request.content)
+        return httpx.Response(200, json={"choices": [{"message": {"content": "hi"}}]})
+
+    r = llm.GrokClient(KEY, "grok-x", transport=transport(handler)).complete("s", "u", json_mode=True, images=[b"png"])
+    assert (r.text, r.provider, r.model) == ("hi", "grok", "grok-x")
+    assert seen["url"] == "https://api.x.ai/v1/chat/completions" and seen["auth"] == f"Bearer {KEY}"
+    assert seen["body"]["response_format"] == {"type": "json_object"}
+    assert seen["body"]["messages"][1]["content"][1]["image_url"]["url"].startswith("data:image/png;base64,")
+    assert llm.get_client({"NEUROTWIN_AI_PROVIDER": "grok", "XAI_API_KEY": KEY}) is None                     # no model
+    assert llm.get_client({"NEUROTWIN_AI_PROVIDER": "grok", "XAI_API_KEY": KEY, "XAI_MODEL": "m"}).provider == "grok"
+
+
+def test_grok_errors_name_grok():
+    with pytest.raises(llm.ModelError, match="Grok answered HTTP 402"):
+        llm.GrokClient(KEY, "m", transport=transport(lambda r: httpx.Response(402))).complete("s", "u")

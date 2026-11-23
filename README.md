@@ -74,7 +74,7 @@ outcome rather than being lost.
 | Part | How it works |
 |---|---|
 | Change engine, quality rules, emergency words | **Deterministic, no model.** The same input always gives the same answer |
-| Clinician summary drafts | A language model (Google Gemini or Meta's Model API) writes from stored facts only. A validator refuses invented numbers, diagnoses and advice, and the clinician approves, edits or rejects |
+| Clinician summary drafts | A language model (xAI Grok, Google Gemini or Meta's Model API, set on the server) writes from stored facts only. A validator refuses invented numbers, diagnoses and advice, and the clinician approves, edits or rejects |
 | Assistant answers beyond fixed commands | Only for **demonstration accounts that agreed to it**. Answers pass fixed safety rules (no doses, medicine changes, diagnoses or contact details). Real accounts' words are never sent to an outside model |
 | Brain Analytics agent report | A deterministic template over imported measurements. No language model is used in it |
 
@@ -495,8 +495,8 @@ Model keys, daily call caps and the imaging settings are listed in `backend/.env
 <details>
 <summary><b>Model providers (optional)</b></summary>
 
-NeuroTwin runs fully without any AI key. To use the model-assisted features, add keys for Google Gemini, Meta's
-Model API, or both:
+NeuroTwin runs fully without any AI key. To use the model-assisted features, add keys for xAI Grok, Google
+Gemini or Meta's Model API. In the agents, Grok or Gemini writes and Meta checks independently:
 
 ```powershell
 cd D:\NeuroTwin\backend
@@ -505,7 +505,7 @@ copy .env.example .env      # then open .env and paste your keys
 ```
 
 The script lists the models each key can use and never prints a key. Put the provider and model you choose in
-`.env` (`NEUROTWIN_AI_PROVIDER`, `GEMINI_MODEL` or `META_MODEL`), then check a real draft end to end:
+`.env` (`NEUROTWIN_AI_PROVIDER`, `XAI_MODEL`, `GEMINI_MODEL` or `META_MODEL`), then check a real draft end to end:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\try_draft.py --all
