@@ -215,3 +215,16 @@ def test_the_urgent_question_is_audited_without_words(client, app):
         rows = [a.action for a in db.query(AuditEvent).filter(AuditEvent.action.like("assistant.%"))]
         text = str([(a.action, a.target) for a in db.query(AuditEvent).all()])
     assert "assistant.ask_urgent.attempted" in rows and "assistant.urgent_declined" in rows and "secret" not in text
+
+
+@pytest.mark.parametrize("text", ["I feel very lonely today", "I'm so sad", "I am feeling down today", "أشعر بالوحدة اليوم", "أنا حزينة"])
+def test_a_hard_feeling_is_met_with_the_urgent_question_not_a_screen(client, text):
+    r = say(client, sign_in(client, "demo-fatima"), text)
+    assert r["tool"] == "ask_urgent" and not r.get("navigate")
+
+
+@pytest.mark.parametrize("text,screen", [("today", "reminders"), ("open today", "reminders"), ("اليوم", "reminders"), ("open reminders", "reminders"), ("The weather is hot today", None), ("الجو حار اليوم", None)])
+def test_the_word_today_alone_opens_the_screen_but_not_inside_other_sentences(text, screen):
+    from app import assistant as AS
+    p = AS.parse(text, [])
+    assert (p.get("arguments") or {}).get("screen") in ((screen, "today") if screen else (None,))
