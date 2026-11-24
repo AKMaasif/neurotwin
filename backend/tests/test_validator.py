@@ -1,6 +1,6 @@
 import pytest
 
-from app.validator import Fact, Statement, check, numbers_in
+from app.validator import Fact, Statement, _banned, check, numbers_in
 
 FACTS = [
     Fact.of("E11", "Reaction time (median) 640 ms on 14 Oct 2026, doubtful: the session was interrupted"),
@@ -76,4 +76,10 @@ def test_verdict_lists_every_problem_with_its_statement():
                Statement("Probably dementia, 700 ms.", ["E11"])], FACTS)
     assert not v.ok and {p.index for p in v.problems} == {1}
     assert codes(v) == {"unsupported_number", "clinical_claim"}
-    assert v.as_dict()["version"] == "output-validator/0.1"
+    assert v.as_dict()["version"] == "output-validator/0.2"
+
+
+def test_arabic_uncertain_is_not_read_as_confirmed():
+    for text, ok in [("لم تُقدَّر درجة عدم اليقين لذا كل فرق غير مؤكد.", True), ("القياسات غير مؤكدة.", True), ("هذا الفرق مؤكد.", False),
+                     ("هذا الفرق ليس غير مؤكد.", False), ("فرق غير مؤكد وفرق آخر مؤكد.", False)]:
+        assert (not any(c == "significance_claim" for c, _ in _banned(text))) is ok, text

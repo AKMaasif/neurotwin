@@ -141,3 +141,9 @@ def test_scripted_cross_check_is_never_reported_as_a_real_check(rd, monkeypatch)
     rec = X.explain(run(), rd)
     chk = next(c for c in rec["qa"]["checks"] if c["name"] == "Independent cross-check")
     assert chk["warning"] and "no real cross-check" in chk["detail"] and rec["cross_check"]["scripted"] is True
+
+
+def test_a_ranking_is_refused_in_both_languages():
+    V = X.V
+    for text, ok in [("The largest difference is in one structure.", False), ("الفرق الأكبر هو زيادة الحجم.", False), ("Left side: difference 5 mm3.", True)]:
+        assert (not X.check_ranking([V.Statement(text, ["F-R4"])])) is ok

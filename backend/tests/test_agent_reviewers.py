@@ -167,3 +167,12 @@ def test_mock_mode_runs_all_three_scripted(rd, monkeypatch):
     assert rec["quality"]["scripted"] and rec["challenge"]["scripted"] and rec["challenge"]["status"] == "completed"
     a = RV.ask(run(), rd, "How long between the scans?")
     assert a["status"] == "answered" and a["scripted"] is True
+
+
+def test_a_number_may_not_be_given_to_the_other_side():
+    V = RV.V
+    facts = [V.Fact.of("F-R18", "left amygdala: 10 mm3"), V.Fact.of("F-R54", "right amygdala: 20 mm3")]
+    for text, cites, ok in [("Left amygdala: 20 mm3.", ["F-R54"], False), ("Left amygdala: 20 mm3.", ["F-R18", "F-R54"], False), ("Was the right amygdala checked?", ["F-R18", "F-R54"], True),
+                            ("Right amygdala: 20 mm3.", ["F-R54"], True), ("The left amygdala and the right amygdala differ.", ["F-R18", "F-R54"], True),
+                            ("Left amygdala 20 mm3, a left-right gap.", ["F-R54"], False)]:
+        assert (not RV.check_sides([V.Statement(text, cites)], facts)) is ok, text

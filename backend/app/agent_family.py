@@ -52,7 +52,7 @@ SYSTEM = """Role: FAMILY_SUMMARY. You write a short, gentle summary for a family
 Write in plain, kind language that a person with no medical training can follow.
 
 Rules:
-- Use only the facts you are given. Every statement lists the ids of the facts it uses in "cites". Copy numbers exactly; do not calculate any.
+- Use only the facts you are given. Every statement lists the ids of the facts it uses in "cites". Copy numbers exactly; do not calculate or round any, and do not spell them out as words (17.7 months stays "17.7 months"). Never write a fact id in the text; ids go only in "cites".
 - Say that two scans taken some time apart were compared, in one or two simple sentences about what the chosen facts say.
 - You must say that how reliable the measurements are is not known (cite F-uncertainty), and that the clinician will talk it through with the family.
 - Do not name any diagnosis or condition. Do not predict. Do not call anything normal or abnormal. Do not reassure and do not alarm.
