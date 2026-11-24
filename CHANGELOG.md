@@ -9,6 +9,15 @@ All notable changes, newest first. Versions follow `0.x` while NeuroTwin is a re
   `NEUROTWIN_AI_PROVIDER` or `NEUROTWIN_AGENTS_WRITER`. Meta stays the independent checker. Gemini stays available.
   Screens name the writer in use; earlier results keep the provider that made them.
 
+### Fixed
+- A clinician draft that calls an interrupted or abandoned session completed is refused (`drafts.check_sessions`).
+- The validator (0.2) no longer reads Arabic "غير مؤكد" (uncertain) as "مؤكد" (confirmed).
+- Drafting instructions: no fact ids in the text, no rounding, no rankings or limits that the cited facts do not state,
+  every value of a measure listed. Session counts are computed and given to the model as facts (N1, N2).
+  A scan explanation that ranks differences ("largest") is refused, since no fact ranks them.
+- A scan review that gives one side's volume while naming only the other side is refused (`agent_reviewers.check_sides`).
+- The Arabic back-translation check accepts a literal wording of the same structure ("brain stem" for "brain-stem").
+
 ### Removed
 - The voice features. The assistant is typed only: the voice companion panel, voice typing (microphone) in Ask, Tell
   my clinician and family messages, and "Read aloud" are gone, with `/api/voice/status`, `/api/voice/transcribe`,

@@ -144,3 +144,10 @@ def test_english_release_is_unchanged_by_the_arabic_flag(client, app, login, rd)
         FA.link(db, rd, dr, "demo-yousef")
         FA.draft(run(), rd, [], client=Fake(__import__("test_agent_family").GOOD))
         assert FA.release(db, rd, dr, "demo-mariam")["release"]["arabic_confirmed"] is None
+
+
+def test_parity_accepts_the_literal_wording_of_the_same_structure_only():
+    facts = [{"id": "F-R1", "text": "left cerebellum white matter: x"}, {"id": "F-R2", "text": "brain-stem: x"}]
+    for cite, en, ok in [("F-R1", "White matter in the cerebellum", True), ("F-R1", "Cerebral white matter", False),
+                         ("F-R1", "Cerebellar cortex", False), ("F-R2", "Brain stem", True), ("F-R2", "Thalamus", False)]:
+        assert G.parity([V.Statement("نص", [cite])], [en], facts)[0]["ok"] is ok, en

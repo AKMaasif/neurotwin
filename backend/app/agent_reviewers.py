@@ -26,6 +26,7 @@ OVERCLAIM = re.compile(r"\b(?:real|true|genuine|confirmed|proven|proves?|definit
 
 COMMON = """- Use only the facts you are given. Every statement lists the ids of the facts it uses in "cites".
 - Copy numbers exactly as they appear in the facts you cite. Do not calculate new numbers.
+- Never write a fact id in the text; ids go only in "cites".
 - Do not name any diagnosis or condition. Do not predict anything. Do not speak of risk, decline or symptoms.
 - Do not give advice or mention medication or treatment. Do not compare the person with other people, and do not call anything normal or abnormal.
 - Each statement is one or two sentences under 300 characters.
@@ -39,8 +40,9 @@ Return JSON only: {{"verdict": "proceed_with_caution", "statements": [{{"text": 
 A2_SYSTEM = f"""Role: FINDINGS_CHALLENGER. You argue against over-reading measured volume differences between two scans of one person.
 For the largest differences and for every review flag, say how the difference could come from measurement or processing rather than from the person (small structure, alignment, no uncertainty estimate, left-right disagreement), and what a reader should check.
 {COMMON}
-- Never say a change is real, true, confirmed or proven. Never suggest a cause or a condition. Do not invent a mechanism that the facts do not mention.
-- Give 3 to 6 reasons to doubt and 2 to 5 questions to ask. Questions end with a question mark.
+- Never say a change is real, true, confirmed or proven, and do not use those words about a change at all, not even to doubt it ("rather than a true change", "over real change"). Never suggest a cause or a condition. Do not invent a mechanism that the facts do not mention.
+- When you give a number for a structure, name its side exactly as its fact does, and cite only that fact for it. Write no numbers in questions, and never count structures or flags.
+- Give 3 to 6 reasons to doubt and 2 to 5 questions to ask, never more. Questions end with a question mark.
 Return JSON only: {{"doubts": [{{"text": "...", "cites": ["F-R4"]}}], "questions": [{{"text": "...?", "cites": ["F-uncertainty"]}}]}}"""
 
 TOOLS = {"get_region": "a region by name (for example 'right amygdala'): its volumes, rate and left-right pair", "get_interval": "time between the scans",
@@ -117,9 +119,28 @@ def _statements(rows) -> list[V.Statement] | None:
     return out
 
 
+def check_sides(sts: list[V.Statement], facts: list[V.Fact]) -> list[V.Problem]:
+    """A statement may not cite one side's volume while naming only the other side, e.g. "left amygdala" with the right amygdala's number.
+    Citing the other side as well is fine; only a number found in that side alone is refused. English wording only, and it cannot judge which of two named sides a number belongs to."""
+    other = {"left": "right", "right": "left"}
+    nums = {f.id: f.numbers for f in facts}
+    names = {f.id: m.groups() for f in facts if (m := re.match(r"(left|right) (.+?): ", f.text)) and re.match(r"F-R\d+$", f.id)}
+    probs = []
+    for i, s in enumerate(sts):
+        low = s.text.lower()
+        used = V.numbers_in(s.text)
+        for c in s.cites:
+            side, base = names.get(c, (None, ""))
+            if side and f"{other[side]} {base}".lower() in low and not re.search(rf"{side}", low.replace("left-right", "")) and (
+                    used & nums[c]) - set().union(*(nums[x] for x in s.cites if x in nums and x != c)):
+                probs.append(V.Problem(i, "wrong_side", f"Cites {c} ({side} {base}) but names only the {other[side]} side."))
+                break
+    return probs
+
+
 def _check(sts: list[V.Statement], facts: list[V.Fact], extra=None) -> V.Verdict:
     v = V.check(sts, facts)
-    probs = list(v.problems)
+    probs = list(v.problems) + check_sides(sts, facts)
     for i, s in enumerate(sts):
         if OVERCLAIM.search(s.text):
             probs.append(V.Problem(i, "overclaim", "It calls a change real or confirmed; a reviewer may only doubt or question."))

@@ -19,20 +19,23 @@ every paraphrase, and numbers written as words are not checked. How often the va
 not been measured yet (docs/STATUS.md).
 
 A blunt rule on purpose: the listed words are refused even inside a denial ("this is not a diagnosis"). Drafts state
-what was recorded; the app adds its own fixed notices around them.
+what was recorded; the app adds its own fixed notices around them. One exception: Arabic "غير مؤكد" is the ordinary word for "uncertain",
+so it is not read as "مؤكد" (confirmed), unless the statement also negates with a word such as "ليس".
 """
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
 
-VERSION = "output-validator/0.1"
+VERSION = "output-validator/0.2"
 MAX_STATEMENTS = 12
 MAX_CHARS = 400
 
 _DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹٫", "01234567890123456789.")
 _NUMBER = re.compile(r"\d+(?:\.\d+)?")
 _AR_MARKS = re.compile(r"[ً-ْٰـ]")
+_AR_UNCERTAIN = re.compile(r"(?<!\w)غير\s+(?:ال)?مؤكد(?:ة|ا)?(?!\w)")
+_AR_NEGATION = re.compile(r"ليس|لم يعد|لم تعد|لا يوجد|لا توجد")
 
 
 def numbers_in(text: str) -> set[str]:
@@ -114,6 +117,8 @@ RULES: dict[str, dict] = {
 def _banned(text: str) -> list[tuple[str, str]]:
     hits = []
     plain_ar = _AR_MARKS.sub("", text)
+    if not _AR_NEGATION.search(plain_ar):
+        plain_ar = _AR_UNCERTAIN.sub(" ", plain_ar)
     for code, rule in RULES.items():
         for pattern in rule["en"]:
             m = pattern.search(text)

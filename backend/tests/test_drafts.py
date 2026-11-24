@@ -54,6 +54,7 @@ def test_facts_cover_sessions_records_changes_and_open_items(app):
         facts = {f.id: f for f in D.build_facts(db, "demo-fatima")}
     assert "interrupted" in facts["S5"].text and "640 ms" in facts["E11"].text and "doubtful" in facts["E11"].text
     assert any(k.startswith("C") for k in facts) and "R1" in facts
+    assert any("6 sessions in total; 5 completed" in f.text and "1 interrupted (S5)" in f.text for k, f in facts.items() if k.startswith("N"))
     assert "640" in facts["E11"].numbers and numbers_in(S5_DAY) <= facts["S5"].numbers
 
 
@@ -152,3 +153,25 @@ def test_daily_cap_and_audit(client, app, dr, monkeypatch):
 def test_arabic_is_requested_when_asked(client, app, dr):
     _, fake = make(client, app, dr, GOOD, language="ar")
     assert "Arabic" in fake.prompts[0][0]
+
+
+@pytest.mark.parametrize("text,cites,ok", [
+    ("Six reaction sessions (S1, S5) were completed.", ["S1", "S5"], False),
+    ("All sessions were completed.", ["S1"], False),
+    ("All sessions were completed except S5, which was interrupted.", ["S1", "S5"], True),
+    ("Session S1 was completed.", ["S1"], True),
+    ("Six reaction sessions were completed.", ["N1"], False),
+    ("All daily check-in sessions were completed.", ["N2"], True),
+    ("All sessions were completed.", ["N2"], False),
+    ("All reaction sessions were completed.", ["N2"], False),
+    ("All daily check-in and reaction sessions were completed.", ["N2"], False),
+    ("Session S5 was interrupted.", ["S5"], True),
+    ("Two sessions were completed and one was interrupted.", ["S1", "S5"], False),
+    ("جميع الجلسات مكتملة.", ["S1"], False),
+    ("جميع الجلسات مكتملة باستثناء جلسة S5 التي كانت مقطوعة.", ["S1", "S5"], True)])
+def test_an_interrupted_session_is_never_called_completed(text, cites, ok):
+    facts = [D.V.Fact.of("S1", "Session S1: Reaction activity (version 0.1) on 14 Oct 2026; status completed; interruptions 0."),
+             D.V.Fact.of("S5", "Session S5: Reaction activity (version 0.1) on 28 Oct 2026; status interrupted; interruptions 1."),
+             D.V.Fact.of("N1", "Count N1: Reaction activity: 6 sessions in total; 5 completed (S1); 1 interrupted (S5)."),
+             D.V.Fact.of("N2", "Count N2: Daily check-in: 6 sessions in total; 6 completed (S2).")]
+    assert (not D.check_sessions([D.V.Statement(text, cites)], facts)) is ok
