@@ -18,6 +18,12 @@ All notable changes, newest first. Versions follow `0.x` while NeuroTwin is a re
 - A scan review that gives one side's volume while naming only the other side is refused (`agent_reviewers.check_sides`).
 - The Arabic back-translation check accepts a literal wording of the same structure ("brain stem" for "brain-stem").
 
+- Clinician drafts on long histories: a measure with more than 6 records is summarised in code (M facts: count, dates, lowest,
+  highest, latest, quality) instead of listed value by value, which broke the length limits. The draft must say how many of the
+  stored records it covers (`drafts.check_limit`). Count facts name at most 10 interrupted sessions; above that the statement must give their number.
+- A scan explanation states at most two limits in one statement, so it stays inside the length limit.
+- The assistant no longer opens reminders because a sentence contains "today"; loneliness or sadness gets the urgent-help question first.
+
 ### Removed
 - The voice features. The assistant is typed only: the voice companion panel, voice typing (microphone) in Ask, Tell
   my clinician and family messages, and "Read aloud" are gone, with `/api/voice/status`, `/api/voice/transcribe`,

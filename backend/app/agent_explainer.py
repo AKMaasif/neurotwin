@@ -36,7 +36,7 @@ Rules:
   Never call a difference significant, confirmed, proven or real; the repeat spread is not a test.
 - Do not write "largest", "most", "main" or any other ranking, in any language (in Arabic not "أكبر" or "الأكبر"): no fact ranks the differences.
 - Never write a fact id in the text; ids go only in "cites".
-- You must state every fact named F-limit, in one or two statements that cite them.
+- You must state every fact named F-limit, briefly, at most two of them in one statement, and cite each one.
 - Report a limit only when a cited fact states it (facts named F-limit, F-uncertainty, F-alignflag, F-flag). Never say that alignment, the interval or small
   structures limit the comparison unless a cited fact says so. Report the alignment figures and the interval as plain facts.
 - Every part of a statement must be found in the facts it cites; leave out anything else.

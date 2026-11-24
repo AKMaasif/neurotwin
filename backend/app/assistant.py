@@ -71,7 +71,7 @@ _EXPLAIN = re.compile(r"\b(explain|what does .* mean|what is .* for|tell me abou
 _OPEN = [(re.compile(r"\b(appointment|visit|questions? (for|to ask) (my|the) (doctor|clinician|clinic)|prepare for my)\b|موعد|موعدي|أسئلة للطبيب|اسئلة للطبيب|تحضير", re.I), "prep"),
          (re.compile(r"\b(follow-?up|shared (note|summary)|my (doctor|clinician)'?s? (note|message|summary))\b|المتابعة|ملخص الطبيب|رسالة الطبيب", re.I), "messages"),
          (re.compile(r"\b(messages?|inbox)\b|رسائل|الرسائل", re.I), "messages"), (re.compile(r"\b(my record|records?|history)\b|سجلي|سجلّي|سجل", re.I), "records"),
-         (re.compile(r"\b(reminders?|today)\b|التذكيرات|اليوم", re.I), "today"), (re.compile(r"\b(home|start)\b|الرئيسية", re.I), "home")]
+         (re.compile(r"\breminders?\b|التذكيرات|^\W*(?:(?:please|open|show|go to|me|my|the|page|screen)\W+)*today(?:\W+(?:page|screen|please))*\W*$|^\W*(?:(?:افتح|اعرض|أظهر|صفحة|شاشة)\s+)*اليوم\W*$", re.I), "today"), (re.compile(r"\b(home|start)\b|الرئيسية", re.I), "home")]
 _ACTIVITY = [(re.compile(r"\b(pictures?|memory game|sequence)\b|الصور|لعبة الذاكرة", re.I), "memory"), (re.compile(r"\b(well-?being|how i have been feeling|who-?5)\b|الرفاه|العافية", re.I), "wellbeing"), (re.compile(r"\b(check-?in|questions|daily check)\b|الأسئلة|الاستبيان", re.I), "checkin"), (re.compile(r"\b(reaction|game|tap)\b|اللعبة|سرعة الاستجابة|التفاعل", re.I), "reaction")]
 _MIN = re.compile(r"(\d{1,3})\s*(?:min|minutes?|دقيقة|دقائق)", re.I)
 _HOUR = re.compile(r"(\d)\s*(?:hours?|hrs?|ساعة|ساعات)|\b(an hour|ساعة)\b", re.I)
@@ -83,7 +83,9 @@ _DISTRESS = re.compile(
     r"\b(not feeling (?:well|right|good|ok(?:ay)?|myself)|(?:don['’]?t|do not) feel (?:well|right|good|ok(?:ay)?)|not well|unwell"
     r"|feel(?:ing|s)? (?:sick|ill|bad|awful|terrible|strange|weird|funny|off|confused|wobbly|shaky|faint-?ish)|i['’]?m sick|i am sick"
     r"|dizzy|dizziness|light-?headed|in pain|pain|aches?|aching|headache|hurts|throwing up|vomit(?:ing|ed)?|fever|numb(?:ness)?"
-    r"|panic(?:king)?|scared|frightened|afraid|something(?:['’]s| is) wrong with me|not myself)\b"
+    r"|panic(?:king)?|scared|frightened|afraid|something(?:['’]s| is) wrong with me|not myself"
+    r"|(?:feel(?:ing|s)?|i['’]?m|i am|been) (?:(?:so|very|really|quite|a bit|all|just|always) )*(?:lonely|alone|sad|down|depressed|hopeless|worthless|anxious|upset|miserable|low)|lonely|lonel\w+|hopeless)\b"
+    r"|\bوحيد(?:ة|ه)?\b|بالوحدة|\bحزين(?:ة|ه)?\b|بالحزن|مكتئب|مكتئبة|يائس|يائسة"
     r"|تعبان|تعبانة|تعبانه|مريض|مريضة|دوخة|دوخه|دايخ|دايخة|دوار|\bألم\b|بألم|أتألم|اتألم|وجع|يوجعني|توجعني|خايف|خايفة|خائف|خائفة"
     r"|مو زين|مب زين|مش كويس|لست بخير|ما أحس بخير|ما احس بخير|لا أشعر أنني بخير|حرارة|أستفرغ|استفرغ",
     re.I)

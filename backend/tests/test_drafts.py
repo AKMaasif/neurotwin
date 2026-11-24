@@ -175,3 +175,35 @@ def test_an_interrupted_session_is_never_called_completed(text, cites, ok):
              D.V.Fact.of("N1", "Count N1: Reaction activity: 6 sessions in total; 5 completed (S1); 1 interrupted (S5)."),
              D.V.Fact.of("N2", "Count N2: Daily check-in: 6 sessions in total; 6 completed (S2).")]
     assert (not D.check_sessions([D.V.Statement(text, cites)], facts)) is ok
+
+
+def test_a_long_history_is_summarised_and_what_is_left_out_is_stated(app):
+    from app import synthetic_history as SH
+    with app.state.db.SessionLocal() as db:
+        SH.apply(db)
+        for pid in SH.PEOPLE:
+            facts = D.build_facts(db, pid)
+            by = {f.id: f for f in facts}
+            assert "L1" in by and "latest 60 of" in by["L1"].text
+            assert all(len(f.text) < 350 for f in facts) and len([f for f in facts if f.id[0] == "M"]) >= 8
+            shown, total = D.re.match(r".*latest (\d+) of (\d+)", by["L1"].text).groups()
+            said = D.V.Statement(f"Only the latest {shown} of {total} records are summarised.", ["L1"])
+            assert not D.check_limit([said], facts)
+            for s in (D.V.Statement("Only the latest records are summarised.", ["L1"]), D.V.Statement(said.text, ["M1"])):
+                assert D.check_limit([s], facts)[0].code == "limit_missing"
+        assert len(D.layout(facts).splitlines()) <= D.V.MAX_STATEMENTS and "Well-being" in D.layout(facts)
+        assert "Well-being" not in D.layout([f for f in facts if "Well-being" not in f.text])
+        sleep = next(f for f in facts if f.text.startswith("Summary") and "Sleep hours" in f.text)
+        values = [e.value_num for e in db.scalars(D.select(D.Evidence).where(D.Evidence.participant_id == pid, D.Evidence.measure == "sleep_hours",
+                  D.Evidence.id.in_([int(f.id[1:]) for f in facts if f.id[0] == "E"]))) if e.value_num is not None]
+        assert f"lowest {D._num(min(values))} h, highest {D._num(max(values))} h" in sleep.text
+
+
+@pytest.mark.parametrize("text,ok", [
+    ("Of 46 reaction sessions, 40 were completed and 6 were interrupted.", True),
+    ("Of 46 reaction sessions, 40 were completed.", False),
+    ("Of 46 reaction sessions, 40 were completed and some were interrupted.", False)])
+def test_a_count_without_ids_still_needs_the_number_not_completed(text, ok):
+    facts = [D.V.Fact.of("N1", "Count N1: Reaction activity: 46 sessions in total; 40 completed; 6 interrupted."),
+             D.V.Fact.of("S9", "Session S9: Reaction activity (version 0.1) on 3 Nov 2026; status interrupted; interruptions 1.")]
+    assert (not D.check_sessions([D.V.Statement(text, ["N1"])], facts)) is ok
